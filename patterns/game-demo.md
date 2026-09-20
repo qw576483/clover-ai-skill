@@ -434,7 +434,9 @@ unity projects create "client" --path "clover-{项目名}" \
   --editor-version 6000.0.47f1 --template com.unity.template.3d
 
 # 3) 接入 Clover 引擎包：Packages/manifest.json 加一行
-#    "com.clover.unity-engine": "file:<ENGINE_CLIENT_PATH>"
+#    "com.clover.unity-engine": "https://github.com/qw576483/clover-client-unity-engine.git"
+#    （要在工作区内联调引擎源码才换成本地路径，且基准是 client/Packages/：
+#      "file:../../../clover-client-unity-engine" —— 详见 scaffold/new-project.md §2.3）
 ```
 
 工程建好后再往 `Assets/` 里写业务脚本。**写任何网络代码之前，必须先创建 Def/ 目录**（见下面目录结构）：

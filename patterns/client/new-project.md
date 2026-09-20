@@ -60,10 +60,20 @@ unity projects create "client" --path "clover-{项目名}" \
 在 `client/Packages/manifest.json` 的 `dependencies` 中加入：
 
 ```json
-"com.clover.unity-engine": "file:../../clover-client-unity-engine"
+"com.clover.unity-engine": "https://github.com/qw576483/clover-client-unity-engine.git"
 ```
 
-（路径按实际仓库相对位置调整；若引擎包已发布到私有 UPM 源，改用对应的 registry 地址 + 版本号。）
+**要分发（别人 clone 就能打开）→ 就用这条 git URL**：引擎是独立仓库，**不在**业务工程里，任何本地路径都救不了陌生用户。
+
+要**在工作区内联调引擎源码**（引擎仓库与业务工程同父目录）才改用本地路径 —— 注意 **Unity 的 `file:` 相对路径基准是 `client/Packages/`，不是工程根**：
+
+```json
+"com.clover.unity-engine": "file:../../../clover-client-unity-engine"
+```
+
+⛔ 写 `file:../../clover-client-unity-engine` 是**错的**：它会被解析成 `<工程仓库>/clover-client-unity-engine`（不存在），Unity 报
+`com.clover.unity-engine: The file [...\clover-client-unity-engine\package.json] cannot be found`。
+也不要用绝对路径（换机器 / 换目录必坏）。
 
 ### 4. 建业务程序集定义
 

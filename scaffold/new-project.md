@@ -471,7 +471,7 @@ error CS1069: The type name 'RuntimeAnimatorController' could not be found in th
 ```json
 {
   "dependencies": {
-    "com.clover.unity-engine": "file:<ENGINE_CLIENT_PATH>",
+    "com.clover.unity-engine": "https://github.com/qw576483/clover-client-unity-engine.git",
     "com.unity.feature.development": "1.0.2",
     "com.unity.pipeline": "0.7.0-exp.1",
     "com.unity.test-framework": "1.4.5",
@@ -499,7 +499,10 @@ error CS1069: The type name 'RuntimeAnimatorController' could not be found in th
 }
 ```
 
-- `ENGINE_CLIENT_PATH` = `clover-client-unity-engine` 的本地绝对路径（正斜杠）。
+- 引擎包默认走上面的 **git URL**：别人 clone 工程就能打开，本机不需要有引擎仓库。
+  要在工作区内**联调引擎源码**，才改成相对 **`client/Packages/`** 的本地路径：
+  `"file:../../../clover-client-unity-engine"`（⛔ 不是 `file:../../` —— 那样会解析到工程仓库内部，
+  必报 `The file [...\clover-client-unity-engine\package.json] cannot be found`；也**不要写绝对路径**）。
 - 内置模块的**权威名单**以本机编辑器为准：`<Editor>/Data/Resources/PackageManager/BuiltInPackages/`
   下列出的 `com.unity.modules.*`；上表是引擎实际用到的子集，可再按需增补。
 - `testables` 让引擎包自带的 `Tests/`（EditMode + PlayMode）被编译进测试程序集。
