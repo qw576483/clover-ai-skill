@@ -2,7 +2,7 @@
 
 ## 模板 1：延迟执行
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -13,7 +13,7 @@ public class DelayExample : MonoBehaviour
         // 3秒后执行
         Game.Timer.After(3f, () =>
         {
-            Game.Logger?.Info("Timer", "3秒后执行");
+            Game.Logger.Info("Timer", "3秒后执行");
         });
     }
 }
@@ -21,7 +21,7 @@ public class DelayExample : MonoBehaviour
 
 ## 模板 2：循环执行
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -34,7 +34,7 @@ public class RepeatExample : MonoBehaviour
         // 每秒执行一次
         _timerId = Game.Timer.Every(1f, () =>
         {
-            Game.Logger?.Info("Timer", "每秒执行");
+            Game.Logger.Info("Timer", "每秒执行");
         });
     }
 
@@ -47,7 +47,7 @@ public class RepeatExample : MonoBehaviour
 
 ## 模板 3：定时器取消
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -60,7 +60,7 @@ public class TimerCancelExample : MonoBehaviour
     {
         Game.Timer.EveryName(TimerName, 1f, () =>
         {
-            Game.Logger?.Info("Timer", "循环执行");
+            Game.Logger.Info("Timer", "循环执行");
         });
     }
 
@@ -78,7 +78,7 @@ public class TimerCancelExample : MonoBehaviour
 
 ## 模板 4：帧率控制
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -93,7 +93,7 @@ public class FrameRateExample : MonoBehaviour
         Game.Timer.After(0f, () =>
         {
             // 下一帧执行
-            Game.Logger?.Info("Timer", "下一帧执行");
+            Game.Logger.Info("Timer", "下一帧执行");
         });
     }
 }
@@ -101,7 +101,7 @@ public class FrameRateExample : MonoBehaviour
 
 ## 模板 5：倒计时
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 using UnityEngine.UI;
@@ -141,14 +141,14 @@ public class CountdownTimer : MonoBehaviour
 
     private void OnCountdownEnd()
     {
-        Game.Logger?.Info("Timer", "倒计时结束");
+        Game.Logger.Info("Timer", "倒计时结束");
     }
 }
 ```
 
 ## 模板 6：定时刷新
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -165,7 +165,7 @@ public class AutoRefreshExample : MonoBehaviour
 
     private void RefreshData()
     {
-        Game.Logger?.Info("Timer", "刷新数据");
+        Game.Logger.Info("Timer", "刷新数据");
         // 刷新UI或数据
     }
 }

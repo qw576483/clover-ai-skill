@@ -20,7 +20,7 @@
 `UIPanel` 基类已经把 `PanelName`（默认取类名）/ `Layer`（默认 Normal）/ `Root` / `OnClose` / `OnUpdate` 
 全部实现好，业务通常只写 `OnOpen`：
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 using UnityEngine.UI;
@@ -43,7 +43,7 @@ public class LoginPanel : UIPanel
         var password = _passwordInput.text;
         if (string.IsNullOrEmpty(account) || string.IsNullOrEmpty(password))
         {
-            Game.Logger?.Warn("UI", "请输入账号和密码");
+            Game.Logger.Warn("UI", "请输入账号和密码");
             return;
         }
 
@@ -58,7 +58,7 @@ public class LoginPanel : UIPanel
             });
             if (!reply.success)
             {
-                Game.Logger?.Warn("UI", $"登录失败: {reply.err}");
+                Game.Logger.Warn("UI", $"登录失败: {reply.err}");
                 return;
             }
 
@@ -70,11 +70,11 @@ public class LoginPanel : UIPanel
         catch (CloverCallException ex)
         {
             // 服务端业务错误（EMsg.Error 回包），错误描述在 ex.ServerError
-            Game.Logger?.Warn("UI", $"登录失败: {ex.ServerError}");
+            Game.Logger.Warn("UI", $"登录失败: {ex.ServerError}");
         }
         catch (System.TimeoutException)
         {
-            Game.Logger?.Error("UI", "登录超时");
+            Game.Logger.Error("UI", "登录超时");
         }
     }
 }
@@ -84,7 +84,7 @@ public class LoginPanel : UIPanel
 
 ## 模板 2：打开 / 关闭 / 取值
 
-```typescript C#
+```csharp
 using CloverEngine;
 
 public static class UIFlow
@@ -108,15 +108,15 @@ public static class UIFlow
     // 订阅面板开关（做红点、埋点等）
     public static void Bind()
     {
-        Game.UI.OnPanelOpened(name => Game.Logger?.Info("UI", $"opened: {name}"));
-        Game.UI.OnPanelClosed(name => Game.Logger?.Info("UI", $"closed: {name}"));
+        Game.UI.OnPanelOpened(name => Game.Logger.Info("UI", $"opened: {name}"));
+        Game.UI.OnPanelClosed(name => Game.Logger.Info("UI", $"closed: {name}"));
     }
 }
 ```
 
 ## 模板 3：面板动画等待（用 Timer，不是 await 一个不存在的 API）
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -146,7 +146,7 @@ public class AnimatedPanel : UIPanel
 
 ## 模板 4：列表 UI（走对象池 + 回调式资源加载）
 
-```typescript C#
+```csharp
 using System.Collections.Generic;
 using CloverEngine;
 using UnityEngine;
@@ -208,7 +208,7 @@ public class ItemSlotView : MonoBehaviour
 
 ## 模板 5：面板事件监听（记得在 OnClose 里注销）
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 using UnityEngine.UI;
@@ -231,7 +231,7 @@ public class ShopPanel : UIPanel
 
     private void OnBuySuccess(BuySuccessInfo info)
     {
-        Game.Logger?.Info("UI", $"购买成功: {info.ItemName}");
+        Game.Logger.Info("UI", $"购买成功: {info.ItemName}");
     }
 
     private void OnGoldChange(long gold)
@@ -246,7 +246,7 @@ public class ShopPanel : UIPanel
 
 ## 模板 6：确认弹窗（把回调当 param 传进去）
 
-```typescript C#
+```csharp
 using System;
 using CloverEngine;
 using UnityEngine;
@@ -301,7 +301,7 @@ public class ConfirmDialog : UIPanel
             Title = "确认删除",
             Message = "确定要删除这个物品吗？",
             OnConfirm = onDeleted,
-            OnCancel = () => Game.Logger?.Info("UI", "取消删除"),
+            OnCancel = () => Game.Logger.Info("UI", "取消删除"),
         });
     }
 }

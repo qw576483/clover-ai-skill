@@ -2,7 +2,7 @@
 
 ## 模板 1：基础事件注册和发布
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -23,7 +23,7 @@ public class EventExample : MonoBehaviour
 
     private void OnLevelUp(LevelUpData data)
     {
-        Game.Logger?.Info("Event", $"升级: {data.OldLevel} -> {data.NewLevel}");
+        Game.Logger.Info("Event", $"升级: {data.OldLevel} -> {data.NewLevel}");
     }
 
     void OnDestroy()
@@ -36,7 +36,7 @@ public class EventExample : MonoBehaviour
 
 ## 模板 2：一次性监听
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -47,21 +47,21 @@ public class OneTimeEvent : MonoBehaviour
         // 一次性监听（触发一次后自动移除；无参事件 → 处理器必须零参）
         Game.Event.Once("Game.FirstLogin", () =>
         {
-            Game.Logger?.Info("Event", "首次登录");
+            Game.Logger.Info("Event", "首次登录");
             ShowWelcomeGift();
         });
     }
 
     private void ShowWelcomeGift()
     {
-        Game.Logger?.Info("Event", "显示欢迎礼包");
+        Game.Logger.Info("Event", "显示欢迎礼包");
     }
 }
 ```
 
 ## 模板 3：带命名空间的事件
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -79,29 +79,29 @@ public class NamespacedEvents : MonoBehaviour
     // Net.OnConnected / Net.OnDisconnected 均为**无参发布** → 处理器必须零参（绑单参委托运行期永不回调）
     private void OnConnected()
     {
-        Game.Logger?.Info("Event", "连接成功");
+        Game.Logger.Info("Event", "连接成功");
     }
 
     private void OnDisconnected()
     {
-        Game.Logger?.Warn("Event", "连接断开");
+        Game.Logger.Warn("Event", "连接断开");
     }
 
     private void OnGoldChange(int gold)
     {
-        Game.Logger?.Info("Event", $"金币变化: {gold}");
+        Game.Logger.Info("Event", $"金币变化: {gold}");
     }
 
     private void OnBuySuccess(BuySuccessInfo info)
     {
-        Game.Logger?.Info("Event", $"购买成功: {info.ItemName}");
+        Game.Logger.Info("Event", $"购买成功: {info.ItemName}");
     }
 }
 ```
 
 ## 模板 4：事件数据类
 
-```typescript C#
+```csharp
 // 定义事件数据
 public class LevelUpData
 {
@@ -125,7 +125,7 @@ public class EventWithData : MonoBehaviour
         Game.Event.On<LevelUpData>("Player.LevelUp", data =>
         {
             var info = data as LevelUpData;
-            Game.Logger?.Info("Event", $"升级: {info.OldLevel} -> {info.NewLevel}");
+            Game.Logger.Info("Event", $"升级: {info.OldLevel} -> {info.NewLevel}");
         });
     }
 
@@ -142,7 +142,7 @@ public class EventWithData : MonoBehaviour
 
 ## 模板 5：网络事件监听
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -153,25 +153,25 @@ public class NetworkEvent监听 : MonoBehaviour
         // 监听网络生命周期事件（无参发布的事件 → 处理器必须零参；带参事件 → On<T> 显式给类型）
         Game.Event.On("Net.OnConnected", () =>
         {
-            Game.Logger?.Info("Event", "已连接到服务器");
+            Game.Logger.Info("Event", "已连接到服务器");
             OnConnected();
         });
 
         Game.Event.On("Net.OnDisconnected", () =>
         {
-            Game.Logger?.Warn("Event", "连接断开，正在重连...");
+            Game.Logger.Warn("Event", "连接断开，正在重连...");
             OnDisconnected();
         });
 
         Game.Event.On<EResumeSessionReply>("Net.OnResumed", data =>
         {
-            Game.Logger?.Info("Event", "会话已恢复");
+            Game.Logger.Info("Event", "会话已恢复");
             OnResumed();
         });
 
         Game.Event.On("Net.OnKicked", () =>
         {
-            Game.Logger?.Warn("Event", "被踢出，需要重新登录");
+            Game.Logger.Warn("Event", "被踢出，需要重新登录");
             OnKicked();
         });
     }
@@ -200,7 +200,7 @@ public class NetworkEvent监听 : MonoBehaviour
 
 ## 模板 6：批量取消监听
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 using System.Collections.Generic;

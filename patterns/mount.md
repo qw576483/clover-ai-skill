@@ -73,7 +73,7 @@ g.Reply(c, resp)
 - 四个宿主的 `OnMsg` 签名**一致**：`func(c event.Ctx) error`
   （非 game 角色是「headless Core + 自己的传输层」，与 game 共用同一套派发内核）。
 - `Game.OnMsg(msgID uint32, h event.Handler, priority ...int)` 可绑定多个 handler（按优先级降序）；
-  非 game 宿主 `MasterGame/LogGame/AuthGame.OnMsg(msgID uint32, h event.Handler)` **没有 priority 参数**（`pkg/app/app.go:448/629/654/688`）。
+  非 game 宿主 `MasterGame/LogGame/AuthGame.OnMsg(msgID uint32, h event.Handler)` **没有 priority 参数**（`internal/app/facade.go:640/704/759`；game 侧带 priority 的那个在同文件 `internal/app/facade.go:453`）。
 - 四个角色的 `OnMsg` 传 `msgID <= proto.InternalMsgMax` 都会 **panic**（引擎保留段）。
 - 需要宿主引用时，用包级 `G.g`（或 logic 结构体的 `l.g`），**不要在 handler 里现取**。
 - 跨服事件在 **Game** 上，不在 Ctx 上：

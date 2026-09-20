@@ -9,7 +9,7 @@
 
 ## 模板 1：加载资源（回调式）
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 using UnityEngine.UI;
@@ -24,7 +24,7 @@ public class ResourceLoader : MonoBehaviour
         {
             if (prefab == null) return;
             var obj = Instantiate(prefab);      // 战斗/列表路径请改用 Game.Pool.Spawn
-            Game.Logger?.Info("Res", $"加载成功: {prefab.name}");
+            Game.Logger.Info("Res", $"加载成功: {prefab.name}");
         });
     }
 
@@ -40,7 +40,7 @@ public class ResourceLoader : MonoBehaviour
 
 ## 模板 2：带进度加载 / 批量预加载
 
-```typescript C#
+```csharp
 using System.Collections.Generic;
 using CloverEngine;
 using UnityEngine;
@@ -50,16 +50,16 @@ public class PreloadManager : MonoBehaviour
     public void LoadWithProgress()
     {
         Game.Res.LoadAsset<GameObject>("Prefabs/Boss",
-            p => Game.Logger?.Info("Res", $"加载进度 {p:P0}"),
-            prefab => Game.Logger?.Info("Res", prefab != null ? "完成" : "失败"));
+            p => Game.Logger.Info("Res", $"加载进度 {p:P0}"),
+            prefab => Game.Logger.Info("Res", prefab != null ? "完成" : "失败"));
     }
 
     public void PreloadBattleAssets()
     {
         var paths = new List<string> { "Prefabs/Enemy", "Prefabs/Bullet", "Prefabs/Effect" };
         Game.Res.Preload(paths,
-            onDone: () => Game.Logger?.Info("Res", "全部预加载完成"),
-            progress: p => Game.Logger?.Info("Res", $"{p:P0}"));
+            onDone: () => Game.Logger.Info("Res", "全部预加载完成"),
+            progress: p => Game.Logger.Info("Res", $"{p:P0}"));
     }
 }
 ```
@@ -68,7 +68,7 @@ public class PreloadManager : MonoBehaviour
 
 ## 模板 3：加载配置表
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -79,8 +79,8 @@ public class ConfigLoader : MonoBehaviour
         var config = Game.Table.Get<ItemConfig>(1001);
         if (config != null)
         {
-            Game.Logger?.Info("Res", $"物品名称: {config.Name}");
-            Game.Logger?.Info("Res", $"物品描述: {config.Description}");
+            Game.Logger.Info("Res", $"物品名称: {config.Name}");
+            Game.Logger.Info("Res", $"物品描述: {config.Description}");
         }
     }
 
@@ -88,7 +88,7 @@ public class ConfigLoader : MonoBehaviour
     {
         foreach (var item in Game.Table.GetAll<ItemConfig>())
         {
-            Game.Logger?.Info("Res", $"物品: {item.Id} - {item.Name}");
+            Game.Logger.Info("Res", $"物品: {item.Id} - {item.Name}");
         }
     }
 }
@@ -96,7 +96,7 @@ public class ConfigLoader : MonoBehaviour
 
 ## 模板 4：资源释放
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -114,7 +114,7 @@ public class ResourceUnloadManager : MonoBehaviour
 
 ## 模板 5：场景加载带进度（用 `Game.Scene`，不是 `Game.Res`）
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 using UnityEngine.UI;
@@ -146,7 +146,7 @@ public class LoadingManager : MonoBehaviour
 
 引擎**已内置**热更链路（AssetBundle 后端 + 清单比对 + 断点续传下载）。三步：
 
-```typescript C#
+```csharp
 using System.Collections.Generic;
 using CloverEngine;
 using UnityEngine;
@@ -162,14 +162,14 @@ public class HotUpdateFlow : MonoBehaviour
     {
         Game.Res.CheckUpdate(info =>
         {
-            if (!info.Success) { Game.Logger?.Error("Res", info.Error); return; }
+            if (!info.Success) { Game.Logger.Error("Res", info.Error); return; }
             if (!info.HasUpdate)
             {
-                Game.Logger?.Info("Res", $"已是最新：{info.LocalVersion}");
+                Game.Logger.Info("Res", $"已是最新：{info.LocalVersion}");
                 return;
             }
 
-            Game.Logger?.Info("Res",
+            Game.Logger.Info("Res",
                 $"{info.LocalVersion} -> {info.Remote.Version}，需下载 {info.FilesToDownload.Count} 个文件 / {info.TotalBytes / 1024}KB" +
                 (info.Force ? "（强制更新）" : string.Empty));
 

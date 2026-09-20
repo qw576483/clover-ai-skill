@@ -86,13 +86,14 @@ const MsgCreatePlayer = 10001
 
 - 调度器是**进程内**的，重启 / 崩溃 / 滚动发布即丢。**不能靠定时器持久化兜底**：`g.Timer` 未注入
   `PersistBackend`（`PersistScope`/`RestoreScope` 返回 `ErrNoBackend`），且 `DumpScope` 存的是**相对剩余**、  
-  `ImportScope` **不补触发已过期任务**（`pkg/runtime/timer/timer.go:644-651,732-744`）。
+  `ImportScope` **不补触发已过期任务**（`pkg/runtime/timer/timer.go:665-674` 为 `RemainingMs` / `Scheduler.DumpScope`、
+  `:746-801` 为 `ImportScope`）。
 - 重建时机按 owner 维度选，**不做全表扫描**：玩家 = 进游戏 handler（`g.LoadStruct`）；
   服务器 = `app.Mount` 启动 + `Every` 周期兜底（`g.Data().LoadJSON`）；场景对象 = 对象加载时。
-- 未到期用 `Group.OnTimer(name, when, …)`（**绝对时刻、已过期立即触发**，`timer.go:561-569`）；结算必须**幂等**。
+- 未到期用 `Group.OnTimer(name, when, …)`（**绝对时刻、已过期立即触发**，`pkg/runtime/timer/timer.go:605-613`）；结算必须**幂等**。
 
 **scope 命名（与引擎断线清理的关系）**——引擎断线时只清 `StopTimerGroup(owner)` 这一个 scope，
-该 `owner` 是**连接级 owner**（登录回执的 `owner` 字段 / `AccountID`，`internal/app/game.go:811-812`），
+该 `owner` 是**连接级 owner**（登录回执的 `owner` 字段 / `AccountID`，`internal/app/game.go:870-885`，硬掉线同一条在 `:897-909`），
 **不是角色 ID**：
 
 | 诉求 | scope |

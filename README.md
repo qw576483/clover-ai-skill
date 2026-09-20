@@ -19,7 +19,7 @@ Clover 引擎的 **AI 交付 skill**：把「做游戏 / 写业务代码 / 改�
 
 ```bash
 git clone https://github.com/qw576483/clover-ai-skill.git
-# 复制或软链到宿主 skills 目录，例如 ~/.codebuddy/skills/clover-engine
+# 复制或软链到宿主 skills 目录，目录名用 ai-skill（例如 ~/.codebuddy/skills/ai-skill）
 ```
 
 装好后，涉及 `clover-*` 仓库、Clover 工程、Unity 客户端或 Go 服务端开发的任务会自动命中该 skill。

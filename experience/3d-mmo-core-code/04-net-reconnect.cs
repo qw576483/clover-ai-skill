@@ -36,7 +36,7 @@ namespace YourGame.Module.Net
             if (_loginInFlight) return;
             _loginInFlight = true;
             try { if (_loginFlow != null) await _loginFlow(); _sessionBound = true; _everLoggedIn = true; }
-            catch (Exception e) { Game.Logger?.Error("Net", "登录流程异常: " + e.Message, e); }
+            catch (Exception e) { Game.Logger.Error("Net", "登录流程异常: " + e.Message, e); }
             finally { _loginInFlight = false; }
         }
 

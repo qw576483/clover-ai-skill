@@ -4,7 +4,7 @@
 
 所有模块访问通过 `Game` 门面，禁止直接实例化模块：
 
-```typescript C#
+```csharp
 Game.Net.Send(EMsg.Xxx, msg);
 Game.Event.On("xxx", handler);
 Game.Timer.After(3f, callback);
@@ -19,7 +19,7 @@ Game.Entity.Get(entityId);
 **只要工程里有 UI（按钮/输入框）或任何键鼠操作，`CloverInput.Init()` 必须排在「构建 UI」之前**——
 它负责挂载输入后端与 EventSystem，晚于 UI 构建就会导致按钮点不了：
 
-```typescript C#
+```csharp
 void Start()
 {
     // 1. 启动引擎
@@ -59,7 +59,7 @@ void Start()
 
 ### 3.1 注册监听
 
-```typescript C#
+```csharp
 // 注册推送监听（OnMsg 返回 void，没有可保存的句柄）
 void OnSomeNotify(NetCtx ctx)
 {
@@ -74,7 +74,7 @@ Game.OffMsg(EMsg.SomeNotify, OnSomeNotify);
 
 ### 3.2 请求-回包
 
-```typescript C#
+```csharp
 // 异步请求
 try
 {
@@ -83,23 +83,23 @@ try
         item_id = 1001,    // ★ 业务消息字段必须是 snake_case（与服务端 json tag 对齐）
         count = 1,
     });
-    Game.Logger?.Info("Net", $"购买成功: {reply.order_id}");
+    Game.Logger.Info("Net", $"购买成功: {reply.order_id}");
 }
 catch (CloverCallException ex)
 {
     // 服务端业务错误（EMsg.Error 回包）：ex.ServerError 为描述，ex.Code 为机器可读错误码（见 ErrCode）
-    Game.Logger?.Error("Net", $"业务错误: {ex.ServerError} (code={ex.Code})");
+    Game.Logger.Error("Net", $"业务错误: {ex.ServerError} (code={ex.Code})");
 }
 catch (TimeoutException)
 {
     // 请求超时
-    Game.Logger?.Error("Net", "请求超时");
+    Game.Logger.Error("Net", "请求超时");
 }
 ```
 
 ### 3.3 可靠/非可靠发送
 
-```typescript C#
+```csharp
 // 可靠发送（TCP，保证到达）
 Game.Net.Send(EMsg.ChatMessage, new ChatMessage
 {
@@ -136,29 +136,29 @@ Game.Net.SendUnreliable(EMsg.PositionSync, new PositionData
 
 使用 `Game.Event` 监听网络状态：
 
-```typescript C#
+```csharp
 // 连接成功（无参事件 → 零参 lambda）
 Game.Event.On("Net.OnConnected", () =>
 {
-    Game.Logger?.Info("Net", "已连接到服务器");
+    Game.Logger.Info("Net", "已连接到服务器");
 });
 
 // 连接断开（自动重连中；无参事件）
 Game.Event.On("Net.OnDisconnected", () =>
 {
-    Game.Logger?.Warn("Net", "连接断开，正在重连...");
+    Game.Logger.Warn("Net", "连接断开，正在重连...");
 });
 
 // 会话恢复成功（带参事件 → 显式 On<T>）
 Game.Event.On<EResumeSessionReply>("Net.OnResumed", data =>
 {
-    Game.Logger?.Info("Net", "会话已恢复");
+    Game.Logger.Info("Net", "会话已恢复");
 });
 
 // 被踢出（重连次数耗尽；无参事件）
 Game.Event.On("Net.OnKicked", () =>
 {
-    Game.Logger?.Warn("Net", "被踢出，需要重新登录");
+    Game.Logger.Warn("Net", "被踢出，需要重新登录");
     // 清理本地状态，返回登录界面
 });
 
@@ -166,7 +166,7 @@ Game.Event.On("Net.OnKicked", () =>
 // 与 OnKicked 的区别：OnKicked 是连接断了；这个是连接还在、但请求被拒。
 Game.Event.On<EErrorReply>("Net.OnUnauthorized", e =>
 {
-    Game.Logger?.Warn("Net", $"未认证（code={e.code}）: {e.err}");
+    Game.Logger.Warn("Net", $"未认证（code={e.code}）: {e.err}");
     // 清理本地会话，返回登录界面
 });
 ```
@@ -188,7 +188,7 @@ CloverEngine.Presentation    （引用 Core）
 
 `Network` / `Data` / `Resource` / `Presentation` → `Core` **单向依赖**：
 
-```typescript C#
+```csharp
 using CloverEngine;   // 命名空间只有 CloverEngine（没有 CloverEngine.<子名>，子模块类型也在此命名空间内）
 ```
 
@@ -246,7 +246,7 @@ Assets/
 
 ### 资源加载代码
 
-```typescript C#
+```csharp
 // 异步加载（回调式，没有 await / 同步版本）
 Game.Res.LoadAsset<GameObject>("Prefabs/Enemy", prefab => { /* Instantiate(prefab) */ });
 
@@ -262,7 +262,7 @@ Game.Res.Release("Prefabs/Enemy");
 
 ## 7. UI 管理
 
-```typescript C#
+```csharp
 // 打开 / 关闭（面板继承 UIPanel 或实现 IUIPanel；预制体放 Resources/UI/{类名}）
 Game.UI.Open<LoginPanel>();
 Game.UI.Close<LoginPanel>();
@@ -273,11 +273,11 @@ var panel = Game.UI.Get<LoginPanel>();
 
 ## 8. 事件总线
 
-```typescript C#
+```csharp
 // 注册监听（带参事件必须显式泛型）
 Game.Event.On<LevelUpData>("Player.LevelUp", data =>
 {
-    Game.Logger?.Info("Event", $"升级: {data.Level}");
+    Game.Logger.Info("Event", $"升级: {data.Level}");
 });
 
 // 发布事件
@@ -295,17 +295,17 @@ Game.Event.Off("xxx", callback);
 
 ## 9. 定时器
 
-```typescript C#
+```csharp
 // 延迟执行
 Game.Timer.After(3f, () =>
 {
-    Game.Logger?.Info("Timer", "3秒后执行");
+    Game.Logger.Info("Timer", "3秒后执行");
 });
 
 // 循环执行（返回 long id，不是 IDisposable）
 Game.Timer.Every(1f, () =>
 {
-    Game.Logger?.Info("Timer", "每秒执行");
+    Game.Logger.Info("Timer", "每秒执行");
 });
 
 // 取消定时器：拿 id 用 Stop
@@ -319,15 +319,15 @@ Game.Timer.StopNamed("tick");
 
 ## 10. 状态机
 
-```typescript C#
+```csharp
 // 不要 new Fsm()（实现类是 internal）；用引擎共享的 Game.Fsm
 var fsm = Game.Fsm;
 
 // 注册状态（参数名是 onTick，不是 onUpdate）
 fsm.RegisterState("idle",
-    onEnter: () => Game.Logger?.Info("FSM", "进入空闲"),
+    onEnter: () => Game.Logger.Info("FSM", "进入空闲"),
     onTick: dt => { },
-    onExit: () => Game.Logger?.Info("FSM", "退出空闲")
+    onExit: () => Game.Logger.Info("FSM", "退出空闲")
 );
 
 // 切换状态
@@ -357,7 +357,7 @@ fsm.Force("idle");
 
 ## 12. 错误处理
 
-```typescript C#
+```csharp
 // 网络请求错误
 try
 {
@@ -375,7 +375,7 @@ catch (CloverCallException ex)
     {
         case ErrCode.Unauthenticated: BackToLogin();                                   break;
         case ErrCode.Forbidden:       ShowNoPermission(ex.ServerError);                break;
-        default:                      Game.Logger?.Error("Net", $"业务错误: {ex.ServerError}"); break;
+        default:                      Game.Logger.Error("Net", $"业务错误: {ex.ServerError}"); break;
     }
 }
 ```
@@ -394,7 +394,7 @@ catch (CloverCallException ex)
 **硬规则**：业务代码里**不许出现** `Input.GetKeyDown(...)` / `Input.mousePosition` / `Input.GetAxis(...)`。
 一律走 `Game.Input`，按键用引擎的 `GameKey` 枚举。
 
-```typescript C#
+```csharp
 // 后端无关：GameKey 由引擎翻译成当前生效后端的实际按键
 if (Game.Input.GetKeyDown(GameKey.Space)) Jump();
 if (Game.Input.GetKeyDown(GameKey.Num1)) StartSolo();   // 数字 1

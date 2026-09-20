@@ -68,7 +68,7 @@ Game.OnMsg(MsgDef.RoundResult, ctx => { var n = ctx.Bind<RoundResultNotify>(); /
 
 ## 模板 1：注册消息监听
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -80,7 +80,7 @@ public class NetworkHandler : MonoBehaviour
         Game.OnMsg(MsgDef.SomeNotify, ctx =>
         {
             var msg = ctx.Bind<SomeNotify>();
-            Game.Logger?.Info("Net", $"收到推送: {msg.Data}");
+            Game.Logger.Info("Net", $"收到推送: {msg.Data}");
             // 处理逻辑...
         });
     }
@@ -89,7 +89,7 @@ public class NetworkHandler : MonoBehaviour
 
 ## 模板 2：发送消息
 
-```typescript C#
+```csharp
 // 可靠发送（TCP，保证到达）
 public void SendChatMessage(string content)
 {
@@ -113,7 +113,7 @@ public void SendPosition(Vector3 position)
 
 ## 模板 3：请求-回包
 
-```typescript C#
+```csharp
 // 异步请求
 public async void BuyItem(int itemId, int count)
 {
@@ -124,18 +124,18 @@ public async void BuyItem(int itemId, int count)
             item_id = itemId,      // ★ 业务消息字段名必须是 snake_case，与服务端 json tag 对齐
             count = count,
         });
-        Game.Logger?.Info("Net", $"购买成功: {reply.order_id}");
+        Game.Logger.Info("Net", $"购买成功: {reply.order_id}");
     }
     catch (CloverCallException ex)
     {
         // 服务端业务错误（EMsg.Error 回包），描述在 ex.ServerError
-        Game.Logger?.Error("Net", $"业务错误: {ex.ServerError}");
+        Game.Logger.Error("Net", $"业务错误: {ex.ServerError}");
         HandleBusinessError(ex.ServerError);
     }
     catch (TimeoutException)
     {
         // 请求超时
-        Game.Logger?.Error("Net", "请求超时");
+        Game.Logger.Error("Net", "请求超时");
         ShowTimeoutTip();
     }
 }
@@ -143,7 +143,7 @@ public async void BuyItem(int itemId, int count)
 
 ## 模板 4：网络生命周期监听
 
-```typescript C#
+```csharp
 public class NetworkLifecycle : MonoBehaviour
 {
     void Start()
@@ -151,28 +151,28 @@ public class NetworkLifecycle : MonoBehaviour
         // 连接成功（本条事件无参发布 → 处理器必须零参）
         Game.Event.On("Net.OnConnected", () =>
         {
-            Game.Logger?.Info("Net", "已连接到服务器");
+            Game.Logger.Info("Net", "已连接到服务器");
             ShowConnectedTip();
         });
 
         // 连接断开（自动重连中）
         Game.Event.On("Net.OnDisconnected", () =>
         {
-            Game.Logger?.Warn("Net", "连接断开，正在重连...");
+            Game.Logger.Warn("Net", "连接断开，正在重连...");
             ShowReconnectingTip();
         });
 
         // 会话恢复成功（本条事件带参发布 → 参数类型显式写进泛型）
         Game.Event.On<EResumeSessionReply>("Net.OnResumed", data =>
         {
-            Game.Logger?.Info("Net", "会话已恢复");
+            Game.Logger.Info("Net", "会话已恢复");
             HideReconnectingTip();
         });
 
         // 被踢出（重连次数耗尽）
         Game.Event.On("Net.OnKicked", () =>
         {
-            Game.Logger?.Warn("Net", "被踢出，需要重新登录");
+            Game.Logger.Warn("Net", "被踢出，需要重新登录");
             ReturnToLogin();
         });
     }
@@ -187,7 +187,7 @@ public class NetworkLifecycle : MonoBehaviour
 
 ## 模板 5：登录流程
 
-```typescript C#
+```csharp
 public class LoginManager : MonoBehaviour
 {
     public async void Login(string account, string password)
@@ -208,7 +208,7 @@ public class LoginManager : MonoBehaviour
             });
             if (!reply.success)
             {
-                Game.Logger?.Warn("Net", $"登录失败: {reply.err}");
+                Game.Logger.Warn("Net", $"登录失败: {reply.err}");
                 return;
             }
             // ★ 断线恢复前提。第二个参数**传 null**（不是 reply.session_key；与官方 Sample 一致）——
@@ -216,12 +216,12 @@ public class LoginManager : MonoBehaviour
             //   token mismatch 被踢；真正的恢复凭证 session_token 由 PushPlayerFullSync
             //   下发并**非空覆盖**。传了非空值引擎会打 Warn（NetworkManager.cs:715-718）。
             Game.Net.SetupSession(account, null);
-            Game.Logger?.Info("Net", $"登录成功: owner={reply.owner}");
+            Game.Logger.Info("Net", $"登录成功: owner={reply.owner}");
             EnterMainCity();
         }
         catch (CloverCallException ex)
         {
-            Game.Logger?.Error("Net", $"登录失败: {ex.ServerError}");
+            Game.Logger.Error("Net", $"登录失败: {ex.ServerError}");
         }
     }
 
@@ -234,7 +234,7 @@ public class LoginManager : MonoBehaviour
 
 ## 模板 6：取消监听
 
-```typescript C#
+```csharp
 public class NetworkHandler : MonoBehaviour
 {
     // OnMsg 返回 void，没有句柄；注销要传回「同一个方法引用」（或按 msgID 全清）
@@ -274,7 +274,7 @@ Game.Event.On<EQueuePositionNotify>("Net.QueuePosition", pos =>
 });
 
 // 排查用：本次连接到底加密了没
-Game.Logger?.Info("Net", $"encrypted={Game.Net.IsChannelEncrypted}");
+Game.Logger.Info("Net", $"encrypted={Game.Net.IsChannelEncrypted}");
 ```
 
 > 平台不支持 AES-GCM（如 WebGL）时引擎**不会**声明加密，服务端保持明文、由 wss/QUIC/WT 的 TLS 兜底——

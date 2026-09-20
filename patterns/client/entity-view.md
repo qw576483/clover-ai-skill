@@ -2,7 +2,7 @@
 
 ## 模板 1：基础 Entity-View
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -67,7 +67,7 @@ public class PlayerView : MonoBehaviour
 
 ## 模板 2：WorldSync 实体同步
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -128,7 +128,7 @@ public class SyncEntityView : MonoBehaviour
 >
 > 以下示例是**纯手工路径**（自建 GameObject + 自己的 View 组件），仅在不需要异步模型加载时使用：
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -169,7 +169,7 @@ public class EntityManager : MonoBehaviour
 
 ## 模板 4：AOI 视野管理
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -257,7 +257,7 @@ Game.Sync.OnEntityEnter((ulong id, Dictionary<string, object> attrs) =>
 
 ## 模板 5：实体属性绑定
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 

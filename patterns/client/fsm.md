@@ -2,7 +2,7 @@
 
 ## 模板 1：游戏流程状态机
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -29,7 +29,7 @@ public class GameFlowManager : MonoBehaviour
         _gameFlow.RegisterState("launch",
             onEnter: async () =>
             {
-                Game.Logger?.Info("FSM", "进入启动状态");
+                Game.Logger.Info("FSM", "进入启动状态");
                 // 切换到登录状态
                 _gameFlow.Force("login");
             }
@@ -41,7 +41,7 @@ public class GameFlowManager : MonoBehaviour
         _gameFlow.RegisterState("login",
             onEnter: () =>
             {
-                Game.Logger?.Info("FSM", "进入登录状态");
+                Game.Logger.Info("FSM", "进入登录状态");
                 Game.UI.Open<LoginPanel>();
             },
             onExit: () =>
@@ -56,7 +56,7 @@ public class GameFlowManager : MonoBehaviour
         _gameFlow.RegisterState("mainCity",
             onEnter: () =>
             {
-                Game.Logger?.Info("FSM", "进入主城状态");
+                Game.Logger.Info("FSM", "进入主城状态");
                 Game.Scene.Load("MainCity");
             },
             onExit: () =>
@@ -71,7 +71,7 @@ public class GameFlowManager : MonoBehaviour
         _gameFlow.RegisterState("battle",
             onEnter: () =>
             {
-                Game.Logger?.Info("FSM", "进入战斗状态");
+                Game.Logger.Info("FSM", "进入战斗状态");
                 Game.Scene.Load("Battle");
             },
             onExit: () =>
@@ -95,7 +95,7 @@ public class GameFlowManager : MonoBehaviour
 
 ## 模板 2：角色状态机
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -122,7 +122,7 @@ public class CharacterFSM : MonoBehaviour
         _fsm.RegisterState("idle",
             onEnter: () =>
             {
-                Game.Logger?.Info("FSM", "进入待机状态");
+                Game.Logger.Info("FSM", "进入待机状态");
                 // 播放待机动画
             },
             onTick: (dt) =>
@@ -141,7 +141,7 @@ public class CharacterFSM : MonoBehaviour
         _fsm.RegisterState("walk",
             onEnter: () =>
             {
-                Game.Logger?.Info("FSM", "进入行走状态");
+                Game.Logger.Info("FSM", "进入行走状态");
                 // 播放行走动画
             },
             onTick: (dt) =>
@@ -165,7 +165,7 @@ public class CharacterFSM : MonoBehaviour
         _fsm.RegisterState("attack",
             onEnter: () =>
             {
-                Game.Logger?.Info("FSM", "进入攻击状态");
+                Game.Logger.Info("FSM", "进入攻击状态");
                 // 播放攻击动画
             },
             onExit: () =>
@@ -180,7 +180,7 @@ public class CharacterFSM : MonoBehaviour
         _fsm.RegisterState("die",
             onEnter: () =>
             {
-                Game.Logger?.Info("FSM", "进入死亡状态");
+                Game.Logger.Info("FSM", "进入死亡状态");
                 // 播放死亡动画
                 // 禁用碰撞
             }
@@ -212,7 +212,7 @@ public class CharacterFSM : MonoBehaviour
 
 ## 模板 3：UI 状态机
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 
@@ -314,7 +314,7 @@ public class UIStateManager : MonoBehaviour
 
 ## 模板 4：带过渡动画的状态机
 
-```typescript C#
+```csharp
 using CloverEngine;
 using UnityEngine;
 

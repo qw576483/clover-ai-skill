@@ -32,7 +32,7 @@
 | 调用侧 | `domain/auth/client` | `RemoteAuthenticator`：game 调 `/auth/verify` 换 owner |
 | 域配置 / 扩展点 | `domain/auth/config.go`、`domain/auth/channel.go` | `AuthConfig`；`ChannelVerifier` 接口与注册表 |
 | 角色宿主 | `internal/app/auth_server.go` | Core 接线、消息通道、`runAuth` 装配——**不含账号规则** |
-| 订单（支付链路） | `domain/data/order`、`pkg/domain/data/order` | 订单表 + 三段状态机；**归属账号服**，`AuthGame.OrderStore()` 已对业务开放（引擎侧已闭环，见 `服务器待做.md` §一 S2 留痕） |
+| 订单（支付链路） | `domain/data/order`、`pkg/domain/data/order` | 订单表 + 三段状态机；**归属账号服**，`AuthGame.OrderStore()` 已对业务开放（引擎侧已闭环，见 [`clover-doc/server/security/auth-server.md`](https://github.com/qw576483/clover-doc/blob/main/server/security/auth-server.md) §「支付回调 / 订单归谁」的「当前状态」） |
 
 数据面：账号表 / 渠道绑定表在 `domain/data/account`；JWT 签发与验签在 `pkg/shared/jwt`。
 业务侧**只需要** `pkg/app.RegisterChannelVerifier`，其余一层都不用碰。
@@ -197,7 +197,8 @@ ag.OnHTTP("/auth/pay/notify", func(ic event.HTTPCtx) error {
 > game 侧走既有**按玩家寻址事件通道**（`SendQueueEventToPlayer`）完成——不给账号服加
 > NATS / master 依赖（`SendEventToPlayer` 的底座 `CrossNodeEventBus` 需要两者，且按
 > game 节点设计）。剩余全是业务：渠道验签、查单应答、发货 handler。
-> 见 `服务器待做.md` §一 S2 留痕。
+> 见 [`clover-doc/server/security/auth-server.md`](https://github.com/qw576483/clover-doc/blob/main/server/security/auth-server.md)
+> §「支付回调 / 订单归谁」→「当前状态」（两条 ✅ 即引擎侧闭环的全部内容）。
 
 ---
 
@@ -223,4 +224,4 @@ ag.OnHTTP("/auth/pay/notify", func(ic event.HTTPCtx) error {
 - `patterns/client/network.md` — 客户端网络模板（含登录流程）
 - [`clover-doc/server/security/auth-server.md`](https://github.com/qw576483/clover-doc/blob/main/server/security/auth-server.md) — 账号服原理、HTTP 契约与配置
 - [`clover-doc/client/development/auth.md`](https://github.com/qw576483/clover-doc/blob/main/client/development/auth.md) — 客户端 `CloverAuth` 用法
-- `服务器待做.md` §一 S2 留痕 — 支付链路（订单归账号服，引擎侧已闭环）
+- [`clover-doc/server/security/auth-server.md`](https://github.com/qw576483/clover-doc/blob/main/server/security/auth-server.md) §「支付回调 / 订单归谁」 — 支付链路（订单归账号服，引擎侧已闭环）

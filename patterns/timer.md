@@ -50,10 +50,12 @@ func init() {
 `pkg/runtime/timer` 是**进程内**结构（单 goroutine + 截止时间最小堆）。进程重启 / 崩溃 / 滚动发布 → 堆没了、任务蒸发。
 **别指望 `PersistScope` 兜底**：
 
-- `g.Timer` 建调度器时只传时区（`internal/app/mount.go:107-111`）、**未注入 `PersistBackend`** ⇒ 业务调
-  `PersistScope` / `RestoreScope` 直接得 `timer.ErrNoBackend`；
-- 即便注入：`DumpScope` 存的是**相对剩余时间**（`timer.go:644-651`），`ImportScope` 按剩余量重新入堆、
-  **不补触发已过期任务**（`timer.go:732-744`）⇒ 停机 2 小时会把任务**顺延**而不是补算。
+- `g.Timer` 建调度器时只传时区（`internal/app/mount.go:131-140`，`timer.NewScheduler(timer.WithLocation(t.loc))`）、
+  **未注入 `PersistBackend`** ⇒ 业务调 `PersistScope` / `RestoreScope` 直接得 `timer.ErrNoBackend`
+  （缺迁移后端的原因写在类型注释里，`internal/app/mount.go:107-113`）；
+- 即便注入：`DumpScope` 存的是**相对剩余时间**（`pkg/runtime/timer/timer.go:665-670` 的 `TimerState.RemainingMs`、
+  `:674-698` 的 `Scheduler.DumpScope`），`ImportScope` 按剩余量重新入堆、
+  **不补触发已过期任务**（`pkg/runtime/timer/timer.go:746-801`）⇒ 停机 2 小时会把任务**顺延**而不是补算。
 
 ### 三条铁律
 
@@ -73,7 +75,7 @@ func init() {
 
 ### 核心原语：`Group.OnTimer`（绝对时刻，已过期立即触发）
 
-`Group.OnTimer(name string, when time.Time, task timer.Task)`（`pkg/runtime/timer/timer.go:561-569`）：
+`Group.OnTimer(name string, when time.Time, task timer.Task)`（`pkg/runtime/timer/timer.go:605-613`）：
 `when` 是**绝对时刻**，内部 `delay < 0 → 0` ⇒ **已过期立即执行**。这正是「按 deadline 精确重建」的入口 ——
 过期 → 立即补算；未过期 → 到点触发。
 
@@ -228,7 +230,7 @@ func init() {
 ### 定时器回调里没有 `event.Ctx`
 
 > `g.Timer` / `g.Data()` 这类**非 event.Ctx 方法**由 `pkg/app.Game` 嵌入 internal 实现后**自动提升**，
-> 业务可直接调用、无需 import internal（`pkg/app/app.go:362-364`）。
+> 业务可直接调用、无需 import internal（门面类型以包装结构嵌入 internal 实现：`internal/app/facade.go:58-61`）。
 
 `timer.Task` 是 `func()`，所以：
 
@@ -242,7 +244,8 @@ func init() {
 ### 常见坑
 
 - **scope 别用 `owner`**：引擎断线时只清 `StopTimerGroup(owner)` 这一个 scope，而 `owner` 是**连接级 owner**
-  （登录回执的 `owner` / `AccountID`，`internal/app/game.go:781-789`、`bootstrap.go:347-365`），**不是角色 ID**。  
+  （登录回执的 `owner` / `AccountID`，`internal/app/game.go:870-885`（硬掉线同一清理在 `:897-909`）、
+  `internal/app/bootstrap.go:451-452` 登录回包提取 owner），**不是角色 ID**。  
   给「离线也要跑」的任务加显式前缀（`"todo:"+playerID`）即与它错开。  
   反过来看：`"player:"+PlayerID` 这类 scope 与 owner **不同名**，**不会**被自动清理 ——  
   要依赖自动清理就得让 scope 等于 owner，否则业务得自己 `StopTimerGroup`   

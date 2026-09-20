@@ -105,7 +105,7 @@ foreach ($f in $files) {
           #   "layer#4(S1,wc=1ht): not drawn for bare hands (original behaviour); file exists"
           # -> NOT frame indices. Never use it as a frame filter: an [int] cast throws, and those
           #    files are still REQUIRED (the same unit draws them under other weapon classes).
-          #    Verified on clover-project-diablo2 (2026-09-20) after a wrong first guess.
+          #    Verified on a demo project (2026-09-20) after a wrong first guess.
         }
       } catch { $manState = 'unreadable' }
     }

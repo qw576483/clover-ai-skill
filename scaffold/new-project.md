@@ -698,10 +698,10 @@ public class GameMain : MonoBehaviour
       git -C <工作区根> status --porcelain -uall -- <项目根相对路径>
       ```
 
-      **实测代价（2026-09-20，`clover-project-diablo2`）**：临时目录判据给出"危险项全 0、
+      **实测代价（2026-09-20，某 demo 工程）**：临时目录判据给出"危险项全 0、
       24788 条待提交"，看着完美；真实 `git add` 却直接
-      `The following paths are ignored by one of your .gitignore files: clover-project-diablo2`
-      —— 工作区级 `.gitignore` 早有 `/clover-project-diablo2/`（**有意排除**：该工程 8.7 GB）。
+      `The following paths are ignored by one of your .gitignore files: <该工程目录名>`
+      —— 工作区级 `.gitignore` 早有 `/<该工程目录名>/`（**有意排除**：该工程 8.7 GB）。
       ⇒ **"不建仓也能验"的说法要收紧：项目内忽略规则可以离线验，`是否真的入得了仓`必须问真实仓库。**
 - [ ] **`.gitattributes` 存在**：二进制类型（`*.png/*.wav/*.unity/*.prefab`）+ 需要随交付给原版素材时 `*.zip filter=lfs`（`reference/asset-sources.md` §8.2）。
 

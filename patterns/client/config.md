@@ -124,13 +124,13 @@ namespace {Name}
                 var path = FilePath;
                 if (!File.Exists(path))
                 {
-                    Game.Logger?.Warn("Cfg", $"未找到 {path}，使用内置默认值");
+                    Game.Logger.Warn("Cfg", $"未找到 {path}，使用内置默认值");
                     return new RootSection();
                 }
                 var root = JsonUtility.FromJson<RootSection>(File.ReadAllText(path));
                 if (root == null)
                 {
-                    Game.Logger?.Error("Cfg", $"解析失败（空/格式错误）: {path}，回退默认值");
+                    Game.Logger.Error("Cfg", $"解析失败（空/格式错误）: {path}，回退默认值");
                     return new RootSection();
                 }
                 // JsonUtility 对 json 里缺失的字段会留 null，逐段兜底防下游空引用
@@ -141,7 +141,7 @@ namespace {Name}
             }
             catch (Exception e)
             {
-                Game.Logger?.Error("Cfg", $"读取异常，回退默认值: {e.Message}");
+                Game.Logger.Error("Cfg", $"读取异常，回退默认值: {e.Message}");
                 return new RootSection();
             }
         }
@@ -188,7 +188,7 @@ CloverNet.Init(Cfg.Server.addr,
 | 问题 | 现象 | 解法 |
 |---|---|---|
 | **配置类里有 `static Game` 成员，遮蔽了引擎的 `Game`** | 写 `Game.Logger.Info(...)` 编译报 `CS1061: "GameSection" 未包含 "Logger" 的定义` | 写全名 `CloverEngine.Game.Logger.Info(...)` |
-| 引擎启动前就读配置并打日志 | 历史症状：`Game.Logger` 为 `null`，直接调用会空引用；用 `?.` 则**日志被静默丢弃** | **已由引擎修掉**：`Game.Logger` 现在永不为 null（未 Launch 时走写 Unity Console 的兜底实现）。配置类直接 `Game.Logger?.Info(...)` 即可，**不需要**再自己加 `UnityEngine.Debug` 兜底层 |
+| 引擎启动前就读配置并打日志 | 历史症状：`Game.Logger` 为 `null`，直接调用会空引用；用 `?.` 则**日志被静默丢弃** | **已由引擎修掉**：`Game.Logger` 现在永不为 null（未 Launch 时走写 Unity Console 的兜底实现）。配置类直接 `Game.Logger.Info(...)` 即可，**不需要**再自己加 `UnityEngine.Debug` 兜底层 |
 | 用裸 `Debug.Log` 打业务日志 | 绕过引擎的日志级别与落盘 | 统一 `Game.Logger.Info/Warn/Error(tag, msg)`，见 `SKILL.md`「错误处理与日志（硬约束）」 |
 
 ## 自检清单

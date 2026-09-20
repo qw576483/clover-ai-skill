@@ -137,7 +137,7 @@
 
 ### 网络通信
 
-```typescript C#
+```csharp
 // 初始化（第 1 个参数 = 网关 TCP 口，第 2 个 = 网关 UDP 口；对应 server.yaml 的 gateway.listen_tcp / listen_udp）
 // ⚠️ 不要填 8001 —— 8001 是 WS 口，Unity 原生客户端走裸 TCP
 CloverNet.Init("127.0.0.1:8002", "127.0.0.1:8003");
@@ -182,7 +182,7 @@ Game.Http.Post(url, jsonBody, resp => { /* ... */ });
 
 ### 实体管理
 
-```typescript C#
+```csharp
 // 创建 / 获取 / 销毁
 var e = Game.Entity.Create(objectID, typeID, group);
 var e2 = Game.Entity.Get(objectID);
@@ -194,7 +194,7 @@ Game.Entity.BindView(objectID, go);
 
 ### 对象池
 
-```typescript C#
+```csharp
 var go = Game.Pool.Spawn("Bullet", parent, "battle");
 Game.Pool.Despawn(go);      // ★ 不是 Recycle
 Game.Pool.ClearGroup("battle");
@@ -202,7 +202,7 @@ Game.Pool.ClearGroup("battle");
 
 ### 资源加载
 
-```typescript C#
+```csharp
 // 异步加载（回调式，不是 await）
 Game.Res.LoadAsset<GameObject>("prefabs/bullet", obj => {
     if (obj != null) Instantiate(obj);
@@ -218,7 +218,7 @@ Game.Res.UnloadAll();
 
 ### UI / 场景 / 声音 / 相机 / 设备（表现域）
 
-```typescript C#
+```csharp
 // —— UI：面板继承 UIPanel（已实现 IUIPanel 全部样板），预制体放 Resources/UI/{类名} ——
 public class LoginPanel : UIPanel
 {
@@ -272,7 +272,7 @@ Game.Quality.OnLevelChanged(lv => Debug.Log($"device level -> {lv}"));
 
 ### 事件总线
 
-```typescript C#
+```csharp
 Game.Event.On("MyEvent", () => Debug.Log("fired"));
 Game.Event.On<MyData>("MyEventWithArg", d => Debug.Log(d));
 Game.Event.Once("OnceEvent", () => Debug.Log("once"));
@@ -282,7 +282,7 @@ Game.Event.Off("MyEvent", handler);   // 取消注册；没有 handler.Dispose()
 
 ### 定时器
 
-```typescript C#
+```csharp
 long id = Game.Timer.After(3f, () => Debug.Log("3s"));      // 返回 id
 long id2 = Game.Timer.Every(1f, () => Debug.Log("tick"));   // 返回 id
 Game.Timer.EveryName("heartbeat", 5f, cb);                  // 具名（同名先停旧）
@@ -293,12 +293,12 @@ Game.Timer.StopScope("battle");
 
 ### 状态机
 
-```typescript C#
+```csharp
 // ★ 不要 new Fsm()（internal）；直接用 Game.Fsm
 Game.Fsm.RegisterState("idle",
-    onEnter: () => Game.Logger?.Info("FSM", "进入空闲"),
+    onEnter: () => Game.Logger.Info("FSM", "进入空闲"),
     onTick: dt => { },
-    onExit: () => Game.Logger?.Info("FSM", "退出空闲"));
+    onExit: () => Game.Logger.Info("FSM", "退出空闲"));
 
 Game.Fsm.AddTransition("click", "running");
 Game.Fsm.Trigger("click");
