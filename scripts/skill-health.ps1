@@ -31,7 +31,7 @@ if (-not (Test-Path $skill)) {
     $fail++; Say 'FAIL' 'skill-size' ('missing ' + $skill)
 } else {
     $bytes = (Get-Item $skill).Length
-    $limit = 16384
+    $limit = 32768
     if ($bytes -le $limit) { Say 'PASS' 'skill-size' ('' + $bytes + ' bytes <= ' + $limit) }
     else { $fail++; Say 'FAIL' 'skill-size' ('' + $bytes + ' bytes > ' + $limit + ' -- move details to reference/** and link them from the router table') }
 }

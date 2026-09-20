@@ -59,7 +59,7 @@
 | 13 | **工程外产物**（`SKILL.md` §1.8：一次性产物只许 `<项目根>/.ai-tmp/test/`） | **工作区根 + 宿主会话产物目录**里，"24h 内新建且名字带本工程标识"的文件数 = 0 |
 | 14 | **采样器自检**（`SKILL.md` §1.13 第 5 条：跑场景**前**一秒就能查完的东西） | `.ai-tmp/**/*.ps1` 每个文件：**语法 0 错**，且 **非 ASCII 字节 = 0 或带 BOM**（无 BOM + CJK ⇒ PS 5.1 按 ANSI 解析 ⇒ `-match` 静默失效 ⇒ 白等满超时） |
 | 15 | **实现由执行者产出**（`SKILL.md` §5 开工闸门 / §1.11 第 8 条） | 本次时间窗内改动的实现文件，**逐个**能在 `.ai-tmp/test/dispatch-log.tsv` 里找到派活行（文件落在该行声明的范围内 **且** 派活时间 ≤ 文件 mtime）；**对不上 ⇒ 主 agent 自己动手了**。**例外（按 §5 的"小改动"例外）**：主 agent 直接做的小改动用一行 `# direct-fix: <路径> -- <理由>; 用户原话="..."` 留痕即算通过（**⛔ 不许拿它给多文件/改数据格式/新增行为的改动洗白**） |
-| 16 | **进 Play 次数必须记账且受限**（`SKILL.md` §1.13 **T0**：取证是**一次性批量动作**） | `.ai-tmp/test/play-log.tsv`：**每进一次 Play 一行**（`ISO时间 / 执行者 / 片名 / 为什么必须进这条链`）。判据：① **行数 ≤ 预算（默认 5）**；② **第 4 列非空**（写不出理由 ⇒ 说明本可以用离线断言）；③ 项目有实机证据但**没有账本** ⇒ FAIL（没记账 = 无从判超支）。**超预算时的唯一合法出口** = `# adjudicated: play-budget -- <理由（≥12 字）>`（见第 6c 项的裁决通道）：⛔ **不许**直接改 `$playBudget` 数字来消红。**为什么要有它**：实测一次交付里"3 片执行者各自进 Play 多轮"是最大时间黑洞（单次会话分钟级），而旧版规则只写了祈使句、**没有任何检查项**⇒ 每次都被绕过 |
+| 16 | **进 Play 必须记账（⛔ 不设次数上限）**（`SKILL.md` §2 / §0.1 ①） | `.ai-tmp/test/play-log.tsv`：**每进一次 Play 一行**（`ISO时间 / 执行者 / 片名 / 为什么必须进这条链`）。判据：① **第 4 列非空**（写不出理由 ⇒ 说明本可以用离线断言）；② 项目有实机证据但**没有账本** ⇒ FAIL（没记账 = 无从判定"为什么进"）。⛔ **本项不判"行数多不多"** —— 曾经的"行数 ≤ 预算（默认 5）"被读成了**停工的许可证**（验到第 5 次就收手、剩下不验），**已废除**：**没有 `$playBudget`、没有裁决通道、没有"用尽即停"**。**为什么改成这样**：用户的判断是"**约束完，ai 更偷懒了**" —— 次数限额省下的重复劳动，远小于"该验不验、验到一半收手"的代价 |
 | 17 | **采集后冻结**（`SKILL.md` §1.13 **④**：采集即冻结，之后再改代码 ⇒ 证据作废） | **本批次证据里最早那张的 mtime = T0**，其中"本批次证据" = **最新那张联络图索引 `*.index.tsv` 引用到的 png**（无索引才退回"窗口内新增的 `Screenshots/*.png`"）；**T0 之后不许再有实现文件**（`client/Assets/Scripts/**`、引擎 `Runtime/**`）被改动。⛔ **不许**直接用"6h 窗口内最旧的新 png"当 T0 —— 它会把**历史批次**的图算进来 ⇒ **必然误报 FAIL**（实测踩过）。违反 ⇒ FAIL 并列文件。**为什么要有它**：实测"先采证据、后修代码"会让同一批证据反复作废（同一条链被采了 3 遍），而旧版只规定"改后只重采受影响行"、**没有规定"采集必须在实现冻结之后"** |
 | 18 | **证据经济性**（`SKILL.md` §1.13 T0：⛔ 不许逐行截图、不许逐项进出 Play） | 验收表 `表现类` 行数 ≥ 1 时：① **必须存在联络图索引**（`Screenshots/*.index.tsv`，格号 ↔ 行号）；② **没进任何联络图**的独立 `png` 数 ≤ `max(12, 表现类行数 × 2)`。超出 ⇒ FAIL（逐行截图嫌疑）。⛔ **被 `*.index.tsv` 引用过的 png = 联络图的组成部分**，必须从计数里排除（否则瓦片被重复计数 ⇒ **误报**，实测 65 > 46 而其实只有 32 张散图）。**为什么要有它**：把 T0 从"祈使句"变成**可算的数字** —— 否则"验收表 47 行"永远会被读成"要拍 47 张图" |
 | 19 | **渲染设备不是软件渲染**（`SKILL.md` §6 闸门 ②；配方 `experience/perf-triage.md`） | 读 `client/Logs/Editor.log` 里 Unity 启动时写的 `[D3D12 Device Filter] Device Name:`（或 `Renderer:`）。**命中 `Microsoft Basic Render Driver` / `Basic Display` / `WARP` ⇒ FAIL** —— 那是纯 CPU 软件光栅化，**此时任何"帧率 / 卡顿"结论都无效**（实测：GPU 255ms/帧、3.5 fps，而业务脚本只占 1.6ms）。日志里没有这一行 ⇒ `HUMAN-ONLY`（改用手工 `SystemInfo.graphicsDeviceName`）。**为什么要有它**：2026-09-20 实测为定位"卡"跑满 6 次 Play，而根因就在第 1 条命令里；本条把"先证伪环境"从祈使句变成**能测红的一行** |
@@ -310,9 +310,10 @@ else {
   $orphan | ForEach-Object { Write-Output ('            ' + $_) }
 }
 
-# 16) play-budget -- SKILL 1.13 T0: capture is ONE batch action; every editor_play must be on the ledger
+# 16) play-ledger -- SKILL 2 / 0.1: every editor_play must be on the ledger WITH A REASON.
+#     NO count budget: a session cap was read as a licence to stop early (SKILL 0.1).
+#     Keep going until the acceptance table is full; "count reached" is never a reason to stop.
 $playLog    = Join-Path $root '.ai-tmp\test\play-log.tsv'
-$playBudget = 5
 $playRows   = @()
 if (Test-Path $playLog) {
   foreach ($line in @([System.IO.File]::ReadAllLines($playLog, [Text.Encoding]::UTF8))) {
@@ -323,13 +324,11 @@ if (Test-Path $playLog) {
   }
 }
 if (-not (Test-Path $playLog)) {
-  Say 'HUMAN-ONLY' 'play-budget' ('no ' + $playLog + ' -- keep one line per editor_play, otherwise the play count cannot be audited')
+  Say 'HUMAN-ONLY' 'play-ledger' ('no ' + $playLog + ' -- keep one line per editor_play (time / who / slice / reason)')
 } elseif (@($playRows | Where-Object { $_.Why.Trim().Length -lt 4 }).Count -gt 0) {
-  $fail++; Say 'FAIL' 'play-budget' 'some play-log row has no reason in column 4'
-} elseif ($playRows.Count -gt $playBudget) {
-  $fail++; Say 'FAIL' 'play-budget' ('play sessions = ' + $playRows.Count + ' > budget ' + $playBudget + ' (SKILL 1.13 T0)')
+  $fail++; Say 'FAIL' 'play-ledger' 'some play-log row has no reason in column 4 -- write the reason, not another session'
 } else {
-  Say 'PASS' 'play-budget' ('play sessions = ' + $playRows.Count + ' / budget ' + $playBudget + ', every row has a reason')
+  Say 'PASS' 'play-ledger' ('play sessions = ' + $playRows.Count + ', every row has a reason (no budget: keep going until the table is full)')
 }
 
 # 17) freeze-before-capture -- SKILL 1.13 beat 4: no impl file may change AFTER the first evidence capture
