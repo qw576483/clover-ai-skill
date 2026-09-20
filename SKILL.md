@@ -7,7 +7,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 
 > **入口（本页）= 祈使句 + 成本闸门 + 路由表 + 指针，供"每轮必读"**；**全文版 = `reference/rules-full.md`**（同一套规则 + 案例 + 代价数字 + 出处，**一行未删**，文末有「条目索引」）。
 > **入口 ↔ 全文版**：§0 → §0/§0.5 · §0.5 → §0.6 · §1 → §5 · §2 → §1.13(T0) · §3 → §1.13 · §4 → §1.12 · §5 → §1.5/§1.11/§2 · §6 → §4 · §7 → §6/§1.10 · §8 → §1.6~§1.9/§7。冲突时以本页祈使句为准（更硬），差异报用户。
-> **改本 skill 后必跑** `scripts/skill-health.ps1 -RepoRoot <仓库副本>`（体积 / 路由可达 / 放宽表述 / 两副本一致 / **全文版在位**）。两份副本必须同步（仓库源 `ai-skill/` 与宿主副本）。
+> **改本 skill 后必跑** `scripts/skill-health.ps1 -RepoRoot <仓库副本>`（体积 / 路由可达 / 放宽表述 / 两副本一致 / **全文版在位**）。两份副本必须同步（仓库源 `clover-ai-skill/` 与宿主副本）。
 
 ## §0 三条铁律（违任一 ⇒ 本次交付失败）
 
@@ -75,7 +75,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 ## §6 四道前置闸门（不通过就停）
 
 ① **判形态**（单机 / 网游 / 单机+联网）：原版是单机就做单机 ⇒ ⛔ 不建 `server/`、⛔ 不调 `CloverNet.Init`、⛔ 不查服务器环境；判一次、写进规格顶部、全程照做。
-② **环境自检**：**杀软**（360 及同类）已关（不确定 = 按没关处理，别建工程）；**渲染设备可用** —— `SystemInfo.graphicsDeviceName` / dxdiag `Card name` ⛔ 不能是 `Microsoft Basic Render Driver` / `Microsoft 基本显示适配器`（= 软件渲染，3D 只剩 3~5 fps，**此时一切"卡 / 性能"结论都无效**；顺带晒 `Get-PnpDevice -Class Display` 的 `Status` 与 `Problem` Code）。任一条不过 ⇒ **停**，先修环境。
+② **环境自检（跑一条命令，别靠记）**：`powershell -NoProfile -ExecutionPolicy Bypass -File tools/env-check.ps1` —— 一次查两样：**杀软**（360 及同类；不确定 = 按没关处理）与**图形设备**（物理卡是否 `Code 22/10/43`、Unity 是否落到 `Microsoft Basic Render Driver` 软光栅）。**exit 1 ⇒ 停**，先修环境（修法脚本末尾自己打），⛔ 此机器上一切"卡 / 掉帧 / 性能"结论**无效**。脚本 = 本 skill `scripts/env-check.ps1`，建项目时复制到 `tools/`。
 ③ 建完 `client/` + 把 `com.unity.pipeline` 写进 `Packages/manifest.json` 后，**让用户自己开编辑器**；用户不开 ⇒ **停**（⛔ 不许自己 `unity run` / `-batchmode` 顶替）。
 ④ **素材先用参考物自己的**：穷尽 = ≥4 轮关键词（中英各半）× ≥3 类站点 × 换过格式与打包；穷尽前 ⛔ 不许上通用兜底素材。
 - **闸门 2b**：每条 `unity` 命令都要在**工程目录**里跑，或每条都带 `--project-path <项目根>/client`（⛔ 不许只带第一条、⛔ 不许在工作区根跑）；`unity status` 当"编辑器活着"的证据时必须同时给工程路径。

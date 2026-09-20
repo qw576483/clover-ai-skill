@@ -12,7 +12,8 @@ clover-{name}/
 ├── tools/
 │   ├── ai-skill/                   # ★ 项目级 skill（本项目特有约定；模板 = scaffold/project-skill.md）
 │   │   └── SKILL.md                #   建项目时必须生成；动本项目代码前必须先读它
-│   └── verify.ps1                  # ★ 开工四件套①：交付闸门（模板 = 全局 skill 的 reference/verify-template.md）
+│   ├── verify.ps1                  # ★ 开工四件套①：交付闸门（模板 = 全局 skill 的 reference/verify-template.md）
+│   └── env-check.ps1               # ★ 环境闸门：开工前 + 每次"卡/掉帧"投诉先跑（模板 = 全局 skill 的 scripts/env-check.ps1）
 ├── server/                        # ★【仅"形态=联机"时才有】单机项目整个不生成（见 patterns/game-demo.md §1.5）
 │   ├── configs/all/server.yaml     # 引擎配置（字段见 §2.3）
 │   ├── game/
@@ -38,6 +39,7 @@ clover-{name}/
 
 | 件 | 何时就位 | 怎么来 |
 |---|---|---|
+| **⓪ `tools/env-check.ps1` 环境闸门** | **建项目时**（且**每次要判"卡/掉帧"前**都先跑） | 从全局 skill 的 `scripts/env-check.ps1` 复制。**exit 1**（物理卡 `Code 22/10/43`，或 Unity 落到 `Microsoft Basic Render Driver` 软光栅）⇒ **停，先修机器**；⛔ 该机器上一切"卡 / 帧率"结论**无效** |
 | ① `tools/verify.ps1` 闸门 | **建项目时** | 从全局 skill 的 `reference/verify-template.md` 复制，按项目改路径 |
 | ② 强制层（让闸门在"必经点"自动跑） | **建项目时** | 优先**通用层**：git `pre-commit`/`pre-push` 或 CI 跑 `tools/verify.ps1`（**与宿主无关**）；有钩子的宿主再加钩子 —— 适配表见 `reference/deterministic-gates.md` 第五节 |
 | ③ `策划/基线图/` + 场景清单 | **写第一行外观/UI 代码之前** | 采集参考物那一侧：固定分辨率 / 冻结动画 / 固定相机位姿（流程见 `reference/visual-loop.md`） |

@@ -63,6 +63,18 @@ Get-PnpDeviceProperty -InstanceId <id> -KeyName DEVPKEY_Device_InstallDate,DEVPK
 **⛔ 不要据此推断"是用户手动禁的"** —— 驱动安装失败后的回滚、投屏/虚拟显示器软件（如向日葵 `OrayIddDriver`）、AMD `Crash Defender` 服务都会写这个标志。
 **⛔ 也不要说"启用了就好"**：`Enable-PnpDevice` 返回 OK、`ConfigFlags` 归零之后，显示适配器在本会话内**常常仍报 Code 22**，必须**重启**重新枚举；重启后若变 `Code 10/43`，那是驱动本身的问题 ⇒ 重装驱动。
 
+**⛔ 更不要从"一次启动失败事件"推断"从此一直坏着"**（2026-09-20 的真实错判，被用户当场反证）：
+我看到 `Event 411（had a problem starting）` 出现在两个月前、又看到该设备之后没有"配置成功"记录，就断言"坏了两个月"；用户反问"我这个月玩 LOL/炉石都很正常"，一查**别的 Unity 游戏的 `Player.log`** —— 炉石（`%LOCALAPPDATA%Low\Blizzard Entertainment\Hearthstone\Player.log`）里赫然写着
+`[D3D12 Device Filter] Device Name: AMD Radeon RX 5700 XT` / `Graphics Memory: 8151 MB` / `Device Type: Discrete`，
+而那次的会话结束时间距我下结论只有 **14 小时**。**故障其实只发生了 2 天**（真正的触发点是那次重启，`User32 Event 1074` 记录了发起者）。
+
+**正确做法：先找"该设备最近确实工作过"的第三方锚点，再谈时间线。** 优先级：
+1. **别的 Unity 游戏/程序的 `Player.log`** —— 里面有 `Renderer: <GPU 名>` + 文件 mtime = **最便宜、最硬的时间线锚点**（比任何事件日志都直接）；
+2. 开关机/崩溃事件：`Kernel-Power 41`、`EventLog 6008`（非正常关机）、`User32 1074`（**谁发起的重启** —— 本次就是 `AweSun.exe`＝向日葵）；
+3. 游戏/工具安装目录里最近被写入的日志文件时间。
+
+⛔ 拿到锚点之前，**不许**对"什么时候坏的 / 坏了多久"下时间线结论；⛔ 也不许把"设备被禁用"直接归因给用户手动操作（虚拟显示器软件、投屏工具、崩溃防护服务都会写 `ConfigFlags`）。
+
 ### 第 1 步：CPU 还是 GPU？（`FrameTimingManager`，比 marker 靠谱）
 
 ```csharp
