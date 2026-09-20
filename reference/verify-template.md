@@ -63,6 +63,9 @@
 | 17 | **采集后冻结**（`SKILL.md` §1.13 **④**：采集即冻结，之后再改代码 ⇒ 证据作废） | **本批次证据里最早那张的 mtime = T0**，其中"本批次证据" = **最新那张联络图索引 `*.index.tsv` 引用到的 png**（无索引才退回"窗口内新增的 `Screenshots/*.png`"）；**T0 之后不许再有实现文件**（`client/Assets/Scripts/**`、引擎 `Runtime/**`）被改动。⛔ **不许**直接用"6h 窗口内最旧的新 png"当 T0 —— 它会把**历史批次**的图算进来 ⇒ **必然误报 FAIL**（实测踩过）。违反 ⇒ FAIL 并列文件。**为什么要有它**：实测"先采证据、后修代码"会让同一批证据反复作废（同一条链被采了 3 遍），而旧版只规定"改后只重采受影响行"、**没有规定"采集必须在实现冻结之后"** |
 | 18 | **证据经济性**（`SKILL.md` §1.13 T0：⛔ 不许逐行截图、不许逐项进出 Play） | 验收表 `表现类` 行数 ≥ 1 时：① **必须存在联络图索引**（`Screenshots/*.index.tsv`，格号 ↔ 行号）；② **没进任何联络图**的独立 `png` 数 ≤ `max(12, 表现类行数 × 2)`。超出 ⇒ FAIL（逐行截图嫌疑）。⛔ **被 `*.index.tsv` 引用过的 png = 联络图的组成部分**，必须从计数里排除（否则瓦片被重复计数 ⇒ **误报**，实测 65 > 46 而其实只有 32 张散图）。**为什么要有它**：把 T0 从"祈使句"变成**可算的数字** —— 否则"验收表 47 行"永远会被读成"要拍 47 张图" |
 | 19 | **渲染设备不是软件渲染**（`SKILL.md` §6 闸门 ②；配方 `experience/perf-triage.md`） | 读 `client/Logs/Editor.log` 里 Unity 启动时写的 `[D3D12 Device Filter] Device Name:`（或 `Renderer:`）。**命中 `Microsoft Basic Render Driver` / `Basic Display` / `WARP` ⇒ FAIL** —— 那是纯 CPU 软件光栅化，**此时任何"帧率 / 卡顿"结论都无效**（实测：GPU 255ms/帧、3.5 fps，而业务脚本只占 1.6ms）。日志里没有这一行 ⇒ `HUMAN-ONLY`（改用手工 `SystemInfo.graphicsDeviceName`）。**为什么要有它**：2026-09-20 实测为定位"卡"跑满 6 次 Play，而根因就在第 1 条命令里；本条把"先证伪环境"从祈使句变成**能测红的一行** |
+| 20 | **T0 覆盖矩阵**（`SKILL.md` T0；口径 `patterns/full-coverage-audit.md`） | 五条子判据：① `coverage-rows` = `策划/实体清单.tsv`（脚本枚举产出）行数 **==** `策划/验收表.md` 判定行数（**缺清单 ⇒ FAIL**）；② `coverage-filled` = 每行都有 `一致`/`不一致` 判定（**零空行**）；③ `coverage-diff` = `不一致` 计数 **= 0**；④ `coverage-dimensions` = **12+3 个维度代号（D1..D12/S1..S3）在清单里各出现 ≥1 次**（缺维度 = 未判）。**为什么要有它**：只要"检查过"不是一个数，工作就会退化成**症状驱动**（用户报一条修一条、没报的全漏），而**漏检没有代价** |
+| 21 | **规模档位已声明**（`SKILL.md` T0；档位表 `patterns/full-coverage-audit.md` §9.5） | `策划/策划案/*.md` 顶部必须写明档位 `S`（1-way）/ `M`（2-way pairwise）/ `L`（3-way + 全状态全边界）；**判一次，只许上调**。**为什么要有它**：一个 3 天 demo 套 AAA 级全量穷举是**过杀**（NIST：2~3-way 已覆盖绝大多数缺陷）；反过来"没声明档位"就等于**默认全量**，会被执行者读成"做不完"从而整体规避 |
+| 22 | **修 bug 的影响域已登记**（`SKILL.md` §1；口径 `patterns/full-coverage-audit.md` §9） | `.ai-tmp/test/impact-radius.tsv` 每行 ≥3 列：`维度 / 因果链 / 受影响行`；文件不存在 ⇒ `HUMAN-ONLY`（在回报里写清是"本次无 bug 修复"还是"没登记"）。**为什么要有它**：修 bug 既**不该全量扫**（成本爆炸），也**不能只修症状**（拆东墙补西墙 —— 实测：为开门把门板从网格摘除，直接变成"该有门却没有门"）；唯一正确口径是**显式写出爆炸半径** |
 
 > **第 12 条的意义**：不标类别 ⇒「哪几项必须看图」就说不清 ⇒ 执行者只能二选一：
 > **全截**（N 张图逐张读，贵一个量级）或**全不截**（退回"数字对画面错"）。
@@ -398,6 +401,77 @@ if (-not (Test-Path $editorLog)) {
       Say 'PASS' 'graphics-device' ('render device = ' + $dev)
     }
   }
+}
+
+# 20) coverage-matrix -- SKILL T0: "checked" must be a NUMBER.
+#     entity-list rows == acceptance verdict rows; zero blank verdicts; zero "mismatch";
+#     and every one of the 12+3 dimensions must appear at least once.
+#     Why: symptom-driven work (fix only what the user reported) leaves the rest unjudged,
+#     and an unjudged row has no cost. This item is what gives it a cost.
+$cListName = ([char[]]@(0x5B9E,0x4F53,0x6E05,0x5355) -join '') + '.tsv'          # "shi ti qing dan" = entity list
+$cList     = Join-Path $planDir $cListName
+$cAgree    = ([char[]]@(0x4E00,0x81F4) -join '')                                 # "yi zhi"     = consistent
+$cDiff     = ([char[]]@(0x4E0D,0x81F4) -join '')                                 # "bu yi zhi"  = mismatch
+$dims      = @()
+1..12 | ForEach-Object { $dims += ('D' + $_) }
+1..3  | ForEach-Object { $dims += ('S' + $_) }
+if (-not (Test-Path $cList)) {
+  $fail++; Say 'FAIL' 'coverage-rows' 'missing entity list (plan/entity-list.tsv) -- enumerate it with tools/probes/enumerate-*.py, never by hand (T0)'
+} else {
+  $listRows = @([System.IO.File]::ReadAllLines($cList, [Text.Encoding]::UTF8) |
+                Where-Object { $_.Trim().Length -gt 0 -and $_ -notmatch '^\s*#' }).Count
+  $specRows = 0; $blank = 0; $diffN = 0
+  if (Test-Path $spec) {
+    $vt       = @([System.IO.File]::ReadAllLines($spec, [Text.Encoding]::UTF8) |
+                  Where-Object { $_ -match '^\s*\|\s*[A-Z]?\d+\s*\|' })
+    $specRows = $vt.Count
+    $blank    = @($vt | Where-Object { -not ($_.Contains($cAgree)) -and -not ($_.Contains($cDiff)) }).Count
+    $diffN    = @($vt | Where-Object { $_.Contains($cDiff) }).Count
+  }
+  if ($specRows -eq 0) {
+    $fail++; Say 'FAIL' 'coverage-rows' 'no verdict rows in the acceptance table'
+  } elseif ($listRows -ne $specRows) {
+    $fail++; Say 'FAIL' 'coverage-rows' ("entity rows = " + $listRows + " vs verdict rows = " + $specRows + " -> rows were skipped (T0)")
+  } else {
+    Say 'PASS' 'coverage-rows' ("entity rows == verdict rows (" + $listRows + ")")
+  }
+  if ($blank -gt 0) { $fail++; Say 'FAIL' 'coverage-filled' ("" + $blank + " verdict row(s) with no consistent/mismatch verdict") }
+  elseif ($specRows -gt 0) { Say 'PASS' 'coverage-filled' 'every verdict row carries a verdict' }
+  if ($diffN -gt 0) { $fail++; Say 'FAIL' 'coverage-diff' ("" + $diffN + " row(s) marked mismatch -> not deliverable (T0)") }
+  elseif ($specRows -gt 0) { Say 'PASS' 'coverage-diff' 'zero mismatch' }
+  $listTxt  = [System.IO.File]::ReadAllText($cList, [Text.Encoding]::UTF8)
+  $missDim  = @($dims | Where-Object { $listTxt -notmatch ('\b' + $_ + '\b') })
+  if ($missDim.Count -gt 0) { $fail++; Say 'FAIL' 'coverage-dimensions' ('missing dimension(s): ' + ($missDim -join ',')) }
+  else { Say 'PASS' 'coverage-dimensions' 'all 12+3 dimensions present' }
+}
+
+# 21) scale-tier -- SKILL T0: sampling density is declared ONCE (S=1-way / M=2-way / L=3-way),
+#     only ever upgraded, never downgraded to save time.
+$cTier    = ([char[]]@(0x6863,0x4F4D) -join '')                                   # "dang wei"
+$specDir  = Join-Path $planDir (([char[]]@(0x7B56,0x5212,0x6848) -join ''))       # "ce hua an"
+$tierRx   = '\b(S|M|L)\s*(' + $cTier.Substring(0,1) + '|tier)'
+$tierHit  = @()
+if (Test-Path $specDir) {
+  foreach ($f in @(Get-ChildItem $specDir -Filter *.md -File -ErrorAction SilentlyContinue)) {
+    $tx = [System.IO.File]::ReadAllText($f.FullName, [Text.Encoding]::UTF8)
+    if ($tx.Contains($cTier) -and ($tx -match $tierRx)) { $tierHit += $f.Name }
+  }
+}
+if ($tierHit.Count -gt 0) { Say 'PASS' 'scale-tier' ('declared in ' + ($tierHit -join ',')) }
+else { $fail++; Say 'FAIL' 'scale-tier' 'no tier (S/M/L) declared under plan/ce-hua-an/*.md -- declare once, never downgrade (T0)' }
+
+# 22) impact-radius -- SKILL 1 / coverage-audit 9: a BUG FIX must enumerate its blast radius
+#     (dimension / cause chain / affected rows). Fixing only the reported symptom = two steps
+#     forward, one back (measured: patching a door mesh removed the door entirely).
+$irPath = Join-Path $root '.ai-tmp/test/impact-radius.tsv'
+if (-not (Test-Path $irPath)) {
+  Say 'HUMAN-ONLY' 'impact-radius' 'no .ai-tmp/test/impact-radius.tsv -- for a bug fix, list the blast radius (dim / cause chain / affected rows)'
+} else {
+  $irBad = @([System.IO.File]::ReadAllLines($irPath, [Text.Encoding]::UTF8) |
+             Where-Object { $_.Trim().Length -gt 0 -and $_ -notmatch '^\s*#' } |
+             Where-Object { ($_ -split "`t").Count -lt 3 })
+  if ($irBad.Count -eq 0) { Say 'PASS' 'impact-radius' 'every row lists dim / cause chain / affected rows' }
+  else { $fail++; Say 'FAIL' 'impact-radius' ("" + $irBad.Count + " row(s) missing columns (dim / cause chain / affected rows)") }
 }
 
 Write-Output ''
