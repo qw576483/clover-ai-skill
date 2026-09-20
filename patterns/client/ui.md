@@ -15,7 +15,7 @@
 | **横版**（宽 > 高，如 Mario / 暗黑2） | `1920×1080` | 左右并排合法；内容框宽可上 1600 |
 | **竖版**（高 > 宽，如 **皇室战争** / 各种卡牌手游） | `1080×1920` | **一律上下排布 + 角锚点**；内容框宽 ≤ ~1000；⛔ 横排三件套（标签–输入框–按钮一行）必须拆成三行 |
 
-- 引擎 `UIManager` 的 `CanvasScaler.referenceResolution` 在 `Runtime/Presentation/UI.cs:54` **写死 1920×1080**。
+- 引擎 `UIManager` 的 `CanvasScaler.referenceResolution` 由 `CloverPresentation.ReferenceResolution` 决定（`Runtime/Presentation/CloverPresentation.cs:85`，**默认 1920×1080，可配置**，见 `Runtime/Presentation/UI.cs:59`）。
   竖版项目**必须**处理它（改引擎补一个可配置项，或在业务侧覆盖），否则画布宽高比是横的、整套布局跟着错。
 - 工程侧同时要改 `ProjectSettings.asset`：`defaultScreenOrientation`（竖版 = `1` Portrait）、
   `defaultScreenWidth/Height`（竖版 = `1080×1920`）、`allowedAutorotateTo*`（只留目标朝向）。

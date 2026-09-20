@@ -107,7 +107,7 @@ grep -rnE '(^|[^.])\bInput\.(GetKey|GetMouse|mousePosition|GetAxis)' client/Asse
 grep -rn --include=*.cs --include=*.ps1 '' client/_dev _assets_src _assets_tmp 2>/dev/null | wc -l
 ```
 
-> ⑥⑦ 与 §1~§5 一样是**交付前必跑**（完整 **7 条**见 `SKILL.md` §1.11）。
+> ⑥⑦ 与 §1~§5 一样是**交付前必跑**（完整 **8 条**见 `SKILL.md` §1.11）。
 > 实测教训：⑥⑦**原来没有**，于是「临时文件遍地」「`Resources.Load` 绕过 `Game.Res`」这类违反
 > **不留任何痕迹**，交付时"看起来完全合规"。
 

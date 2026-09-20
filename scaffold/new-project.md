@@ -733,7 +733,7 @@ public class GameMain : MonoBehaviour
 □ <项目根>/tools/ai-skill/ 已生成（SKILL.md 按 scaffold/project-skill.md 填好：消息号 / handler / 面板 / 配表 / 约束）
 □ **项目级 skill 没有放宽全局规则层**（grep `以本项目为准|优先于全局`，逐条判"加严"；见 SKILL.md §1.10）
 □ 策划/数值文档/ 与 策划/策划案/ 两个目录已建（配表与策划案不混放）
-□ **交付前跑完 SKILL.md §1.11 的 7 条机械自检**（能脚本化就做成 `tools/verify.ps1`，照 `reference/verify-template.md`），并把原始输出贴进回报
+□ **交付前跑完 SKILL.md §1.11 的 8 条机械自检**（能脚本化就做成 `tools/verify.ps1`，照 `reference/verify-template.md`），并把原始输出贴进回报
 □ `策划/验收表.md` **每行带「类别」列**（`数值类` / `表现类`）；`表现类` 的行能在**联络图索引表**里查到格号（`SKILL.md` §2 硬性判定第 3 条）
 □ 交付前的证据**只采一次**（一张或数张**联络图**，见 `reference/visual-loop.md` 第八节）；⛔ 没有逐项截图、没有逐张让 AI 读图
 □ `策划/验收表.md` 带「允许的差异」+「机械自检记录」两节；**汇总数字 = 表体统计**

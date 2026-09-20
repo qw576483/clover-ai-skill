@@ -171,7 +171,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 
 **闸门 0（最先做）：判定朝向 —— 横版 / 竖版**。出处：用户 2026-09-20 原话 ——「**竖版游戏，你用横板ui，真有你的**」。
 - **判据优先级**：① 原版这款游戏的**原生朝向**（联网搜一轮 `<游戏名> 横版还是竖版` / `<game> portrait or landscape`；A 的**官方截图本身即铁证**——宽>高=横版，高>宽=竖版）→ ② 用户本轮是否明说 → ③ 都没有则按原版。⛔ 不许"没查就默认横版"。
-- ⛔ **必查项（一条都不许跳，落在纸面上）**：`ProjectSettings.asset` 的 `defaultScreenOrientation`（`Portrait=1` / `LandscapeRight=4` …）与 `defaultScreenWidth/Height`（**竖版 = 高 > 宽**，如 1080×1920）；引擎 `UIManager` 的 `CanvasScaler.referenceResolution`（横版 `1920×1080` / 竖版 `1080×1920`，见 `Runtime/Presentation/UI.cs:54`，**引擎里是写死的**，竖版项目要么改引擎要么在业务侧覆盖）；**每个面板的布局常量**（竖版画布宽只有 ~1080 ⇒ 任何 `BoxW ≥ 1200` 的横排布局**必然是错的**）。
+- ⛔ **必查项（一条都不许跳，落在纸面上）**：`ProjectSettings.asset` 的 `defaultScreenOrientation`（`Portrait=1` / `LandscapeRight=4` …）与 `defaultScreenWidth/Height`（**竖版 = 高 > 宽**，如 1080×1920）；引擎 `UIManager` 的 `CanvasScaler.referenceResolution`（横版 `1920×1080` / 竖版 `1080×1920`，见 `Runtime/Presentation/CloverPresentation.cs:85` 的 `ReferenceResolution`（默认 1920×1080，**可配置**），竖版项目在业务侧设成 1080×1920 即可）；**每个面板的布局常量**（竖版画布宽只有 ~1080 ⇒ 任何 `BoxW ≥ 1200` 的横排布局**必然是错的**）。
 - **竖版落地口径**：面板一律**上下排布 + 角锚点**（⛔ 左右并排的"标签–输入框–按钮"一行要改成三行）；`SpriteBackground` ⛔ 不许靠 `preserveAspect` 留左右黑边（原版竖构图本来就该铺满竖屏，遇到"原图是竖的、画布是横的"就是**朝向判错了**，不是"用 preserveAspect 兜住"）。
 - **判定结果写进** `策划/策划案/{A}参考规格.md` 顶部「形态」一节（与形态同一处），**只判一次**，全程照做、不许反复自检。
 - **判据**：能一句话回答「横/竖 + 画布参考分辨率 + 哪些面板按竖版重排」，且成品截图与 A 官方截图**同机位并排逐项 `一致`**（→ §0.1 ② / §5）。

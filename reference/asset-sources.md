@@ -114,7 +114,7 @@ robocopy "$tmp\CityBits" "<client>\Assets\ThirdParty\KayKit\CityBits" /S /IF *.f
 **国内素材站**（爱给网、CG 模型网、微元素、Unity 中国资源商店等）：**先搜、先试着直连**，
 能下就下；要登录/会员的就进 §5 清单 —— **不要因为"要会员"就跳过搜索**。
 
-### 2.3 「多模态自产」只在前两级都失败时用（见 `SKILL.md` 多模态闸门）
+### 2.3 「多模态自产」只在前两级都失败时用（见 `patterns/game-demo.md` §4.0.1 多模态闸门）
 
 ---
 
