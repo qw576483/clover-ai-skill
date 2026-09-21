@@ -97,7 +97,7 @@
 |---|---|
 | 服务端概念、术语、机制原理 | [`clover-doc/server/concepts/`](https://github.com/qw576483/clover-doc/tree/main/server/concepts) |
 | 服务端开发指引（handler / 配表 / 挂载…） | [`clover-doc/server/development/`](https://github.com/qw576483/clover-doc/tree/main/server/development) |
-| 服务端上手 | [`clover-doc/server/getting-started.md`](https://github.com/qw576483/clover-doc/blob/main/server/getting-started.md)、`quickstart.md`、`install.md` |
+| 服务端上手 | [`clover-doc/server/quickstart.md`](https://github.com/qw576483/clover-doc/blob/main/server/quickstart.md)（唯一入口：依赖环境 → 配置 → 启动 → 登录）；按 OS 的详细安装见 `server/development/environment.md` |
 | WorldSync / MMO | [`clover-doc/server/concepts/mmo-worldsync.md`](https://github.com/qw576483/clover-doc/blob/main/server/concepts/mmo-worldsync.md) |
 | 服务端示例 / 运维 / 工具 / 安全 | [`clover-doc/server/{examples,operations,tools,security}/`](https://github.com/qw576483/clover-doc/blob/main/server/{examples,operations,tools,security}/.md) |
 | 客户端概念 / 开发 / 示例 / 参考 / 工具 | [`clover-doc/client/{concepts,development,examples,reference,tools}/`](https://github.com/qw576483/clover-doc/blob/main/client/{concepts,development,examples,reference,tools}/.md) |
