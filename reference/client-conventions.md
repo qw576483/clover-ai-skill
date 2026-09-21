@@ -100,18 +100,22 @@ catch (TimeoutException)
 ### 3.3 可靠/非可靠发送
 
 ```csharp
+// ⛔ 协议体字段名 = JSON 键（引擎按 C# 字段名序列化）⇒ 必须与服务端 Go 的 json tag 对齐，
+//    也就是**小写 snake_case**。写成 PascalCase（Content / X / Y）时服务端解出来全是零值
+//    —— **静默丢字段**，两端都不报错（本文件 §3.2 同一条要求，别在示例里自相矛盾）。
+
 // 可靠发送（TCP，保证到达）
 Game.Net.Send(EMsg.ChatMessage, new ChatMessage
 {
-    Content = "你好",
+    content = "你好",
 });
 
 // 非可靠发送（UDP，可能丢失）
 Game.Net.SendUnreliable(EMsg.PositionSync, new PositionData
 {
-    X = transform.position.x,
-    Y = transform.position.y,
-    Z = transform.position.z,
+    x = transform.position.x,
+    y = transform.position.y,
+    z = transform.position.z,
 });
 ```
 
@@ -124,13 +128,16 @@ Game.Net.SendUnreliable(EMsg.PositionSync, new PositionData
 每次都要分配 requestID、往 pending 表插一项、挂一个超时定时器；同时服务端 `def/push.go` 里
 定义好的 `Push*` 消息号全程没人用、客户端也不注册 `OnMsg` —— 推送通道白白浪费。
 
-> 引擎 `pkg/app/app.go` 的注释确实认可「20fps 状态同步也可直接 `g.Reply` 轮询」，所以轮询**不算违规**。
+> 引擎的注释确实认可「20fps 状态同步也可直接 `g.Reply` 轮询」（原文在 `internal/app/facade.go:514`；
+> ⛔ `pkg/app/app.go` 只是**别名透传门面**，没有实现体也没有那段注释），所以轮询**不算违规**。
 > 但既然 `def/push.go` 已经定义了推送消息号，就应该真用起来，否则那些常量是死代码，还会误导后续维护者。
 >
 > **配套要求**：选轮询 → 切勿在 `def/push.go` 里留一堆没人用的推送消息号；选推送 → 客户端必须注册对应 `OnMsg`。
 >
 > **禁止未查证断言**：不确定引擎有没有某个 API 时，去 `clover-server-engine` 源码查
-> （推送在 `pkg/app/app.go`），**不要在注释或交付说明里写「引擎没有 X API」**——这是 `SKILL.md` 明列的违规项。
+> （`PushToPlayer/PushToScene/PushToAll` 在 `internal/app/facade.go`，JSON 版在 `internal/app/core.go`；
+> ⛔ 别去 `pkg/app/app.go` 找实现 —— 那里只有 `type X = internal.X` 的透传），
+> **不要在注释或交付说明里写「引擎没有 X API」**——这是 `SKILL.md` 明列的违规项。
 
 ## 4. 生命周期事件
 

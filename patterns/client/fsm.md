@@ -12,6 +12,12 @@ public class GameFlowManager : MonoBehaviour
 
     void Start()
     {
+        // ⛔⛔ **`Game.Fsm` 是全局唯一实例**（实现类 internal、无工厂，业务不能 `new`）：
+        //   多套状态（游戏流程 / 角色 / UI / 站点）**共用同一张状态表和一个 Current** ⇒
+        //   任一模块 `Force`/`Trigger` 都会跑掉别的模块的 `OnExit`/`OnEnter`；
+        //   `xxx.Current == "idle"` 这类判断会被别的模块的状态污染；`OnTick` 也只跑 Current 那个。
+        //   ⇒ **一个项目只用一处 `Game.Fsm`**（通常就是游戏流程/站点）。
+        //     角色、UI 这类**各自独立**的状态机请自建（或直接 switch），⛔ 不要四个模块都拿 Game.Fsm。
         _gameFlow = Game.Fsm;   // ★ Fsm 是 internal，不要 new；直接用 Game.Fsm
         
         // 注册游戏流程状态
@@ -105,8 +111,9 @@ public class CharacterFSM : MonoBehaviour
 
     void Start()
     {
+        // ⛔ Game.Fsm 全局唯一 —— 角色状态机**不该**用它（见文首"全局唯一"警告），这里仅作写法示例
         _fsm = Game.Fsm;
-        
+
         // 注册角色状态
         RegisterIdleState();
         RegisterWalkState();
@@ -222,8 +229,9 @@ public class UIStateManager : MonoBehaviour
 
     void Start()
     {
+        // ⛔ Game.Fsm 全局唯一 —— UI 状态机**不该**用它（见文首"全局唯一"警告），这里仅作写法示例
         _uiState = Game.Fsm;
-        
+
         // 注册 UI 状态
         RegisterMainMenuState();
         RegisterShopState();
@@ -325,6 +333,7 @@ public class AnimatedFSM : MonoBehaviour
 
     void Start()
     {
+        // ⛔ Game.Fsm 全局唯一 —— 动画状态机**不该**用它（见文首"全局唯一"警告），这里仅作写法示例
         _fsm = Game.Fsm;
         _animator = GetComponent<Animator>();
         

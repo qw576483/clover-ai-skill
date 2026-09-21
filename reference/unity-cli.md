@@ -191,8 +191,16 @@ unity project audit --format csv                                  # Project Audi
 `unity editors list --format json` 返回结构（字段稳定，可安全解析）：
 
 ```json
-{ "success": true, "command": "editors", "data": [ { "version": "6000.0.58f2", "alias": "6.0.58f2", "architecture": "x86_64", "default": false } ] }
+{ "success": true, "command": "editors", "data": [
+  { "version": "6000.0.58f2", "alias": "6.0.58f2", "architecture": "x86_64", "default": true,
+    "location": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.0.58f2" },
+  { "version": "6000.0.47f1", "alias": "6.0.47f1", "architecture": "x86_64", "default": false }
+] }
 ```
+
+> ⛔ 上面**第二条没有 `location`** —— 那是"已知版本但没装"的形状（§1.1 的判据）。
+> 拿它去 `--editor-version` 会直接失败，所以**解析时必须以 `location` 是否存在为准**，
+> 而不是"数组里有没有这一项"。
 
 ### 4.1 跑引擎自带测试（EditMode / PlayMode）
 

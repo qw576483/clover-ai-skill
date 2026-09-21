@@ -19,6 +19,10 @@
 
 ## 模块架构
 
+> ⛔ **下图列的是"门面上有这些成员"（`Game.Xxx` 可用），不等于"已经初始化"**。
+> `Net` / `Sync` / `Schema` / `Alert` / `CloverScene` / `FrameRoom` / `Res` / `Table` / `Localization` / `Input`
+> 都**必须业务显式 Init**，否则静默失效或直接 NRE —— 见本节末尾的对照表。
+
 ```
 ┌──────────────────────────── 业务游戏代码 ────────────────────────────┐
 │                              Game 门面                               │
@@ -50,7 +54,7 @@
 > |---|---|---|
 > | `Net` `Sync` `Schema` `Alert` `CloverScene` `FrameRoom` | `CloverNet.Init(addr, udpAddr)` | 完全没网络（静默） |
 > | `LanBrowser` | **不用手调** —— 由 `CloverLan` 的 Launch 钩子自动挂（仅原生平台） | 局域网寻服不可用（`Game.LanBrowser` 为 null） |
-> | `Res` | `CloverRes.Init(root)` | `Game.Res` 为 **null** ⇒ 模型/贴图静默加载失败、加载点 NRE |
+> | `Res` | `CloverRes.Init(root)` | `Game.Res` 为 **null** ⇒ 第一次调 `Game.Res.*` 就是 **NullReferenceException**（⛔ 不是"静默加载失败"） |
 > | `Table` `Localization` | `CloverData.InitDataTable(dir)` / `InitLocalization(dir, lang)` | 没配表 |
 > | `Input` | `CloverInput.Init()` | 同时创建 EventSystem + InputModule；**不调 ⇒ UI 点击不响应** |
 >
@@ -61,7 +65,7 @@
 | 域 | 模块 | 说明 |
 |----|------|------|
 | **基础域** | Event, Timer, Fsm, Dispatcher, Logger | 引擎基石，`Game.Launch` 时构造 |
-| **数据域** | Table, Setting, Localization | 经 `CloverData.InitDataTable/InitLocalization` 挂载 |
+| **数据域** | Table, Localization | 经 `CloverData.InitDataTable/InitLocalization` 挂载（⛔ **`Setting` 不在这里** —— 它由 `Game.Launch` 直接构造并挂上门面） |
 | **网络域** | Net, Sync, Schema, Alert, CloverScene, FrameRoom, **Http** | 经 `CloverNet.Init` 一次挂载（**含 Http**；`CloverNet.InitHttp` 保留供「只用 HTTP 不连网关」的特例）。Schema 桥接 Sync；FrameRoom 需业务 `Configure()` 注入消息号 |
 | **资源域** | Res | 经 **`CloverRes.Init(root)`** 挂载 —— ⚠️ **不会**随 `CloverPresentation` 自动挂（表现域挂 Map/Entity/Pool/UI/Scene/Atlas/Anim/Sound/Camera/Quality）。**业务必须显式调用**，否则 `Game.Res` 恒为 null：模型/贴图**静默加载失败**（只剩占位几何体），并在加载点抛 `NullReferenceException` 打断业务主流程（实测踩过，见 `patterns/game-demo.md` §4.2） |
 | **表现域** | Map, Scene, UI, Atlas, Anim, Sound, Camera, Quality, Entity, Pool, Input | 契约在 `Runtime/Core/PresentationContracts.cs`，实现由 Presentation 提供；Map/Entity/Pool/UI/Scene/Atlas/Anim/Sound/Camera/Quality 由 `CloverPresentation.Init` 随 `Game.Launch` **自动挂载** |
@@ -185,7 +189,7 @@ var reply = await Game.Net.Call<ELoginReply>(EMsg.Login, request);
 // 第二个参数**传 null**（不是 reply.session_key；与官方 Sample 一致）。
 // session_key 是会话通道加密密钥（AES 通道密钥），当恢复凭证上交会被判 token mismatch 踢掉；
 // 真正的恢复凭证 session_token 由随后的 PushPlayerFullSync 下发并**非空覆盖**。
-// 传非空值时引擎会打 Warn（NetworkManager.cs:715-718）。
+// 传非空值时引擎会打 Warn（NetworkManager.cs:724-727；`SetupSession` 的签名/文档在 :716-719）。
 Game.Net.SetupSession(account, null, line);
 
 // HTTP 请求：回调式，没有 await/泛型
@@ -280,8 +284,10 @@ Game.Quality.SetLevel(QualityTier.High);
 Game.Quality.OnLevelChanged(lv => Debug.Log($"device level -> {lv}"));
 ```
 
-> UI 点击依赖 `EventSystem`，而它归输入模块管理：请在 `Game.Launch` 后调用 `CloverInput.Init()` 
-> （未挂接输入模块时 `CloverPresentation.Init` 会给出一次性告警，UI 仍可打开但点不动）。
+> UI 点击依赖 `EventSystem`，而它归输入模块管理：请在 `Game.Launch` 后调用 `CloverInput.Init()`。
+> ⛔ 那句"一次性告警"**不在** `CloverPresentation.Init` 里 —— 它由 `Game.UI.Open` 在
+> `EventSystem.current == null` 时打出（`Runtime/Presentation/UI.cs:107-114`）。
+> 所以**别等到开面板才发现**：Init 缺失应当在启动阶段就自查一遍。
 
 ### 事件总线
 

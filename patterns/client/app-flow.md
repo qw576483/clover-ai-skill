@@ -140,6 +140,9 @@ namespace {Name}.Module.Flow
         {
             // 站点：引擎在 Launch 时已预注册 Launching/CheckingUpdate/Logging/MainCity/Battle/Disconnected，
             // 运行时不自动驱动，业务可同名覆盖或另起状态名。这里用业务自己的站点名，避免与引擎语义打架。
+            // ⛔ Game.Fsm **全局唯一**（详见 `patterns/client/fsm.md` 文首）：这 8 个流程状态与
+            //    其它模块的状态**共用同一张状态表和一个 Current**。业务**只在这一处注册流程状态**，
+            //    ⛔ 不许再让角色 / UI / 动画模块往同一个 `Game.Fsm` 里塞自己的状态（会互相跑掉 OnExit/OnEnter）。
             Game.Fsm.RegisterState("Boot",     onEnter: () => ShowBoot(),     onExit: () => Game.UI.Close<BootPanel>());
             Game.Fsm.RegisterState("MainMenu", onEnter: () => ShowMainMenu(), onExit: () => Game.UI.Close<MainMenuPanel>());
             Game.Fsm.RegisterState("Login",    onEnter: () => Game.UI.Open<LoginPanel>());
@@ -286,7 +289,8 @@ namespace {Name}.App
 
             // 6) 网络生命周期：断了要回登录/主菜单，而不是停在游戏里假装没事
             //    Net.OnKicked 为无参发布 → 处理器必须零参
-            Game.Event.On("Net.OnKicked", () =>
+            // ⛔ 事件名取引擎常量，⛔ 不许裸字符串（本文件 §2 的规则 + 交付前 grep 自检会抓这一处）
+            Game.Event.On(CloverEvents.Net.OnKicked, () =>
             {
                 Game.Logger.Warn("App", "被踢出，回主菜单");
                 Game.UI.CloseAll();

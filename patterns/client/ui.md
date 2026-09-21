@@ -150,6 +150,10 @@ public class AnimatedPanel : UIPanel
 
     public override void OnClose()
     {
+        // ⛔ 这样写**达不到**"关闭时先播动画"：`UIManager.Close` 调完 `OnClose()` 就**立刻
+        //    销毁预制体根**（面板组件就在它上面）⇒ Hide 触发得再早也来不及播，0.3s 后
+        //    定时器回调还会打在已销毁对象上（MissingReferenceException，被 Timer 吞成一条 Error）。
+        //    正确做法见本节末尾：**由调用方**用 `Game.Timer.After(...)` 延后 `Game.UI.Close<T>()`。
         _animator.SetTrigger("Hide");
         // ★ 定时器返回 long id（不是 IDisposable，也没有 FromSeconds）
         Game.Timer.After(AnimTime, () => gameObject.SetActive(false));

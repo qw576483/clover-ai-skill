@@ -453,7 +453,7 @@ unity projects create "client" --path "clover-{项目名}" \
 # 3) 接入 Clover 引擎包：Packages/manifest.json 加一行
 #    "com.clover.unity-engine": "https://github.com/qw576483/clover-client-unity-engine.git"
 #    （要在工作区内联调引擎源码才换成本地路径，且基准是 client/Packages/：
-#      "file:../../../clover-client-unity-engine" —— 详见 scaffold/new-project.md §2.3）
+#      "file:../../../clover-client-unity-engine" —— 详见 scaffold/new-project.md §2.2）
 ```
 
 工程建好后再往 `Assets/` 里写业务脚本。**写任何网络代码之前，必须先创建 Def/ 目录**（见下面目录结构）：
@@ -485,7 +485,8 @@ Assets/
 │   │   └── placeholder_256x256.png # 可选 256x256 像素占位图
 │   ├── Sound/SFX/                # 占位音效文件夹（可选）
 │   └── Models/               # 占位模型文件夹（可选）
-├── Scripts/
+├── Scripts/                  # ⛔ 分层名以 `reference/architecture.md` §4 为准（Def/Core/Module/UI/App）；
+│                             #    下面这棵是历史写法，只示意"必须有 Def 这一层、消息号与协议都在里面"
 │   ├── Def/                 # ★ 业务消息号 + 协议（必须，镜像 server/game/def）
 │   │   ├── MsgDef.cs        # 消息号常量（唯一定义处）
 │   │   └── ProtoDef.cs      # 协议结构体

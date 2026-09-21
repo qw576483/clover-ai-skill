@@ -166,8 +166,10 @@ logic:
   reconnect_grace: 30s
 
 # 账号服：登录链路的必经依赖（all 角色会一并启动账号服）
-# 登录链路：客户端 HTTP 调 {verify_addr}/auth/login 换 token → 长连接发 EMsgLogin{token}
+# 登录链路：客户端 HTTP 调 **客户端配置的 server.auth_addr** + /auth/login 换 token → 长连接发 EMsgLogin{token}
 #           → 游戏服 POST {verify_addr}/auth/verify 换 owner
+# ⛔ 两个地址语义不同（数值常相同，所以极易写混）：verify_addr = **游戏服→账号服**（服务端配置，路径固定 /auth/verify）；
+#    auth_addr = **客户端→账号服**（客户端 config.json 的 server.auth_addr，路径 /auth/login）。
 auth:
   listen: "127.0.0.1:8051"             # 账号服 HTTP 监听（auth / all 角色必填）
   jwt_secret: "dev-only-change-me"     # JWT 签名密钥（HS256）；生产务必用强随机串
@@ -348,8 +350,8 @@ unity projects create "client" \
 # ⇒ 工程根 = clover-{项目名}/client/（目录名固定 "client"，Hub 显示名也是 client）
 ```
 
-> `clover-client-unity-engine` 包声明 `unity: 2022.3`，Unity 6 可打开并升级，
-> 而 AI 自动化操作强制走 Unity 6，故创建即选 6000.x。
+> `clover-client-unity-engine` 的 `package.json` 声明 **`unity: 6000.0`**（包本身就要求 Unity 6），
+> 且 AI 自动化操作强制走 Unity 6 ⇒ 创建工程即选 6000.x。
 
 ### 2.1.1 建完必须让用户「看得到」工程（硬约束）
 
@@ -461,6 +463,11 @@ unity projects list --format json        # 复核 isFavorite=true
 编辑 `client/Packages/manifest.json`。**只加引擎包一行是不够的** —— 模板自带的包清单里
 **没有 Unity 内置模块**，而引擎用到它们；缺了会在编译引擎时炸：
 
+> ⚠️ **本节与 `patterns/client/new-project.md` §3 的口径不一致**（那一份只加引擎包一行）。
+> 哪个对取决于 **Unity 对你所用的工程模板是否隐式引用内置模块**，⛔ 离线判不了，必须在真机验一次：
+> **先只加引擎包 → 编译；报 CS1069 就按本节把下表 `com.unity.modules.*` 补齐。**
+> 在此之前别把任何一份当定论。
+
 ```
 error CS1069: The type name 'RuntimeAnimatorController' could not be found in the namespace
 'UnityEngine'. ... Enable the built in package 'Animation' ... to fix this error.
@@ -510,7 +517,10 @@ error CS1069: The type name 'RuntimeAnimatorController' could not be found in th
 
 ### 2.3 业务程序集 `client/Assets/Scripts/{Name}.asmdef`
 
-> 位置是 `Assets/Scripts/`（覆盖 `Scripts/` 下的 Core / Network / Room / Table / UI 全部业务代码），
+> 位置是 `Assets/Scripts/`（覆盖 `Scripts/` 下的**全部**业务代码）。
+> ⛔ **目录骨架以 `reference/architecture.md` §4 为准**：`Def / Core / Module / UI / App` ——
+> 交付前自检命令认的是 `Scripts/Module/` 这一层，用别的分层名**会检不到**；
+> 本节只约定 asmdef 的**位置**（`Assets/Scripts/`），**不重新定义分层名**。
 > 与 `SKILL.md` 的目录骨架、`patterns/client/config.md` 的固定路径（`Assets/Scripts/Core/ClientConfig.cs`）一致。
 > 放在 `Assets/{Name}/` 会导致 `Assets/Scripts/` 下的业务脚本落到默认的 `Assembly-CSharp`，**反而不受约束**。
 
@@ -573,11 +583,15 @@ namespace {Name}.Def   // ← 换成实际项目名（如 CQ.Def），不要复�
 **`client/Assets/Scripts/Def/ProtoDef.cs`**
 
 ```c#
+using System;          // [Serializable]
+
 namespace {Name}.Def
 {
-    public class XxxRequest  { public string name; }
-    public class XxxReply    { public bool ok; public string err; }
-    public class XxxNotify   { public int value; }
+    // ⛔ 必须 [Serializable]：引擎走 JsonUtility 序列化，它**只认带该标签的类**
+    //    （引擎自带的 28 个协议 DTO 全部标了）。漏了就不参与序列化 —— 字段静默丢失。
+    [Serializable] public class XxxRequest  { public string name; }
+    [Serializable] public class XxxReply    { public bool ok; public string err; }
+    [Serializable] public class XxxNotify   { public int value; }
 }
 ```
 
@@ -611,8 +625,11 @@ Game.OnMsg(MsgDef.XxxNotify, ctx => { var n = ctx.Bind<XxxNotify>(); /* ... */ }
 }
 ```
 
-> `tls` 必须与服务端 `gateway.tcp_tls_disabled` **相反**：服务端配了 `tls_cert` 后 TCP 口也走 TLS（默认 `false`），
-> 所以新工程直接写 `true`；写成 `false` 连上去的表现是「连上就断」。证书只走系统信任链（无跳过校验开关）。
+> `tls` 必须与服务端**实际**是否启用 TLS 一致，判断依据是 **§1.3 的 `server.yaml` 有没有配 `gateway.tls_cert`/`tls_key`**：
+> **模板默认不配证书 ⇒ TCP 是明文 ⇒ 客户端这里写 `false`**（与 §1.3 模板配套，照抄即可跑通）。
+> 只有你确实给服务端配了证书（`tls_cert` + `tls_key` 成对）时才写 `true`。
+> ⛔ 写反的表现是「**连上就断** → 重连耗尽被踢 → 之后所有 `Call` 超时」。
+> 证书只走系统信任链，引擎没有跳过校验的开关。
 
 > **端口必须与 `gateway` 段严格对齐**：`addr` = `gateway.listen_tcp`（**8002**），
 > `udp_addr` = `gateway.listen_udp`（**8003**）。
@@ -718,7 +735,7 @@ public class GameMain : MonoBehaviour
 □ 消息号 >= 10001
 □ handler 签名 func(c event.Ctx) error，import 为 pkg/transport/event
 □ client 由 unity projects create 生成（有 Packages/ + ProjectSettings/）
-□ manifest.json 已加 com.clover.unity-engine 本地依赖
+□ manifest.json 已加 com.clover.unity-engine（**默认 git URL**；仅"工作区内联调引擎源码"时才用 `file:` 相对路径，⛔ 不许写绝对路径）
 □ client/Assets/Configs/config.json + Core/ClientConfig.cs 均已生成，业务代码无硬编码地址/账号/密码/超时
 □ server.addr 填的是网关 TCP 口（8002），不是 WS 口（8001）
 □ server.tls 与服务端 gateway.tcp_tls_disabled 相反（服务端默认 false → 客户端 true）
@@ -745,7 +762,7 @@ public class GameMain : MonoBehaviour
 
 ```bash
 cd server && go mod tidy && go build -o {name}.exe .     # 服务端
-unity build ./client --editor-version 6000.0.47f1 --target StandaloneWindows64  # 客户端（可选）
+# 客户端构建（异步）—— 命令形态见 reference/unity-cli.md §4：`unity build run --target StandaloneWindows64 --output <路径>`
 ```
 
 起服前先确认本地依赖（etcd/nats/redis/mysql）已就绪，排障见 `reference/server-env.md`。

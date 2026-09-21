@@ -132,10 +132,13 @@ public class SyncEntityView : MonoBehaviour
 > 会同步释放工厂侧记录（动画播放器 + 模型资源引用）。
 >
 > ```csharp
-> Game.Entity.Create(entityId, PLAYER_TYPE_ID);
+> // ⛔ 引擎这三处的形参都是 long（Create(long,int,string) / BindView(long,GameObject) /
+> //    IEntityViewFactory.CreateView(long,EntityViewSpec)），而同步实体号按本文口径是 ulong
+> //    ⇒ ulong→long **无隐式转换**，必须显式 (long)，否则 CS1503。
+> Game.Entity.Create((long)entityId, PLAYER_TYPE_ID);
 > var view = CloverPresentation.EntityView.CreateView(
->     entityId, EntityViewSpec.Of("Models/hero", targetHeight: 1.8f));
-> Game.Entity.BindView(entityId, view);   // 登记视图；其销毁由 Entity 侧统一负责
+>     (long)entityId, EntityViewSpec.Of("Models/hero", targetHeight: 1.8f));
+> Game.Entity.BindView((long)entityId, view);   // 登记视图；其销毁由 Entity 侧统一负责
 > ```
 >
 > 以下示例是**纯手工路径**（自建 GameObject + 自己的 View 组件），仅在不需要异步模型加载时使用：

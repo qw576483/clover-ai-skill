@@ -28,7 +28,7 @@
 | 层 | 位置 | 职责 |
 |---|---|---|
 | 业务核心 | `domain/auth/state` | 注册 / 登录 / 验签 / 渠道登录 + 撞库防护（`guard.go`）+ 线协议契约（`wire.go`）+ 领域错误分类（`errors.go`） |
-| 传输 | `domain/auth/server` | HTTP 路由注册 + 「领域错误 → 状态码」映射（`400/401/409/429/501/500`） |
+| 传输 | `domain/auth/server` | HTTP 路由注册 + 「领域错误 → 状态码」映射（`400` / `401` / `429` / `501` / **`503`** / `500`；⛔ **没有 409** —— AccountExists 也走 400） |
 | 调用侧 | `domain/auth/client` | `RemoteAuthenticator`：game 调 `/auth/verify` 换 owner |
 | 域配置 / 扩展点 | `domain/auth/config.go`、`domain/auth/channel.go` | `AuthConfig`；`ChannelVerifier` 接口与注册表 |
 | 角色宿主 | `internal/app/auth_server.go` | Core 接线、消息通道、`runAuth` 装配——**不含账号规则** |
@@ -214,7 +214,7 @@ ag.OnHTTP("/auth/pay/notify", func(ic event.HTTPCtx) error {
 | 登录报「尝试次数过多，请稍后再试」(HTTP 429) | 账号服撞库门禁（连续 10 次失败锁 5 分钟） |
 | 客户端报「HTTP 模块未初始化」 | 没调 `CloverNet.Init`（HTTP 随它挂接） |
 | 客户端报「账号服无响应」 | `auth_addr` 填错 / 账号服没启动 |
-| 向游戏服发注册消息无响应 | 注册在账号服：该号位已作废，游戏服不挂 handler 且门禁不放行（设计如此） |
+| 向游戏服发注册消息**被立刻拒绝**（不是"无响应"） | 注册在账号服：该号位已作废，游戏服不挂 handler，**网关登录门禁会立即回一条 `401` 并丢弃本帧**（客户端触发 `Net.OnUnauthorized`）—— 设计如此 |
 
 ---
 

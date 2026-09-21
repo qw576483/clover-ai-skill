@@ -107,7 +107,8 @@ Update()       ← Game.Tick 由引擎的 EngineRunner 驱动（Camera/Anim 等�
       → 按目标尺寸反算缩放（迭代修正一次）→ 按包围盒贴地/居中
       → 需要碰撞时**自己 AddComponent<BoxCollider>()**（FBX 默认不生成碰撞体！）
 ```
-**两个已踩坑**：① FBX 不自动带 collider ⇒ 烘焙出的地图会是"0 障碍物"的空地图（`Clover/地图烘焙` 的日志会自证：`计为障碍=0`）；
+**两个已踩坑**：① FBX 不自动带 collider ⇒ 烘焙出的地图会是"0 障碍物"的空地图（烘焙日志会自证：`计为障碍=0`。
+⛔ 搜索时用日志 tag **`[MapBake]`**，别用 `Clover/地图烘焙` —— 那是 Unity 菜单路径，不是 tag）；
 ② 把模型**中心**对到**格角点**会整体偏移半格（4m 砖覆盖 [x-2,x+2)）⇒ 一律传格中心。
 
 ## 7. 怎么"看见"引擎在干什么（验证手段，别猜）
@@ -118,7 +119,7 @@ Update()       ← Game.Tick 由引擎的 EngineRunner 驱动（Camera/Anim 等�
 | **运行日志** | 每个非预期分支都打日志（服务端 `logger`、客户端 `Game.Logger`）；高频路径"首条 + 每 N 条" |
 | **运行时自证** | 编辑器 Play 中 `eval_file` 打印关键对象状态（组件是否挂上/目标是否绑定/模型是否加载/Animator 当前 clip） |
 | **截图** | `capture_game_view --source screen`（Play 模式，含 Overlay HUD） |
-| **既有测试** | 端到端 PlayMode 用例（登录→进图→探针→视野事件断言）作为回归 |
+| **既有测试** | ⛔ 别指望引擎自带：`Tests/PlayMode/` 里**只有网络回环**（Tcp / Quic / WebSocket / LanBrowser）+ 夹具，**没有**"登录→进图→探针→视野断言"这类 E2E ⇒ 这套回归**要业务项目自己写**（写法见 `patterns/client/3d-mmo-basics.md`） |
 
 ## 8. 静默失败清单（这些都不报错，但结果错）
 

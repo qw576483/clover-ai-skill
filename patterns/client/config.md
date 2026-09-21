@@ -54,9 +54,12 @@ client/Assets/Scripts/Core/ClientConfig.cs   # 唯一加载器（静态类 Cfg�
 
 `udp_addr` 填 `gateway.listen_udp`（默认 8003）；不需要不可靠通道就留空字符串。
 
-`tls`：线路是否走 TLS（TCP→`SslStream`、WS→`wss://`）。**必须与服务端 `gateway.tcp_tls_disabled` 相反**——
-服务端配了 `tls_cert` 后 TCP 口默认也走 TLS（`false`），所以客户端 `tls: true` 是默认形态；
-两边不一致的症状是「连上就断」。证书只走系统信任链，引擎没有跳过校验的开关（§N7）。
+`tls`：线路是否走 TLS（TCP→`SslStream`、WS→`wss://`）。**判断依据是服务端有没有配 `gateway.tls_cert`/`tls_key`**：
+- **没配证书 = 服务端明文 ⇒ 客户端必须 `false`**（`scaffold/new-project.md` 的模板就是这个形态，照抄能跑通）；
+- 证书**成对配了** ⇒ 客户端 `true`。
+
+⛔ 别再按"`tcp_tls_disabled` 的零值是 `false` ⇒ 客户端取反写 `true`"这条公式 —— 它把"是否配证书"漏掉了，
+写反的症状是「**连上就断** → 重连耗尽被踢 → 之后所有 `Call` 超时」。证书只走系统信任链，引擎没有跳过校验的开关（§N7）。
 
 ## 2. `ClientConfig.cs` 加载器模板
 

@@ -110,7 +110,11 @@
 
 | 消息号 | 名称 | 方向 | 用途 | 请求 / 回包结构体 |
 | --- | --- | --- | --- | --- |
-| 10001 | `MsgCreatePlayer` | C2S | 创建角色 | `CreatePlayerReq` / `CreatePlayerReply` |
+| 1000101 | `MsgCreatePlayer` | C2S | 创建角色 | `CreatePlayerReq` / `CreatePlayerReply` |
+
+> ⛔ 示例里的号必须落在**本项目的分段起点**上（见上表 `C2S 1000101 起`）。
+> `10001` 只是**引擎硬下限**（业务消息号必须 > 10000），**不是**分段起点 ——
+> 照它填会让后续模块各自从 10001 起，**撞号**。
 
 ### 服务端 Handler
 
