@@ -28,7 +28,7 @@
 ---
 name: clover-impl
 description: Clover 实现工。用于实现「契约已确定」的独立模块——服务端一个业务域、客户端一个 UI 面板、一个 demo 玩法子系统、一张表的打表脚本。当主 agent 已出好《步骤文档》并给出确切接口签名（消息号 / 函数签名 / 字段名）后，用它落地代码。收到实现类任务时 use PROACTIVELY.
-tools: read_file, write_to_file, replace_in_file, delete_file, execute_command, search_content, search_file, list_dir, lsp, use_skill
+tools: read_file, write_to_file, replace_in_file, delete_file, execute_command, search_content, search_file, list_files, lsp, use_skill
 skills: clover-engine, unity-cli
 model: inherit
 permissionMode: acceptEdits

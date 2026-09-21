@@ -105,6 +105,7 @@ public class FrameRateExample : MonoBehaviour
 using CloverEngine;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class CountdownTimer : MonoBehaviour
 {

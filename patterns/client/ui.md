@@ -167,6 +167,7 @@ using System.Collections.Generic;
 using CloverEngine;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class ItemListPanel : UIPanel
 {
@@ -228,6 +229,7 @@ public class ItemSlotView : MonoBehaviour
 using CloverEngine;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class ShopPanel : UIPanel
 {
@@ -267,6 +269,7 @@ using System;
 using CloverEngine;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class ConfirmDialog : UIPanel
 {

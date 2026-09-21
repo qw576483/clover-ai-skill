@@ -184,6 +184,7 @@ public class EntityManager : MonoBehaviour
 ```csharp
 using CloverEngine;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class AOIManager : MonoBehaviour
 {
@@ -272,6 +273,8 @@ Game.Sync.OnEntityEnter((ulong id, Dictionary<string, object> attrs) =>
 ```csharp
 using CloverEngine;
 using UnityEngine;
+using TMPro;
+using UnityEngine.UI;
 
 public class HealthBarView : MonoBehaviour
 {

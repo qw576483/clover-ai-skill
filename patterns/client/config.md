@@ -147,7 +147,8 @@ namespace {Name}
             }
             catch (Exception e)
             {
-                Game.Logger.Error("Cfg", $"读取异常，回退默认值: {e.Message}");
+                // ⛔ 全限定：本类的静态属性 Game（GameSection）会遮蔽引擎门面，写成短名 ⇒ CS1061。
+                CloverEngine.Game.Logger.Error("Cfg", $"读取异常，回退默认值: {e.Message}");
                 return new RootSection();
             }
         }

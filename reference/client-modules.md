@@ -48,7 +48,8 @@
 >
 > | 模块 | 必须调 | 不调的后果 |
 > |---|---|---|
-> | `Net` `Sync` `Schema` `Alert` `CloverScene` `FrameRoom` `LanBrowser` | `CloverNet.Init(addr, udpAddr)` | 完全没网络（静默） |
+> | `Net` `Sync` `Schema` `Alert` `CloverScene` `FrameRoom` | `CloverNet.Init(addr, udpAddr)` | 完全没网络（静默） |
+> | `LanBrowser` | **不用手调** —— 由 `CloverLan` 的 Launch 钩子自动挂（仅原生平台） | 局域网寻服不可用（`Game.LanBrowser` 为 null） |
 > | `Res` | `CloverRes.Init(root)` | `Game.Res` 为 **null** ⇒ 模型/贴图静默加载失败、加载点 NRE |
 > | `Table` `Localization` | `CloverData.InitDataTable(dir)` / `InitLocalization(dir, lang)` | 没配表 |
 > | `Input` | `CloverInput.Init()` | 同时创建 EventSystem + InputModule；**不调 ⇒ UI 点击不响应** |

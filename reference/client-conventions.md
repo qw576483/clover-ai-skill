@@ -439,15 +439,15 @@ UI 的输入模块**同步跟随**所选后端：新后端 → `InputSystemUIInp
 
 | 序号 | 检查项 | 命令 / 位置 |
 |---|---|---|
-| 1 | 日志里 `[Clover.Input] 输入后端=?` | 期望 `InputSystem`。若是 `Legacy`，看括号里的回退原因；若是 `None` → 按同一行给出的修复提示改 Active Input Handling |
+| 1 | 日志里 `[Input] 输入后端=?` | 期望 `InputSystem`。若是 `Legacy`，看括号里的回退原因；若是 `None` → 按同一行给出的修复提示改 Active Input Handling |
 | 2 | `ProjectSettings.asset` 的 `activeInputHandler` | `0`=Old、`1`=New、`2`=Both；**引擎默认走新后端（New），所以至少要含 New**（即 `1` 或 `2`） |
 | 3 | 改完设置后是否重启 Unity | **该设置在编辑器启动时只读一次，不重启不生效**。且 Unity 运行中手改该文件会被回写覆盖，必须先关编辑器再改 |
 | 4 | 日志里 `InputModule=` 是什么 | 期望 `InputSystemUIInputModule`。若是 `StandaloneInputModule` → 说明回退了旧模块，`activeInputHandler` 为「只新」时 UI 点击会全灭 |
-| 5 | 日志有没有 `[Clover.Input] EventSystem ...` | 没有 → 说明 `CloverInput.Init()` 没在构建 UI 之前调用 |
+| 5 | 日志有没有 `[Input] EventSystem ...` | 没有 → 说明 `CloverInput.Init()` 没在构建 UI 之前调用 |
 | 6 | 有没有第二个 InputModule | 引擎会打印「移除不匹配的输入模块」，出现两条并存即点击失效 |
 | 7 | 是否在跑 headless 实例 | 有残留 `Unity.exe`（批处理）占着工程时，正常编辑器打不开，别误判为代码问题 |
 
-> 排查顺序很重要：**先看 `[Clover.Input]` 的后端日志，再看 EventSystem**。
+> 排查顺序很重要：**先看 `[Input]` 的后端日志，再看 EventSystem**。
 > 「键鼠全死」几乎都是后端（Active Input Handling）问题，不是 UI 布局/射线/DPI 问题——
 > 不要再去调 RectTransform、CanvasScaler、MaximizeOnPlay 这些东西。
 

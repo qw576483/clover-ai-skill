@@ -38,7 +38,14 @@ c.MarkReplied(b)
 
 ## 4. 引擎 handler 回包写法（有 Game 引用）
 
+> ⛔ **本节是"引擎内部长什么样"的参考，业务照抄会失败**，原因有两条：
+> ① **`ELoginReply` 业务 import 不到** —— 它定义在 `internal/shared/proto/reply.go`（**internal 包**）；
+>    业务能 import 的 `pkg/shared/proto` 里没有这个类型 ⇒ 写 `proto.ELoginReply` 会报 `undefined`。
+> ② **登录 handler 业务不能自写** —— `OnMsg(EMsgLogin=2)` 因 `msgID <= InternalMsgMax` 会**直接 panic**。
+> **正确做法**：登录走"账号服 + 网关内建链路"，业务只订阅 `Net.OnConnected` / `Net.OnKicked` 等事件。
+
 ```go
+// 以下为引擎内部实现（internal），业务不可直接引用：
 // ELoginReply 的字段只有 Owner / Token / Success / Err / SessionKey（**没有 PlayerID**）。
 // Owner 是"已认证对象标识"，网关靠它绑定会话 —— 业务要传的是 owner，不是 playerID。
 // SessionKey 也不要自己填：会话通道加密由引擎的 auth.Handler 协商（客户端声明 encrypt 时生成并回填），
