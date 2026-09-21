@@ -263,7 +263,7 @@ public class NetworkHandler : MonoBehaviour
 
 | 能力 | 引擎行为 | 业务能用的 |
 |---|---|---|
-| 排队位置 | 服务端限流/满载时连接进等候队列，网关直发 `EMsg.QueuePosition`（`requestID=0`）；入队一次 + 位置变化按 3s 刷新；排队期间顺延未决 `Call` 的超时，但**顺延有总期限**：`max(60s, CallTimeoutSeconds)`（`NetworkManager.cs:99,409-414,863-865`，E-net-01），达总期限后不再顺延、按超时结束 | 事件 `Net.QueuePosition`（参数 `EQueuePositionNotify{ahead,total,ticket}`）+ `Game.Net.IsQueued / QueueAhead / QueueTotal` |
+| 排队位置 | 服务端限流/满载时连接进等候队列，网关直发 `EMsg.QueuePosition`（`requestID=0`）；入队一次 + 位置变化按 3s 刷新；排队期间顺延未决 `Call` 的超时，但**顺延有总期限**：`max(60s, CallTimeoutSeconds)`（`NetworkManager.cs:99,409-414,863-865`），达总期限后不再顺延、按超时结束 | 事件 `Net.QueuePosition`（参数 `EQueuePositionNotify{ahead,total,ticket}`）+ `Game.Net.IsQueued / QueueAhead / QueueTotal` |
 | 会话通道加密 | 登录时按平台能力自动声明 `ELoginRequest.encrypt`；服务端回 `ELoginReply.session_key` 后，双方**整帧** AES-256-GCM 加解密 | `Game.Net.IsChannelEncrypted`（只读状态）；不需要业务代码 |
 
 ```csharp

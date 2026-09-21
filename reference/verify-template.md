@@ -411,7 +411,12 @@ if (-not (Test-Path $editorLog)) {
 $cListName = ([char[]]@(0x5B9E,0x4F53,0x6E05,0x5355) -join '') + '.tsv'          # "shi ti qing dan" = entity list
 $cList     = Join-Path $planDir $cListName
 $cAgree    = ([char[]]@(0x4E00,0x81F4) -join '')                                 # "yi zhi"     = consistent
-$cDiff     = ([char[]]@(0x4E0D,0x81F4) -join '')                                 # "bu yi zhi"  = mismatch
+$cDiff     = ([char[]]@(0x4E0D,0x4E00,0x81F4) -join '')                          # "bu yi zhi"  = mismatch
+#   ⛔ 别漏 0x4E00（yi）：少了它就是「不致」而不是「不一致」⇒ .Contains() 永远不成立
+#      ⇒ coverage-diff 永远 PASS（**假绿**，比不检查更糟）。实测某项目照抄时中过这一枪。
+#   ⛔ 判定行的取法：**只取覆盖矩阵那一段**（`## G.` / `<!-- COVERAGE-BEGIN..END -->` 标记区内），
+#      ⛔ 不许拿"全文件所有数字键行"当判定行数 —— 那会把「允许的差异」表、自检汇总表一起算进来，
+#      于是 coverage-rows 的等式（清单行数 == 判定行数）永远不成立或永远凑巧成立。
 $dims      = @()
 1..12 | ForEach-Object { $dims += ('D' + $_) }
 1..3  | ForEach-Object { $dims += ('S' + $_) }

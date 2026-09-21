@@ -126,5 +126,5 @@ unity command test_status --format json      # 看 summary.passed / failed
 | 自证 | 模板 A/B/C/D 的输出（数字） |
 | 画面 | 截图路径 + 颜色多样性数字 |
 | 回归 | PlayMode 用例结果（passed/failed）+ 引擎用例结果 |
-| 引擎改动 | 若有：E 编号 + 改动文件 + 回归方式 |
+| 引擎改动 | 若有：改动文件 + 方法 + 回归方式 |
 | 未完成 | 诚实列出（不许把没做的说成"已预留"） |

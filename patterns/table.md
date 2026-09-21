@@ -132,7 +132,7 @@ hp := table.Default.Hero.Get(1001)   // 强类型访问，无需手解析
 **客户端（C#）**
 
 ```csharp
-// ① 加载（引擎侧加载器，E-core-11）—— 成功返回 null、失败返回可定位错误串（⛔ 不抛）
+// ① 加载（引擎侧加载器）—— 成功返回 null、失败返回可定位错误串（⛔ 不抛）
 string err = CloverEngine.CloverTable.LoadAll(Application.streamingAssetsPath, Application.dataPath);
 if (err != null) Game.Logger.Error("Table", err);
 
@@ -141,7 +141,7 @@ var row = CloverEngine.CloverTable.Get<HeroRow>("Hero", 1001);   // 引擎读取
 var row2 = Tables.Default.Hero.Get(1001);                        // 打表产物自带的强类型访问器（零反射）
 ```
 
-> `Game.Table` 是**运行时**读取接口；`CloverEngine.CloverTable` 是**读打表产物**的加载器（E-core-11：
+> `Game.Table` 是**运行时**读取接口；`CloverEngine.CloverTable` 是**读打表产物**的加载器（
 > 目录解析 / 逐 tsv 读取 / 可定位错误串 / 按主键强类型取行 —— 引擎旧入口 `CloverData.InitDataTable`
 > 要求行类实现 `IDataRow`、**读不了打表产物**）；`Tables.Default.*` 是**打表产物自带的**强类型访问器
 > （有 `Get(id)` / `All()`，`All()` 这类枚举能力引擎契约里没有）。

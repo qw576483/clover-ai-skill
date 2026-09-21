@@ -217,7 +217,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 | UI / 外观 | `reference/visual-loop.md`、`patterns/client/ui.md` |
 | 3D / 网络 | `patterns/client/3d-mmo-basics.md`、`patterns/client/network.md` |
 | 配表 | `patterns/table.md` |
-| 改引擎 | `patterns/engine-fix.md`（最小复现 → 最小修复 → **E 编号 + 更新引擎仓库 `修复记录.md`**） |
+| 改引擎 | `patterns/engine-fix.md`（最小复现 → 最小修复 → **根因写进代码注释 + 回归用例**） |
 | 派活 / 编排 | `patterns/multi-agent.md`、`scaffold/agent-impl.md` |
 | **"检查过 / 是不是 1:1" 怎么机械判** | **`patterns/full-coverage-audit.md`**（复合产物穷举矩阵：12+3 维度 → 实体清单 → 状态矩阵 → 判据 → 闸门）；实例化模板 **`scaffold/coverage-matrix.md`** |
 | 验收 / 交付 | `reference/game-delivery.md`、`reference/verify-template.md`、`reference/design-review.md` |

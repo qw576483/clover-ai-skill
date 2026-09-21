@@ -1237,7 +1237,7 @@ description: Clover 全栈开发 skill。**规则层：一字不许违**（**第
 - `patterns/game-demo.md` — 一键出游戏 SOP（素材四级链 / 原版系统清单 / 验收自证四连）★ 先读它
 - `patterns/client/app-flow.md` — 启动与流程编排（启动画面→主菜单→创角/选角→读条→暂停→回主菜单）★ 涉及菜单先读
 - `patterns/client/3d-mmo-basics.md` — 3D MMO 常规业务逻辑清单（移动同步/本地碰撞/相机避障/断线重登）★ 做 3D 先读
-- `patterns/engine-fix.md` — **改引擎 SOP**（有 bug 就改：定位→最小修复→回归用例→记 E 编号）★ 遇引擎缺陷先读
+- `patterns/engine-fix.md` — **改引擎 SOP**（有 bug 就改：定位→最小修复→回归用例→根因写进代码注释）★ 遇引擎缺陷先读
 - `patterns/multi-agent.md` — 复杂项目多 agent 编排（agent 禁止再开子 agent）
 
 **工程与文档：**
