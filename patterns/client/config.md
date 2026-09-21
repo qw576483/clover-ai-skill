@@ -41,7 +41,8 @@ client/Assets/Scripts/Core/ClientConfig.cs   # 唯一加载器（静态类 Cfg�
   },
   "game": {
     "default_nick": "玩家一",
-    "poll_interval_ms": 50
+    "poll_interval_ms": 50,
+    "res_root": ""
   }
 }
 ```
@@ -64,6 +65,7 @@ client/Assets/Scripts/Core/ClientConfig.cs   # 唯一加载器（静态类 Cfg�
 ```csharp
 using System;
 using System.IO;
+using CloverEngine;        // Game.Logger（注意：本文件里 Cfg.Game 与引擎门面 Game 同名）
 using UnityEngine;
 
 namespace {Name}
@@ -93,6 +95,7 @@ namespace {Name}
     {
         public string default_nick = "玩家一";
         public int poll_interval_ms = 50;
+        public string res_root = "";             // 资源根；留空 = 纯 Resources 模式（CloverRes.Init 的入参）
     }
 
     [Serializable]
@@ -124,13 +127,16 @@ namespace {Name}
                 var path = FilePath;
                 if (!File.Exists(path))
                 {
-                    Game.Logger.Warn("Cfg", $"未找到 {path}，使用内置默认值");
+                    // ⛔ 必须写全限定 CloverEngine.Game：本类的静态属性 Game（GameSection）会遮蔽它，
+                    //    写成 Game.Logger 会解析成 Cfg.Game.Logger ⇒ CS1061 编译不过。
+                    CloverEngine.Game.Logger.Warn("Cfg", $"未找到 {path}，使用内置默认值");
                     return new RootSection();
                 }
                 var root = JsonUtility.FromJson<RootSection>(File.ReadAllText(path));
                 if (root == null)
                 {
-                    Game.Logger.Error("Cfg", $"解析失败（空/格式错误）: {path}，回退默认值");
+                    // 同上：全限定名。
+                    CloverEngine.Game.Logger.Error("Cfg", $"解析失败（空/格式错误）: {path}，回退默认值");
                     return new RootSection();
                 }
                 // JsonUtility 对 json 里缺失的字段会留 null，逐段兜底防下游空引用

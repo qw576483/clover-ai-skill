@@ -51,7 +51,7 @@ if ($pci.Count -eq 0) {
       $fail++
       $hint = switch ($code) {
         22 { 'CM_PROB_DISABLED -- the device is DISABLED (someone/something turned it off)' }
-        43 { 'CM_PROB_FAILED_START -- driver reported failure / crashed' }
+        43 { 'CM_PROB_FAILED_POST_START -- driver reported a problem; Windows stopped the device' }
         10 { 'CM_PROB_FAILED_START -- driver failed to start' }
         31 { 'CM_PROB_FAILED_LOAD -- driver failed to load' }
         28 { 'CM_PROB_FAILED_INSTALL -- no driver installed' }
@@ -105,7 +105,12 @@ if (-not (Test-Path $dumpDir)) {
   } else {
     $byName = @{}
     foreach ($d in $dumps) {
-      $n = ($d.Name -replace '\.\d+\.dmp$', '')
+      # Normalise the exe label: Windows appends "(N)" and/or ".<pid>" when a dump name
+      # repeats; without stripping them the SAME process is counted under several names
+      # (measured: WindowsPackageManagerServer.exe showed up twice, each labelled "x4").
+      # Strip repeatedly -- the suffixes can nest as "name.exe(1).1234.dmp".
+      $n = $d.Name -replace '\.dmp$', ''
+      while ($n -match '(\(\d+\)|\.\d+)$') { $n = $n -replace '(\(\d+\)|\.\d+)$', '' }
       if ($byName.ContainsKey($n)) { $byName[$n]++ } else { $byName[$n] = 1 }
     }
     $hot = @($byName.GetEnumerator() | Where-Object { $_.Value -ge 3 } | Sort-Object Value -Descending)
@@ -121,7 +126,31 @@ if (-not (Test-Path $dumpDir)) {
   }
 }
 
-# --- 5) verdict --------------------------------------------------------------
+# --- 5) antivirus interference (informational only, never fails the gate) -----
+#     Why: on this machine the 360-family tools are the usual cause of "the editor
+#     is slow" / "the build fails for no reason" / "imported files vanish". Same
+#     spirit as the gates above -- know the machine before blaming the code.
+#     SecurityCenter2 is absent on Server SKUs => the try/catch keeps it quiet;
+#     the process scan catches portable builds that register nothing.
+$avReg = @()
+try {
+  $avReg = @(Get-CimInstance -Namespace 'root/SecurityCenter2' -ClassName AntiVirusProduct -ErrorAction SilentlyContinue |
+             ForEach-Object { $_.displayName } | Where-Object { $_ })
+} catch { $avReg = @() }
+$avProc = @()
+foreach ($p in @('360tray','360sd','360Safe','ZhuDongFangYu','QQPCTray','QQPCRTP','kxetray','avp','MsMpEng','HipsTray','HipsDaemon')) {
+  if (@(Get-Process -Name $p -ErrorAction SilentlyContinue).Count -gt 0) { $avProc += $p }
+}
+if ($avReg.Count -eq 0 -and $avProc.Count -eq 0) {
+  Say 'PASS' 'antivirus' 'no registered AV product and no known AV process'
+} else {
+  $bits = @()
+  if ($avReg.Count -gt 0)  { $bits += 'registered: ' + ($avReg -join ', ') }
+  if ($avProc.Count -gt 0) { $bits += 'running: ' + ($avProc -join ', ') }
+  Say 'WARN' 'antivirus' (($bits -join ' | ') + '  -- if editing / building is slow or imported files vanish, pause real-time protection and retest')
+}
+
+# --- 6) verdict --------------------------------------------------------------
 Write-Output ''
 if ($fail -gt 0) {
   Write-Output ("ENV-FAIL ({0} problem(s)) -- fix the machine BEFORE judging 3D performance:" -f $fail)

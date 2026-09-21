@@ -386,7 +386,7 @@ catch (CloverCallException ex)
 >用户反复反馈键鼠输入不好使时，**禁止**凭猜去改 UI 布局、RectTransform、CanvasScaler、
 > 射线、DPI 缩放或 MaximizeOnPlay —— 历史证明这些都不是原因，全是白改。
 > **必须**按顺序做这两件事：
-> 1. 让用户贴出 Console 里 `[Clover.Input]` 那一行（它会直接告诉你当前生效的输入后端与可用性）；
+> 1. 让用户贴出 Console 里 `[Input]` 那一行（它会直接告诉你当前生效的输入后端与可用性）；
 > 2. 对照本文末尾的**排查清单**逐条核对（重点是 `activeInputHandler` 的取值   
 >    和「改完是否重启了 Unity」）。
 >一句话记忆：**键鼠无响应先查输入后端，不必排查 UI。**

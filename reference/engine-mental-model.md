@@ -23,7 +23,7 @@
 
 ```csharp
 Game.Launch(new GameConfig { ServerAddr = "...:8002", ... });
-CloverRes.Init(Cfg.Game.res_root);      // 资源（不做就等着 null）
+CloverRes.Init(Cfg.Game.res_root);      // 资源：root 留空 = 纯 Resources 模式（不做就等着 null）
 CloverInput.Init();                     // 输入 + EventSystem
 CloverNet.Init(Cfg.Server.addr, Cfg.Server.udp_addr);   // 网络
 // 之后才是 Game.UI.Open<XxxPanel>() / 业务订阅

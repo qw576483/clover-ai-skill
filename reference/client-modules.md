@@ -43,6 +43,18 @@
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+> ⛔ **图里列的是"门面上可用"，不是"已经初始化好了"。** 其中这几个**必须业务显式 Init**，
+> 不调就是**静默失效**（不是编译错，是运行时什么都没发生）：
+>
+> | 模块 | 必须调 | 不调的后果 |
+> |---|---|---|
+> | `Net` `Sync` `Schema` `Alert` `CloverScene` `FrameRoom` `LanBrowser` | `CloverNet.Init(addr, udpAddr)` | 完全没网络（静默） |
+> | `Res` | `CloverRes.Init(root)` | `Game.Res` 为 **null** ⇒ 模型/贴图静默加载失败、加载点 NRE |
+> | `Table` `Localization` | `CloverData.InitDataTable(dir)` / `InitLocalization(dir, lang)` | 没配表 |
+> | `Input` | `CloverInput.Init()` | 同时创建 EventSystem + InputModule；**不调 ⇒ UI 点击不响应** |
+>
+> 顺序与实测踩坑 → `reference/engine-mental-model.md` §1。
+
 ## 能力域划分
 
 | 域 | 模块 | 说明 |
