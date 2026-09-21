@@ -87,7 +87,41 @@ if (-not (Test-Path $editorLog)) {
   }
 }
 
-# --- 4) verdict --------------------------------------------------------------
+# --- 4) crash storms: the SAME exe dying over and over ------------------------
+#     Why: on 2026-09-21 this machine wrote 8 SaveCheck.exe dumps in 24h (plus a
+#     Unity.exe dump) while the project was being worked on. "It keeps crashing"
+#     cannot be attributed to the project until the crash source is known -- same
+#     spirit as the software-rendering gate above: prove the machine first.
+#     Windows writes these dumps automatically (no extra tooling needed).
+$dumpDir = Join-Path $env:LOCALAPPDATA 'CrashDumps'
+if (-not (Test-Path $dumpDir)) {
+  Say 'INFO' 'crash-dumps' ('no ' + $dumpDir + ' -- nothing to check')
+} else {
+  $cut   = (Get-Date).AddHours(-24)
+  $dumps = @(Get-ChildItem $dumpDir -Filter *.dmp -File -ErrorAction SilentlyContinue |
+             Where-Object { $_.CreationTime -gt $cut })
+  if ($dumps.Count -eq 0) {
+    Say 'PASS' 'crash-dumps' 'no new *.dmp in the last 24h'
+  } else {
+    $byName = @{}
+    foreach ($d in $dumps) {
+      $n = ($d.Name -replace '\.\d+\.dmp$', '')
+      if ($byName.ContainsKey($n)) { $byName[$n]++ } else { $byName[$n] = 1 }
+    }
+    $hot = @($byName.GetEnumerator() | Where-Object { $_.Value -ge 3 } | Sort-Object Value -Descending)
+    foreach ($k in @($byName.GetEnumerator() | Sort-Object Value -Descending)) {
+      Say 'INFO' 'crash-dump' ($k.Key + ' x' + $k.Value + ' in the last 24h')
+    }
+    if ($hot.Count -gt 0) {
+      $fail++
+      Say 'FAIL' 'crash-storm' ((@($hot | ForEach-Object { $_.Key + ' x' + $_.Value }) -join ', ') + '  => repeated crashes; identify the culprit process first, do NOT blame the project code')
+    } else {
+      Say 'PASS' 'crash-dumps' ('' + $dumps.Count + ' dump(s) in 24h, no single exe crashing 3+ times')
+    }
+  }
+}
+
+# --- 5) verdict --------------------------------------------------------------
 Write-Output ''
 if ($fail -gt 0) {
   Write-Output ("ENV-FAIL ({0} problem(s)) -- fix the machine BEFORE judging 3D performance:" -f $fail)

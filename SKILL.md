@@ -186,7 +186,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 - **判据**：能一句话回答「横/竖 + 画布参考分辨率 + 哪些面板按竖版重排」，且成品截图与 A 官方截图**同机位并排逐项 `一致`**（→ §0.1 ② / §5）。
 
 ① **判形态**（单机 / 网游 / 单机+联网）：原版是单机就做单机 ⇒ ⛔ 不建 `server/`、⛔ 不调 `CloverNet.Init`、⛔ 不查服务器环境；判一次、写进规格顶部、全程照做。
-② **环境自检（跑一条命令，别靠记）**：`powershell -NoProfile -ExecutionPolicy Bypass -File tools/env-check.ps1` —— 一次查两样：**杀软**（360 及同类；不确定 = 按没关处理）与**图形设备**（物理卡是否 `Code 22/10/43`、Unity 是否落到 `Microsoft Basic Render Driver` 软光栅）。**exit 1 ⇒ 停**，先修环境（修法脚本末尾自己打），⛔ 此机器上一切"卡 / 掉帧 / 性能"结论**无效**。脚本 = 本 skill `scripts/env-check.ps1`，建项目时复制到 `tools/`。
+② **环境自检（跑一条命令，别靠记）**：`powershell -NoProfile -ExecutionPolicy Bypass -File tools/env-check.ps1` —— 一次查**三样**：**杀软**（360 及同类；不确定 = 按没关处理）· **图形设备**（物理卡是否 `Code 22/10/43`、Unity 是否落到 `Microsoft Basic Render Driver` 软光栅）· **崩溃风暴**（近 24h `%LOCALAPPDATA%\CrashDumps` 里**同一 exe 崩溃 ≥3 次** ⇒ 先查是哪个进程，⛔ **别把"一直崩"归因到你的代码** —— 实测本机一天出现 8 个 `SaveCheck.exe` dump）。**exit 1 ⇒ 停**，先修环境（修法脚本末尾自己打），⛔ 此机器上一切"卡 / 掉帧 / 性能"结论**无效**。脚本 = 本 skill `scripts/env-check.ps1`，建项目时复制到 `tools/`。
 ③ 建完 `client/` + 把 `com.unity.pipeline` 写进 `Packages/manifest.json` 后，**让用户自己开编辑器**；用户不开 ⇒ **停**（⛔ 不许自己 `unity run` / `-batchmode` 顶替）。
 ④ **素材先用参考物自己的**：穷尽 = ≥4 轮关键词（中英各半）× ≥3 类站点 × 换过格式与打包；穷尽前 ⛔ 不许上通用兜底素材。
 - **闸门 2b**：每条 `unity` 命令都要在**工程目录**里跑，或每条都带 `--project-path <项目根>/client`（⛔ 不许只带第一条、⛔ 不许在工作区根跑）；`unity status` 当"编辑器活着"的证据时必须同时给工程路径。
