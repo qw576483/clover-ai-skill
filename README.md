@@ -2,6 +2,10 @@
 
 Clover 引擎的 **AI 交付 skill**：把「做游戏 / 写业务代码 / 改引擎 / 配表 / 多 agent 编排 / 交付验收」固化成可执行的规则、范式与脚手架，供 AI 编码助手（CodeBuddy / Claude / Cursor 等）按章施工。
 
+## 从没用过 Clover？
+
+照着 **[新手指南：用 AI 从零做一个 Clover 游戏](https://github.com/qw576483/clover-doc/blob/main/ai/ai-quick-start.md)** 走一遍即可 —— 从装 Unity 6 到让 AI 开出第一个工程，全程不用自己写代码。
+
 ## 内容结构
 
 | 路径 | 内容 |
