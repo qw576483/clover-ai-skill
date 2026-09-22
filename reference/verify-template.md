@@ -1,6 +1,6 @@
 # 一键复检脚本模板（`tools/verify.ps1`）
 
-> **为什么要有这个文件**：§1.11 的 8 条机械自检 + §1.12 的证据契约，如果只写成"规则"，
+> **为什么要有这个文件**：`reference/rules-full.md` 的「收尾机械自检」 的 8 条机械自检 + `reference/rules-full.md` 的「判定权与证据契约」 的证据契约，如果只写成"规则"，
 > 执行者会忘、会解释着绕过去。**做成脚本，它每次都会跑，不依赖任何人的记性。**
 > **能算出来的东西，不要写成规则 —— 写成脚本。**
 
@@ -9,8 +9,8 @@
 1. 新项目开工时把下面的骨架复制成 **`<项目根>/tools/verify.ps1`**（编码用 **UTF-8 无 BOM**）。
 2. 交付前跑一次：`powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify.ps1`
 3. **逐行读输出**，只允许三种结论：`PASS` / `FAIL` / `HUMAN-ONLY`。
-   - 出现任何 `FAIL` ⇒ **不许出现"完成 / 交付 / 实测通过"字样**（§1.11）。
-   - `HUMAN-ONLY` 是"只能由人或多模态判"的项，**必须由人过目**，不许执行者代签（§1.12 第 1、7 条）。
+   - 出现任何 `FAIL` ⇒ **不许出现"完成 / 交付 / 实测通过"字样**（见 `SKILL.md`「交付清单」的"交付前跑一次 `tools/verify.ps1`"）。
+   - `HUMAN-ONLY` 是"只能由人或多模态判"的项，**必须由人过目**，不许执行者代签（见 `SKILL.md`「取证清单」的"判定权三分"与"证据必须有锚点 + 分级"）。
 4. 用户**只跑这一次**，不陪执行者逐点调参。
 
 ## ⛔ 写这个脚本时的两个硬坑（实测踩过，必须在模板里避开）
@@ -38,7 +38,7 @@
 - `FAIL no-escaped-artifacts`（第 13 条）：一次性产物落到了**工程外**（宿主会话产物目录 / 工作区根）——
   **工程内扫描永远看不到它**，所以这一类只能靠"**区域清单 + 工程标识**"去认（走法见第 13 条）。
 
-## 必查项（对应 §1.11 八条 + §1.12 契约）
+## 必查项（对应 `reference/rules-full.md` 的「收尾机械自检」 八条 + `reference/rules-full.md` 的「判定权与证据契约」 契约）
 
 | # | 查什么 | 判据 |
 |---|---|---|
@@ -47,25 +47,107 @@
 | 3 | 验收表自洽（汇总数字 vs 表体行数） | 相等 |
 | 4 | 「允许的差异」每行含"为什么 / 出处 / 何时消除" | 缺任一 ⇒ FAIL |
 | 5 | 路径可达（验收表里的 `路径:行`、截图路径） | 全部存在 |
-| 6 | **证据新鲜度**（§1.12 第 3 条）—— **按因果作废，不许一改就全废** | 每条"已实测"引用的产物 **mtime 晚于**被验证代码/资产；**作废范围 = 这次改动真能影响到的那几行**（同模块 / 同一功能链 / 同一屏），⛔ **不是"工程里任何文件一变就全量作废"**（实测：改一行 UI 文案触发 59 张截图全量重拍，一个字的成本被放大成几十张图） |
-| 6c | **mtime 类红项的"具名裁决"登记处**（§1.11 第 4 条：例外必须有登记处） | 第 6 项与本项（`freeze-before-capture`）这类**按 mtime 机械判**的检查，允许一条**具名裁决**：在 `.ai-tmp/test/dispatch-log.tsv` 写 `# adjudicated: <检查名> -- <理由（≥12 字）>` ⇒ 该检查降为 `HUMAN-ONLY` 并**把理由打印出来**。⛔ 理由为空/短于 12 字 ⇒ 忽略、仍然 FAIL；⛔ 不许拿它当"消红手段"—— 它只负责把"**人已经判过的假阳性**（例：只改了注释的 1 行、而行为联络图不可能因此变化；或分层改造期实现文件持续变动）"登记在案，便于复查 |
-| 6b | **上一条的"范围表"必须被两个地方共用** | 本项里那张 **area/panel → 文件** 映射表（见下方骨架的 `$areaRoots` / `$panelOf`），**同时也是"重采哪些场景"的唯一数据源** | **重采工具只接受范围表算出来的场景**（§1.13 第 6 条）；⛔ 不许出现"闸门按因果判、重采却全量跑" —— 那正是"规则一条、动作另一条"，必然被最省事的写法击败（实测：4 个点状 bug 触发 21 个场景全量重拍） |
+| 6 | **证据新鲜度**（`reference/rules-full.md` 的「判定权与证据契约」 第 3 条）—— **按因果作废，不许一改就全废** | 每条"已实测"引用的产物 **mtime 晚于**被验证代码/资产；**作废范围 = 这次改动真能影响到的那几行**（同模块 / 同一功能链 / 同一屏），⛔ **不是"工程里任何文件一变就全量作废"**（实测：改一行 UI 文案触发 59 张截图全量重拍，一个字的成本被放大成几十张图） |
+| 6c | **mtime 类红项的"具名裁决"登记处**（`reference/rules-full.md` 的「收尾机械自检」 第 4 条：例外必须有登记处） | 第 6 项与本项（`freeze-before-capture`）这类**按 mtime 机械判**的检查，允许一条**具名裁决**：在 `.ai-tmp/test/dispatch-log.tsv` 写 `# adjudicated: <检查名> -- <理由（≥12 字）>` ⇒ 该检查降为 `HUMAN-ONLY` 并**把理由打印出来**。⛔ 理由为空/短于 12 字 ⇒ 忽略、仍然 FAIL；⛔ 不许拿它当"消红手段"—— 它只负责把"**人已经判过的假阳性**（例：只改了注释的 1 行、而行为联络图不可能因此变化；或分层改造期实现文件持续变动）"登记在案，便于复查 |
+| 6b | **上一条的"范围表"必须被两个地方共用** | 本项里那张 **area/panel → 文件** 映射表（见下方骨架的 `$areaRoots` / `$panelOf`），**同时也是"重采哪些场景"的唯一数据源** | **重采工具只接受范围表算出来的场景**（`reference/rules-full.md` 的「改动回路：批次流水线」 第 6 条）；⛔ 不许出现"闸门按因果判、重采却全量跑" —— 那正是"规则一条、动作另一条"，必然被最省事的写法击败（实测：4 个点状 bug 触发 21 个场景全量重拍） |
 | 7 | 一键复检入口存在（本脚本自身） | 存在且能跑 |
 | 8 | **原版对照表存在**（§2：`策划/对照表.md`） | 存在，且每行有"原版值(出处) / 我们的值 / 差值" |
-| 9 | 无交接/进度类文档（§1.5 第 8 条） | `docs/交接-*.md` / `NEXT.md` / `docs/进度*.md` 均不存在 |
-| 10 | 引擎自称（§1.6）—— **判据是"渲染出来的"，不是"源码里有没有"** | ① 源码/文档里**逐字**是 `clover-engine`；② **首页画面上**那一行是 `by clover-engine`，判据取**运行时 UI 节点树里那个标签的实际文本 + 实际字体**（或对截图做字形比对），⛔ 不是 grep 源码字符串 —— **源码里有 ≠ 画面上有、也 ≠ 画面上是这个大小写**；③ **大小写也算**：像素字体只有大写时会渲染成 `BY CLOVER-ENGINE`，那**不合规**（§1.6 只说常量/环境变量可用全大写）；要逐字就要给它一个有小写的字体或字形 |
+| 9 | 无交接/进度类文档（`reference/rules-full.md` 的「收尾闸门」 第 8 条） | `docs/交接-*.md` / `NEXT.md` / `docs/进度*.md` 均不存在 |
+| 10 | 引擎自称（`reference/rules-full.md` 的「品牌与署名」）—— **判据是"渲染出来的"，不是"源码里有没有"** | ① 源码/文档里**逐字**是 `clover-engine`；② **首页画面上**那一行是 `by clover-engine`，判据取**运行时 UI 节点树里那个标签的实际文本 + 实际字体**（或对截图做字形比对），⛔ 不是 grep 源码字符串 —— **源码里有 ≠ 画面上有、也 ≠ 画面上是这个大小写**；③ **大小写也算**：像素字体只有大写时会渲染成 `BY CLOVER-ENGINE`，那**不合规**（`reference/rules-full.md` 的「品牌与署名」 只说常量/环境变量可用全大写）；要逐字就要给它一个有小写的字体或字形 |
 | 11 | **检查项的作用域 / 时间窗**（防假阳性） | 只判"**本次任务**产生的痕迹"；历史残留（很久以前的目录 / 文件 / 会话）**不计 FAIL** |
-| 12 | **验收表是否标了类别**（`SKILL.md` §2 硬性判定第 3 条） | 每行都有 `数值类` / `表现类`；`表现类` 的行**能在联络图索引表里查到格号** |
-| 13 | **工程外产物**（`SKILL.md` §1.8：一次性产物只许 `<项目根>/.ai-tmp/test/`） | **工作区根 + 宿主会话产物目录**里，"24h 内新建且名字带本工程标识"的文件数 = 0 |
-| 14 | **采样器自检**（`SKILL.md` §1.13 第 5 条：跑场景**前**一秒就能查完的东西） | `.ai-tmp/**/*.ps1` 每个文件：**语法 0 错**，且 **非 ASCII 字节 = 0 或带 BOM**（无 BOM + CJK ⇒ PS 5.1 按 ANSI 解析 ⇒ `-match` 静默失效 ⇒ 白等满超时） |
-| 15 | **实现由执行者产出**（`SKILL.md` §5 开工闸门 / §1.11 第 8 条） | 本次时间窗内改动的实现文件，**逐个**能在 `.ai-tmp/test/dispatch-log.tsv` 里找到派活行（文件落在该行声明的范围内 **且** 派活时间 ≤ 文件 mtime）；**对不上 ⇒ 主 agent 自己动手了**。**例外（按 §5 的"小改动"例外）**：主 agent 直接做的小改动用一行 `# direct-fix: <路径> -- <理由>; 用户原话="..."` 留痕即算通过（**⛔ 不许拿它给多文件/改数据格式/新增行为的改动洗白**） |
-| 16 | **进 Play 必须记账（⛔ 不设次数上限）**（`SKILL.md` §2 / §0.1 ①） | `.ai-tmp/test/play-log.tsv`：**每进一次 Play 一行**（`ISO时间 / 执行者 / 片名 / 为什么必须进这条链`）。判据：① **第 4 列非空**（写不出理由 ⇒ 说明本可以用离线断言）；② 项目有实机证据但**没有账本** ⇒ FAIL（没记账 = 无从判定"为什么进"）。⛔ **本项不判"行数多不多"** —— 曾经的"行数 ≤ 预算（默认 5）"被读成了**停工的许可证**（验到第 5 次就收手、剩下不验），**已废除**：**没有 `$playBudget`、没有裁决通道、没有"用尽即停"**。**为什么改成这样**：用户的判断是"**约束完，ai 更偷懒了**" —— 次数限额省下的重复劳动，远小于"该验不验、验到一半收手"的代价 |
-| 17 | **采集后冻结**（`SKILL.md` §1.13 **④**：采集即冻结，之后再改代码 ⇒ 证据作废） | **本批次证据里最早那张的 mtime = T0**，其中"本批次证据" = **最新那张联络图索引 `*.index.tsv` 引用到的 png**（无索引才退回"窗口内新增的 `Screenshots/*.png`"）；**T0 之后不许再有实现文件**（`client/Assets/Scripts/**`、引擎 `Runtime/**`）被改动。⛔ **不许**直接用"6h 窗口内最旧的新 png"当 T0 —— 它会把**历史批次**的图算进来 ⇒ **必然误报 FAIL**（实测踩过）。违反 ⇒ FAIL 并列文件。**为什么要有它**：实测"先采证据、后修代码"会让同一批证据反复作废（同一条链被采了 3 遍），而旧版只规定"改后只重采受影响行"、**没有规定"采集必须在实现冻结之后"** |
-| 18 | **证据经济性**（`SKILL.md` §1.13 T0：⛔ 不许逐行截图、不许逐项进出 Play） | 验收表 `表现类` 行数 ≥ 1 时：① **必须存在联络图索引**（`Screenshots/*.index.tsv`，格号 ↔ 行号）；② **没进任何联络图**的独立 `png` 数 ≤ `max(12, 表现类行数 × 2)`。超出 ⇒ FAIL（逐行截图嫌疑）。⛔ **被 `*.index.tsv` 引用过的 png = 联络图的组成部分**，必须从计数里排除（否则瓦片被重复计数 ⇒ **误报**，实测 65 > 46 而其实只有 32 张散图）。**为什么要有它**：把 T0 从"祈使句"变成**可算的数字** —— 否则"验收表 47 行"永远会被读成"要拍 47 张图" |
-| 19 | **渲染设备不是软件渲染**（`SKILL.md` §6 闸门 ②；配方 `experience/perf-triage.md`） | 读 `client/Logs/Editor.log` 里 Unity 启动时写的 `[D3D12 Device Filter] Device Name:`（或 `Renderer:`）。**命中 `Microsoft Basic Render Driver` / `Basic Display` / `WARP` ⇒ FAIL** —— 那是纯 CPU 软件光栅化，**此时任何"帧率 / 卡顿"结论都无效**（实测：GPU 255ms/帧、3.5 fps，而业务脚本只占 1.6ms）。日志里没有这一行 ⇒ `HUMAN-ONLY`（改用手工 `SystemInfo.graphicsDeviceName`）。**为什么要有它**：2026-09-20 实测为定位"卡"跑满 6 次 Play，而根因就在第 1 条命令里；本条把"先证伪环境"从祈使句变成**能测红的一行** |
+| 12 | **验收表是否标了类别**（`SKILL.md` 的「取证清单」第 9 条） | 每行都有 `数值类` / `表现类`；`表现类` 的行**能在联络图索引表里查到格号** |
+| 13 | **工程外产物**（`SKILL.md` 的「派活清单」.8：一次性产物只许 `<项目根>/.ai-tmp/test/`） | **工作区根 + 宿主会话产物目录**里，"24h 内新建且名字带本工程标识"的文件数 = 0 |
+| 14 | **采样器自检**（`SKILL.md` 的「取证清单」 第 5 条：跑场景**前**一秒就能查完的东西） | `.ai-tmp/**/*.ps1` 每个文件：**语法 0 错**，且 **非 ASCII 字节 = 0 或带 BOM**（无 BOM + CJK ⇒ PS 5.1 按 ANSI 解析 ⇒ `-match` 静默失效 ⇒ 白等满超时） |
+| 15 | **实现由执行者产出**（`SKILL.md` 的「初始化清单」第 11 条 / `reference/rules-full.md` 的「收尾机械自检」 第 8 条） | 本次时间窗内改动的实现文件，**逐个**能在 `.ai-tmp/test/dispatch-log.tsv` 里找到派活行（文件落在该行声明的范围内 **且** 派活时间 ≤ 文件 mtime）；**对不上 ⇒ 主 agent 自己动手了**。**例外（按 §5 的"小改动"例外）**：主 agent 直接做的小改动用一行 `# direct-fix: <路径> -- <理由>; 用户原话="..."` 留痕即算通过（**⛔ 不许拿它给多文件/改数据格式/新增行为的改动洗白**） |
+| 16 | **进 Play 必须记账（⛔ 不设次数上限）**（`SKILL.md` 的「交付清单」第 7 条） | `.ai-tmp/test/play-log.tsv`：**每进一次 Play 一行**（`ISO时间 / 执行者 / 片名 / 为什么必须进这条链`）。判据：① **第 4 列非空**（写不出理由 ⇒ 说明本可以用离线断言）；② 项目有实机证据但**没有账本** ⇒ FAIL（没记账 = 无从判定"为什么进"）。⛔ **本项不判"行数多不多"** —— 曾经的"行数 ≤ 预算（默认 5）"被读成了**停工的许可证**（验到第 5 次就收手、剩下不验），**已废除**：**没有 `$playBudget`、没有裁决通道、没有"用尽即停"**。**为什么改成这样**：用户的判断是"**约束完，ai 更偷懒了**" —— 次数限额省下的重复劳动，远小于"该验不验、验到一半收手"的代价 |
+| 17 | **采集后冻结**（`SKILL.md` 的「取证清单」 **④**：采集即冻结，之后再改代码 ⇒ 证据作废） | **本批次证据里最早那张的 mtime = T0**，其中"本批次证据" = **最新那张联络图索引 `*.index.tsv` 引用到的 png**（无索引才退回"窗口内新增的 `Screenshots/*.png`"）；**T0 之后不许再有实现文件**（`client/Assets/Scripts/**`、引擎 `Runtime/**`）被改动。⛔ **不许**直接用"6h 窗口内最旧的新 png"当 T0 —— 它会把**历史批次**的图算进来 ⇒ **必然误报 FAIL**（实测踩过）。违反 ⇒ FAIL 并列文件。**为什么要有它**：实测"先采证据、后修代码"会让同一批证据反复作废（同一条链被采了 3 遍），而旧版只规定"改后只重采受影响行"、**没有规定"采集必须在实现冻结之后"** |
+| 18 | **证据经济性**（`SKILL.md` 的「取证清单」 T0：⛔ 不许逐行截图、不许逐项进出 Play） | 验收表 `表现类` 行数 ≥ 1 时：① **必须存在联络图索引**（`Screenshots/*.index.tsv`，格号 ↔ 行号）；② **没进任何联络图**的独立 `png` 数 ≤ `max(12, 表现类行数 × 2)`。超出 ⇒ FAIL（逐行截图嫌疑）。⛔ **被 `*.index.tsv` 引用过的 png = 联络图的组成部分**，必须从计数里排除（否则瓦片被重复计数 ⇒ **误报**，实测 65 > 46 而其实只有 32 张散图）。**为什么要有它**：把 T0 从"祈使句"变成**可算的数字** —— 否则"验收表 47 行"永远会被读成"要拍 47 张图" |
+| 19 | **渲染设备不是软件渲染**（`SKILL.md` 的「初始化清单」 闸门 ②；配方 `experience/perf-triage.md`） | 读 `client/Logs/Editor.log` 里 Unity 启动时写的 `[D3D12 Device Filter] Device Name:`（或 `Renderer:`）。**命中 `Microsoft Basic Render Driver` / `Basic Display` / `WARP` ⇒ FAIL** —— 那是纯 CPU 软件光栅化，**此时任何"帧率 / 卡顿"结论都无效**（实测：GPU 255ms/帧、3.5 fps，而业务脚本只占 1.6ms）。日志里没有这一行 ⇒ `HUMAN-ONLY`（改用手工 `SystemInfo.graphicsDeviceName`）。**为什么要有它**：2026-09-20 实测为定位"卡"跑满 6 次 Play，而根因就在第 1 条命令里；本条把"先证伪环境"从祈使句变成**能测红的一行** |
 | 20 | **T0 覆盖矩阵**（`SKILL.md` T0；口径 `patterns/full-coverage-audit.md`） | 五条子判据：① `coverage-rows` = `策划/实体清单.tsv`（脚本枚举产出）行数 **==** `策划/验收表.md` 判定行数（**缺清单 ⇒ FAIL**）；② `coverage-filled` = 每行都有 `一致`/`不一致` 判定（**零空行**）；③ `coverage-diff` = `不一致` 计数 **= 0**；④ `coverage-dimensions` = **12+3 个维度代号（D1..D12/S1..S3）在清单里各出现 ≥1 次**（缺维度 = 未判）。**为什么要有它**：只要"检查过"不是一个数，工作就会退化成**症状驱动**（用户报一条修一条、没报的全漏），而**漏检没有代价** |
 | 21 | **规模档位已声明**（`SKILL.md` T0；档位表 `patterns/full-coverage-audit.md` §9.5） | `策划/策划案/*.md` 顶部必须写明档位 `S`（1-way）/ `M`（2-way pairwise）/ `L`（3-way + 全状态全边界）；**判一次，只许上调**。**为什么要有它**：一个 3 天 demo 套 AAA 级全量穷举是**过杀**（NIST：2~3-way 已覆盖绝大多数缺陷）；反过来"没声明档位"就等于**默认全量**，会被执行者读成"做不完"从而整体规避 |
-| 22 | **修 bug 的影响域已登记**（`SKILL.md` §1；口径 `patterns/full-coverage-audit.md` §9） | `.ai-tmp/test/impact-radius.tsv` 每行 ≥3 列：`维度 / 因果链 / 受影响行`；文件不存在 ⇒ `HUMAN-ONLY`（在回报里写清是"本次无 bug 修复"还是"没登记"）。**为什么要有它**：修 bug 既**不该全量扫**（成本爆炸），也**不能只修症状**（拆东墙补西墙 —— 实测：为开门把门板从网格摘除，直接变成"该有门却没有门"）；唯一正确口径是**显式写出爆炸半径** |
+| 22 | **修 bug 的影响域已登记**（`SKILL.md` 的「派活清单」；口径 `patterns/full-coverage-audit.md` §9） | `.ai-tmp/test/impact-radius.tsv` 每行 ≥3 列：`维度 / 因果链 / 受影响行`；文件不存在 ⇒ `HUMAN-ONLY`（在回报里写清是"本次无 bug 修复"还是"没登记"）。**为什么要有它**：修 bug 既**不该全量扫**（成本爆炸），也**不能只修症状**（拆东墙补西墙 —— 实测：为开门把门板从网格摘除，直接变成"该有门却没有门"）；唯一正确口径是**显式写出爆炸半径** |
+| 23 | **证据锚点可解析**（`reference/anti-gaming.md` 三） | 每条判定行带 `anchor:` 指向**机器产物**；① 该文件存在；② 该位置内容**匹配该行期望值**（不是"有内容"就算过）；③ ⛔ 指向 `md` / 回报 / 代码注释 ⇒ FAIL（那等于没有锚点）。**为什么要有它**：闸门判不了"这段叙述是不是编的" —— 实测最贵的一次是连续几十次拿到「图像已省略」的占位文本，仍然逐条写出了画面描述。**产物可以是编的；指向真实运行记录第 N 行的锚点很难编** |
+| 24 | **闸门版本同步**（`reference/anti-gaming.md` 五；脚本 `scripts/gate-sync.ps1`） | 本项目实现的检查项 **⊇** 模板 `GATE-ITEMS` 要求的清单。**为什么要有它**：模板声明了 22 项，几个项目**分别只落了 18 / 19 项且子集不同**，连名字都漂移了（`play-ledger` vs `play-budget`、`handoff-doc-found` vs `no-handoff-docs`）⇒ **规则写完了、闸门没接上，而且没人发现**。这是"谁来维护闸门"这个问题的唯一机械答案 |
+| 25 | **判据防凑数**（`reference/anti-gaming.md` 二） | 覆盖矩阵的每一行必须能在某个探针输出里**按行 id 命中**；⛔ 只比行数 ⇒ 可被"把两边凑相等"通过。**为什么要有它**：第 20 项判的是**结果**（两个数字相等），而**凑相等比真的逐行检查一遍便宜太多** —— 一旦指标成为目标，它就不再是好指标 |
+| 26 | **取证截图不许进 `client/Assets/`**（`SKILL.md` 的「派活清单」.8 第 6 条） | `client/Assets/Screenshots` **目录存在 ⇒ FAIL**。⛔ **不许按"`client/Assets/**` 下有 png 就 FAIL"判** —— 实测三个项目各有 1 个**正式美术** png，那样判是**假红**。**为什么要有它**：某项目 197 张取证截图落在 `client/Assets/Screenshots/`（6.4 MB），交付前才清理、并回头改了验收表 18 处引用。**已过两次自检**（真实项目基线 PASS + 注入 `Screenshots/` 后 FAIL） |
+
+<!-- GATE-ITEMS-BEGIN -->
+# name | alias | required|planned | one-line what
+stray-temp-files||required|one-off .cs outside .ai-tmp/test = 0
+hard-rules||required|banned API hits, each registered in the allowed-diff table
+acceptance-table||required|summary row count == body row count
+allowed-diff||required|every exception row carries why / provenance / when-removed
+screenshot-refs||required|every png cited by the acceptance table exists
+evidence-freshness||required|cited artifact newer than the code it verifies (by cause, not global)
+numeric-log-only||required|numeric rows resting on a log line only => HUMAN-ONLY, never PASS
+verify-entry||required|tools/verify.ps1 exists and runs
+reference-table||required|original value (provenance) / ours / delta for every element
+no-handoff-docs|handoff-doc-found|required|no handoff / progress / NEXT documents
+engine-credit||required|credit judged on RENDERED text, not on a source grep
+baseline-images||required|reference-side baseline screenshots exist
+spec-doc||required|the reference spec document exists
+asset-research-doc||required|asset research log exists (gate 3)
+no-team-sessions||required|no async/team dispatch channel (it bypasses model:inherit)
+row-category||required|every verdict row carries numeric / visual / performance class
+no-escaped-artifacts||required|no one-off artifact outside the project
+sampler-selfcheck||required|every .ai-tmp ps1 parses and is ASCII-or-BOM
+impl-by-executor||required|every changed impl file reconciles with a dispatch-log row
+play-ledger|play-budget|required|every Play session logged with a non-empty reason
+freeze-before-capture||required|no impl file changed after the batch evidence was captured
+evidence-economy||required|contact-sheet index exists; loose png count within budget
+graphics-device|render-device|required|renderer is not WARP / Basic software rasterization
+coverage-rows||required|entity-list rows == verdict rows (and the list exists)
+coverage-filled||required|zero verdict rows without a verdict
+coverage-diff||required|zero rows marked mismatch
+coverage-dimensions||required|all 12+3 dimensions present in the entity list
+scale-tier||required|sampling tier S/M/L declared once
+impact-radius||required|bug fix blast radius registered (dim / cause chain / rows)
+evidence-anchor||planned|every verdict row anchors to a machine-produced artifact position
+gate-sync||planned|project gate items superset of the template's required list
+coverage-hit||planned|each verdict row hit by a probe output by row id, not by row count
+no-assets-screenshots||required|no forensic screenshot dir under client/Assets
+<!-- GATE-ITEMS-END -->
+
+> **这个块是机器可读的**：`scripts/gate-sync.ps1` 拿它跟项目的 `tools/verify.ps1` 对账
+> （项目的检查项名从 `Say '<STATUS>' '<name>'` 里提取）。**改模板时同步改这个块**，
+> 否则"模板更新了、项目没跟上"这件事**谁也发现不了** —— 那正是 19~22 项至今没落地的成因。
+> 第 4 列 `planned` = 已声明但暂不强制（只打印 INFO），成熟后改成 `required` 即开始拦截。
+
+### 第 26 项的实现（可直接抄；已过两次自检）
+
+```powershell
+# 26) no forensic screenshots inside client/Assets (SKILL.md 1.8 item 6).
+#     Scope is narrow ON PURPOSE: "any png under client/Assets" would be a FALSE RED -- all
+#     three measured projects carry exactly 1 legitimate art png there. Only the capture
+#     directory is a violation.
+#     Self-tested (anti-gaming.md section 5): baseline PASS on 3 projects, FAIL after
+#     injecting client/Assets/Screenshots/shot001.png.
+$assetDir  = Join-Path $root 'client\Assets'
+$shotInAsm = Join-Path $assetDir 'Screenshots'
+if (Test-Path $shotInAsm) {
+  $n = @(Get-ChildItem $shotInAsm -Recurse -Filter *.png -File -ErrorAction SilentlyContinue).Count
+  $fail++; Say 'FAIL' 'no-assets-screenshots' ("client/Assets/Screenshots exists (" + $n + " png) -- captures belong in .ai-tmp/screenshots, delete before delivery (1.8)")
+} else {
+  Say 'PASS' 'no-assets-screenshots' 'no forensic screenshot dir under client/Assets'
+}
+```
+
+### ⛔ 反面案例：一条"看起来机械可判"的规则，实现出来会摧毁另一条规则
+
+曾打算加一条：**「`client/Assets/**/*.cs` 里出现 `原版资源` ⇒ FAIL」**（本意是 `reference/rules-full.md` 的「原版资源」目录 第 2 条"⛔ 不许让 Unity 工程直接引用 `原版资源/`"）。
+**实测 51 处命中（三个项目 18 / 23 / 10），逐条看过之后：全部是注释里的出处标注**（`/// 出处 原版资源/参考工程/...`）。
+
+⇒ 那条检查要是上了，会：
+1. **51 个假红**；
+2. 更糟 —— 它会逼执行者**删掉出处标注**才能变绿，**正好摧毁 `reference/rules-full.md` 的「复刻 = 解析 + 搬运」「写不出出处的量不许进工程」的核心机制**。**一条闸门把另一条更重要的规则打死了。**
+
+**教训（写死，别再踩）**：
+
+- **判"代码里的路径真的被使用"，⛔ 不判"这个词出现了"** —— `//` / `///` / `<para>` 必须先过滤（与第 2 项那条「`Select-String` 会连注释一起报命中」是同源警告）。
+- **新检查上线前必须回答：它会跟哪条规则抢同一个位置？** 这里"引用路径"与"标注出处"用的是**同一个字符串形状**，只能靠"是不是注释行"区分 —— 判据必须建立在这个区分上。
+- **实验脚本自己也会踩编码坑**：本次收集数据时用 `[string]::Concat([char]...)` 构造中文匹配串失败 ⇒ 变成空串 ⇒ `Contains("")` **恒真** ⇒ 得出"93/93 全命中"的假数据。**结论必须用第二种写法复核**（`([char[]]@(0x539F,...) -join '')`，先打印 `Length` 自检）。
+
+> **判据一句话**：**能机械判 ≠ 能直接判。判据上线前必须两次自检，并且问一句「它会误伤哪条规则」。**
 
 > **第 12 条的意义**：不标类别 ⇒「哪几项必须看图」就说不清 ⇒ 执行者只能二选一：
 > **全截**（N 张图逐张读，贵一个量级）或**全不截**（退回"数字对画面错"）。
@@ -78,7 +160,7 @@
 > 判据一句话：**检查必须限定在本次任务的时间窗 / 作用域内** ——
 > **会误报的检查比没有检查更糟**（它会让人去修不存在的问题，还会让人不再相信闸门）。
 
-> **第 13 条补的是 §1.8 的盲区（实测踩过，必须写死）**：原来的第 1 条只在**工程内**扫几个固定目录，
+> **第 13 条补的是 `reference/rules-full.md` 的「临时测试文件规范」 的盲区（实测踩过，必须写死）**：原来的第 1 条只在**工程内**扫几个固定目录，
 > 于是"**把一次性产物写到工程外**"这条路径**没有任何检查覆盖**。
 > 实测形态：一次性报告被写进**宿主会话产物目录**（既不在工程里、也不在工作区里），
 > **闸门当时全绿**，是用户肉眼发现的。另外"结果展示 / 产物落盘"这类宿主自带的通道，
@@ -88,14 +170,14 @@
 >
 > ① **标识取自运行时的工程目录名**（再补一个"去掉通用前缀的短名"），
 >    ⛔ **不写死某个具体文件名的模式** —— 自造名是无穷的，写死只抓得到上一次，下次换个名字照样漏，
->    还会假阳性（与 §1.11 第 2 条"引擎自称"同一个道理）；
+>    还会假阳性（与 `reference/rules-full.md` 的「收尾机械自检」 第 2 条"引擎自称"同一个道理）；
 > ② **时间窗**（24h）+ **只认"新建"**（`CreationTime`，**不看** `LastWriteTime`）——
 >    否则"别人改了工作区根/宿主目录里已有的文件"会天天误报（第 11 条的教训）；
 > ③ **区域清单可扩展**：宿主目录名各宿主不同，**填不出来就留空** ——
 >    **留空只让检查变窄，绝不会让"工作区根"那一半失效**。
 >
 > **局限写在明处**：这条只能覆盖**列进清单的区域**，不是"工程外全盘扫描"；
-> 真正的兜底是 **§0.6 第 3 条**（把高风险动作做成**专用、类型化的入口**，让 harness 有钩子可拦）。
+> 真正的兜底是 **`reference/rules-full.md` 的「必然性规则不许只写在 skill 里」 第 3 条**（把高风险动作做成**专用、类型化的入口**，让 harness 有钩子可拦）。
 
 > **第 14 条治的是"每次都要白等满超时"**（实测：驱动脚本的错误率接近 100%，**每一轮跑场景都是从等超时开始的**）。
 > 病根不在"跑得慢"，而在**跑之前那一秒没查**：
@@ -128,6 +210,18 @@ $cVisual  = ([char[]]@(0x8868,0x73B0,0x7C7B) -join '')                          
 $cProg    = ([char[]]@(0x8FDB,0x5EA6) -join '')                                               # "jin du"
 $cHand    = ([char[]]@(0x4EA4,0x63A5) -join '')                                               # "jiao jie"
 
+# ---- shared: what counts as an acceptance-table BODY row ---------------------
+#     id forms in use: 12 | 12-15   (plain numbers -- a "segment" is a SECTION such as
+#     "## G.", not a row-id prefix; see the "A-E 段的数字键行" note further down)
+#     ⛔ Define it ONCE: four checks used to carry three different versions of this regex
+#        ('[A-Z]?\d+' / '(\d+|\d+-\d+)' / an indented variant), so the SAME table produced
+#        different row counts depending on which check asked (measured inconsistency).
+#     ⛔ Do NOT add an optional letter prefix back. '[A-Z]?\d+' also matches the dimension
+#        codes (D1..D12 / S1..S3) used by the dimension table, so those rows get counted as
+#        verdict rows: row-category then reports them as "rows with no class" (a FALSE RED)
+#        and the row totals inflate. Measured: '| D1 | ... |' matched that pattern.
+$rowIdRe = '^\s*\|\s*\d+(?:\s*-\s*\d+)?\s*\|'
+
 # 1) 散落临时 .cs
 $n = @(Get-ChildItem $root -Recurse -Filter *.cs -ErrorAction SilentlyContinue |
        Where-Object { $_.FullName -match '\\(_dev|_assets_src|_assets_tmp)\\' }).Count
@@ -143,19 +237,26 @@ if ($hits.Count -gt 0) { $hits | ForEach-Object { Write-Output ("            " +
 # 3) 验收表自洽 + 每行标「类别」（第 12 条）
 if (Test-Path $spec) {
   $txt = [System.IO.File]::ReadAllText($spec,[Text.Encoding]::UTF8)
-  $rows = ([regex]::Matches($txt,'(?m)^\|\s*[A-Z]?\d+\s*\|')).Count
-  Say 'PASS' 'acceptance-table' "$rows 行（汇总数字必须 = 本行数，请人工核对）"
+  # ⛔ 别把"数到了几行"当成"表是对的"：原先是**无条件** Say 'PASS' ⇒ **0 行也过**，
+  #    还把"请人工核对"写成 PASS（那是 HUMAN-ONLY，不是 PASS）。
+  #    三档：0 行 ⇒ FAIL；有行 ⇒ HUMAN-ONLY（摘要数 vs 本行数是给人核的，机器判不了格式）。
+  $rows = ([regex]::Matches($txt, ('(?m)' + $rowIdRe))).Count
+  if ($rows -eq 0) {
+    $fail++; Say 'FAIL' 'acceptance-table' 'no body row matched "| N |" -- an empty acceptance table is not a pass'
+  } else {
+    $human++; Say 'HUMAN-ONLY' 'acceptance-table' ('' + $rows + ' body row(s); the summary number must equal this -- compare it, never trust this line')
+  }
   $noCat = @(($txt -split "`n") | Where-Object {
-              $_ -match '^\|\s*(\d+|\d+-\d+)\s*\|' -and
+              $_ -match $rowIdRe -and
               -not ($_.Contains($cNumeric) -or $_.Contains($cVisual)) }).Count
   if ($noCat -eq 0) { Say 'PASS' 'row-category' '每行都标了 数值类 / 表现类' }
   else { $fail++; Say 'FAIL' 'row-category' "$noCat 行没标类别（SKILL.md 第 2 节硬性判定第 3 条）" }
   $human++
 } else { $fail++; Say 'FAIL' 'acceptance-table-missing' $spec }
 
-# 6) 证据新鲜度 -- **按行判**（§1.12 第 3 条 / §1.13 T0）
+# 6) 证据新鲜度 -- **按行判**（`reference/rules-full.md` 的「判定权与证据契约」 第 3 条 / `reference/rules-full.md` 的「改动回路：批次流水线」 T0）
 #    ⛔ 绝不要用"全工程最后一次代码改动"当基准：那样改一个 .cs 就让**全部**截图作废、逼出全量重采
-#       —— 那正是"把最贵的动作重复 N 次"（§1.13 T0 的最大时间黑洞）。
+#       —— 那正是"把最贵的动作重复 N 次"（`reference/rules-full.md` 的「改动回路：批次流水线」 T0 的最大时间黑洞）。
 #    口径：**每行引用的图，只需晚于"该行自己所述的那份代码/资产"**。
 #          解析不到实现文件的行 ⇒ HUMAN-ONLY，⛔ 不许 FAIL（会误报的检查比没有更糟）。
 #    实现要点（照这个形状写）：
@@ -209,7 +310,7 @@ $bad = @(Get-ChildItem $root -Recurse -Filter *.md -File -ErrorAction SilentlyCo
          ForEach-Object { $_.Name })
 if ($bad.Count -eq 0) { Say 'PASS' 'no-handoff-docs' '' } else { $fail++; Say 'FAIL' 'handoff-doc-found' ($bad -join ', ') }
 
-# 13) 工程外产物（§1.8）：一次性产物只许 <项目根>/.ai-tmp/test/
+# 13) 工程外产物（`reference/rules-full.md` 的「临时测试文件规范」）：一次性产物只许 <项目根>/.ai-tmp/test/
 $wsRoot = Split-Path $root -Parent
 $rootName = Split-Path $root -Leaf
 $projTokens = @($rootName)
@@ -232,11 +333,11 @@ foreach ($t in $projTokens) {
 $esc = @($esc | Sort-Object FullName -Unique)
 if ($esc.Count -eq 0) { Say 'PASS' 'no-escaped-artifacts' "0 命中（工作区根 + $($brainZones.Count) 个宿主产物目录）" }
 else {
-  $fail++; Say 'FAIL' 'no-escaped-artifacts' "$($esc.Count) 个本工程文件落在工程外 ⇒ 挪进 .ai-tmp/test/（§1.8）"
+  $fail++; Say 'FAIL' 'no-escaped-artifacts' "$($esc.Count) 个本工程文件落在工程外 ⇒ 挪进 .ai-tmp/test/（`reference/rules-full.md` 的「临时测试文件规范」）"
   $esc | ForEach-Object { Write-Output ('            ' + $_.FullName) }
 }
 
-# 14) 采样器自检（§1.13 第 5 条）：.ai-tmp 下的驱动脚本 —— 语法 0 错，且"无 BOM 不许含非 ASCII"
+# 14) 采样器自检（`reference/rules-full.md` 的「改动回路：批次流水线」 第 5 条）：.ai-tmp 下的驱动脚本 —— 语法 0 错，且"无 BOM 不许含非 ASCII"
 $tmpRoot = Join-Path $root '.ai-tmp'
 $badPs = @()
 if (Test-Path $tmpRoot) {
@@ -257,7 +358,7 @@ if (Test-Path $tmpRoot) {
 if ($badPs.Count -eq 0) { Say 'PASS' 'sampler-selfcheck' 'scripts under .ai-tmp: syntax OK, no ANSI trap' }
 else { $fail++; Say 'FAIL' 'sampler-selfcheck' ($badPs -join '; ') }
 
-# 15) 实现必须由执行者产出（§5 开工闸门 / §1.11 第 8 条）：拿派活留痕对账。
+# 15) 实现必须由执行者产出（§5 开工闸门 / `reference/rules-full.md` 的「收尾机械自检」 第 8 条）：拿派活留痕对账。
 #     为什么要这一条：主 agent 自己写实现 ⇒ 把宿主的"单任务模型请求上限"打满
 #     （本机实测 500）⇒ 任务在做到一半时被强制暂停、手里只剩半成品。
 #     规则层早就写了"主 agent 不做实现"，但没挂在动作入口上 ⇒ 违反它不留痕迹。
@@ -272,11 +373,20 @@ else { $fail++; Say 'FAIL' 'sampler-selfcheck' ($badPs -join '; ') }
 #         用户明说的点状缺陷 —— 主 agent 直接做，写一行理由即可，**不要求派活行**）。
 #         ⛔ 这两种都是"把写入变可见"，不是洗白通道：多文件 / 改数据格式 / 新增行为一律回去派活。
 $logPath = Join-Path $root '.ai-tmp/test/dispatch-log.tsv'
-$implGlobs = @('client/Assets/Scripts/*.cs', 'client/Assets/Scripts/**/*.cs',
-               'client/Assets/Resources/Levels/*.txt', '策划/*.csv', '策划/*.xlsx')
+# ⛔ **不要用 `**` 当递归**：PowerShell 的 -Path 只认 `*` / `?`（**单层**），
+#    `'client/Assets/Scripts/**/*.cs'` 实际等价于 `'Scripts/*/*.cs'`
+#    ⇒ **孙目录及更深的实现文件全部漏对账**（本项因此形同虚设）。
+#    递归只有一条路：`-Recurse` + 扩展名白名单。
+$implDirs = @('client/Assets/Scripts', 'client/Assets/Resources/Levels', '策划')
+$implExt  = @('.cs', '.txt', '.csv', '.xlsx')
 $implCut = (Get-Date).AddHours(-24)
 $implFiles = @()
-foreach ($g in $implGlobs) { $implFiles += @(Get-ChildItem (Join-Path $root $g) -File -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -gt $implCut }) }
+foreach ($r in $implDirs) {
+  $p = Join-Path $root $r
+  if (-not (Test-Path $p)) { continue }
+  $implFiles += @(Get-ChildItem $p -Recurse -File -ErrorAction SilentlyContinue |
+                  Where-Object { $_.LastWriteTime -gt $implCut -and $implExt -contains $_.Extension })
+}
 $implFiles = @($implFiles | Sort-Object FullName -Unique)
 $dispatched = @(); $named = @()
 if (Test-Path $logPath) {
@@ -369,7 +479,7 @@ $specTxt2 = if (Test-Path $spec) { [System.IO.File]::ReadAllText($spec, [Text.En
 if ($specTxt2 -eq $null) {
   Say 'HUMAN-ONLY' 'evidence-economy' 'acceptance table not found'
 } else {
-  $visRows = @(($specTxt2 -split "`n") | Where-Object { $_ -match '^\|\s*[A-Z]?\d+\s*\|' -and $_.Contains($cVisual) })
+  $visRows = @(($specTxt2 -split "`n") | Where-Object { $_ -match $rowIdRe -and $_.Contains($cVisual) })
   $cells   = 0
   foreach ($f in @(Get-ChildItem $shotsDir -Filter '*.index.tsv' -ErrorAction SilentlyContinue)) {
     $cells += @([System.IO.File]::ReadAllLines($f.FullName, [Text.Encoding]::UTF8) | Where-Object { $_.Trim().Length -gt 0 -and $_ -notmatch '^\s*#' }).Count
@@ -427,8 +537,19 @@ if (-not (Test-Path $cList)) {
                 Where-Object { $_.Trim().Length -gt 0 -and $_ -notmatch '^\s*#' }).Count
   $specRows = 0; $blank = 0; $diffN = 0
   if (Test-Path $spec) {
-    $vt       = @([System.IO.File]::ReadAllLines($spec, [Text.Encoding]::UTF8) |
-                  Where-Object { $_ -match '^\s*\|\s*[A-Z]?\d+\s*\|' })
+    # ⛔ Scope matters here (see the warning right above this check): the verdict rows live
+    #    in ONE section. If the table carries COVERAGE-BEGIN/END markers, take only that
+    #    slice -- a whole-file sweep also counts the allowed-diff and the summary tables,
+    #    which is exactly how "rows == entity list" ends up impossible or accidentally true.
+    $covTxt = [System.IO.File]::ReadAllText($spec, [Text.Encoding]::UTF8)
+    $covSeg = [regex]::Match($covTxt, '(?s)<!--\s*COVERAGE-BEGIN\s*-->(.*?)<!--\s*COVERAGE-END\s*-->')
+    if ($covSeg.Success) {
+      $vt = @(($covSeg.Groups[1].Value -split "`n") | Where-Object { $_ -match $rowIdRe })
+    } else {
+      $vt = @([System.IO.File]::ReadAllLines($spec, [Text.Encoding]::UTF8) | Where-Object { $_ -match $rowIdRe })
+      $human++
+      Say 'HUMAN-ONLY' 'coverage-scope' 'no COVERAGE-BEGIN/END marker -- whole file scanned; the row count may include other tables'
+    }
     $specRows = $vt.Count
     $blank    = @($vt | Where-Object { -not ($_.Contains($cAgree)) -and -not ($_.Contains($cDiff)) }).Count
     $diffN    = @($vt | Where-Object { $_.Contains($cDiff) }).Count
@@ -489,7 +610,7 @@ exit $(if ($fail -gt 0) { 1 } else { 0 })
 
 脚本只覆盖"能算的"。下面这些**必须人（或真的能收到图像的执行者）过目**，脚本只能列成 `HUMAN-ONLY`：
 
-- **外观是否 1:1**：同机位并排图逐元素比（§1.12 第 7 条）
+- **外观是否 1:1**：同机位并排图逐元素比（`reference/rules-full.md` 的「判定权与证据契约」 第 7 条）
 - **手感 / 动画连贯 / 节奏 / 音效时机**：时间序列，只能逐帧看或由人给基线
 - **对照表里的"原版值"是否真的是原版值**（出处是否成立）—— 抽查即可，但不能不查
 - **对照表的覆盖面是否够**（有没有整块元素根本没进表）

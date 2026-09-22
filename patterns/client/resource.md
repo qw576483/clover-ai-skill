@@ -1,11 +1,17 @@
 # 资源加载模板
 
-> `IResourceManager` 的**加载/释放** API 是 6 个：`LoadAsset<T>(path, cb)`、
-> `LoadAsset<T>(path, progress, cb)`、`Release(path)`、`UnloadAll()`、`Preload(paths, onDone, progress)`、
+> ⛔ **前置**：`Game.Res` 由 **`CloverRes.Init(root)`** 挂接 —— **不调则 `Game.Res` 为 null**，
+> 下面所有 `Game.Res.*` 都是 **NullReferenceException**（不是"静默加载失败"）。
+> 启动顺序见 `reference/engine-mental-model.md` §1。
+
+> `IResourceManager` 的**加载/释放** API：`LoadAsset<T>(path, cb)`、
+> `LoadAsset<T>(path, progress, cb)`、**`LoadAll<T>(path)`（同步、阻塞主线程）**、
+> **`Exists(path)`（同步探测）**、`Release(path)`、`UnloadAll()`、`Preload(paths, onDone, progress)`、
 > `TryGet<T>(path)`（**同步**取已驻留资源；不触发加载、不阻塞、纯读——要"立刻拿到"就先 `Preload` 再 `TryGet`）。
-> **热更**另有 5 个：`CheckUpdate` / `DownloadUpdate` / `ClearDownloaded` / `Version` / `UpdateState` 
-> （见模板 6）。加载/释放全部是**回调式**（不是 await）。
-> **没有** `LoadAsync` / `LoadSync` / `Unload` / `UnloadUnused` / `LoadSceneAsync` 等。
+> **热更**另有：`CheckUpdate` / `DownloadUpdate` / `ClearDownloaded` / `CancelUpdate` / `Version` / `UpdateState`
+> （见模板 6）。**异步**加载全部是**回调式**（不是 await）。
+> ⛔ `LoadAll<T>` 是**同步阻塞主线程**的：只用于小表 / 必须立刻拿到且体积可控的资源，大资源仍走回调式。
+> **没有** `LoadAsync` / `LoadSync` / `Unload` / `UnloadUnused` / `LoadSceneAsync` 这些**名字**（别去找）。
 
 ## 模板 1：加载资源（回调式）
 
@@ -76,6 +82,9 @@ public class ConfigLoader : MonoBehaviour
 {
     public void LoadItemConfig()
     {
+        // ⛔ T 有约束：`where T : class, IDataRow`（IDataRow 要求 `int Id`）
+        //    ⇒ 业务表类必须实现它，否则 CS0311：`public class ItemConfig : IDataRow { public int Id { get; set; } ... }`
+        //    ⛔ 且 `Game.Table` 只在 `CloverData.InitDataTable(dir)` 之后非 null（见文首"前置"）。
         var config = Game.Table.Get<ItemConfig>(1001);
         if (config != null)
         {

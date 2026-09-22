@@ -4,7 +4,9 @@
 
 ```csharp
 using CloverEngine;
+using TMPro;              // TextMeshProUGUI
 using UnityEngine;
+using UnityEngine.UI;     // Slider
 
 public class PlayerView : MonoBehaviour
 {
@@ -80,13 +82,23 @@ public class SyncEntityView : MonoBehaviour
     public void Init(ulong entityId)
     {
         _entityId = entityId;
-        
+        // 起点对齐：否则首帧拿 (0,0,0) 当"上一位置"，算出一个横穿全图的朝向
+        _targetPosition = transform.position;
+        _targetRotation = transform.rotation;
+
         // 通过 IWorldSync 监听位置同步
         Game.Sync.OnEntityMove((id, x, y, z) =>
         {
             if (id == _entityId)
             {
-                _targetPosition = new Vector3(x, y, z);
+                var next = new Vector3(x, y, z);
+                // 朝向由"移动方向"推出（位置同步不带朝向）：只取水平分量；
+                // 位移过小则不更新，避免静止时朝向抖动。
+                var dir = next - _targetPosition;
+                dir.y = 0f;
+                if (dir.sqrMagnitude > 0.0001f)
+                    _targetRotation = Quaternion.LookRotation(dir);
+                _targetPosition = next;
             }
         });
         
@@ -120,10 +132,13 @@ public class SyncEntityView : MonoBehaviour
 > 会同步释放工厂侧记录（动画播放器 + 模型资源引用）。
 >
 > ```csharp
-> Game.Entity.Create(entityId, PLAYER_TYPE_ID);
+> // ⛔ 引擎这三处的形参都是 long（Create(long,int,string) / BindView(long,GameObject) /
+> //    IEntityViewFactory.CreateView(long,EntityViewSpec)），而同步实体号按本文口径是 ulong
+> //    ⇒ ulong→long **无隐式转换**，必须显式 (long)，否则 CS1503。
+> Game.Entity.Create((long)entityId, PLAYER_TYPE_ID);
 > var view = CloverPresentation.EntityView.CreateView(
->     entityId, EntityViewSpec.Of("Models/hero", targetHeight: 1.8f));
-> Game.Entity.BindView(entityId, view);   // 登记视图；其销毁由 Entity 侧统一负责
+>     (long)entityId, EntityViewSpec.Of("Models/hero", targetHeight: 1.8f));
+> Game.Entity.BindView((long)entityId, view);   // 登记视图；其销毁由 Entity 侧统一负责
 > ```
 >
 > 以下示例是**纯手工路径**（自建 GameObject + 自己的 View 组件），仅在不需要异步模型加载时使用：
@@ -172,6 +187,7 @@ public class EntityManager : MonoBehaviour
 ```csharp
 using CloverEngine;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class AOIManager : MonoBehaviour
 {
@@ -260,6 +276,8 @@ Game.Sync.OnEntityEnter((ulong id, Dictionary<string, object> attrs) =>
 ```csharp
 using CloverEngine;
 using UnityEngine;
+using TMPro;
+using UnityEngine.UI;
 
 public class HealthBarView : MonoBehaviour
 {

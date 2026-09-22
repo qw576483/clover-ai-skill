@@ -100,18 +100,22 @@ catch (TimeoutException)
 ### 3.3 可靠/非可靠发送
 
 ```csharp
+// ⛔ 协议体字段名 = JSON 键（引擎按 C# 字段名序列化）⇒ 必须与服务端 Go 的 json tag 对齐，
+//    也就是**小写 snake_case**。写成 PascalCase（Content / X / Y）时服务端解出来全是零值
+//    —— **静默丢字段**，两端都不报错（本文件 §3.2 同一条要求，别在示例里自相矛盾）。
+
 // 可靠发送（TCP，保证到达）
 Game.Net.Send(EMsg.ChatMessage, new ChatMessage
 {
-    Content = "你好",
+    content = "你好",
 });
 
 // 非可靠发送（UDP，可能丢失）
 Game.Net.SendUnreliable(EMsg.PositionSync, new PositionData
 {
-    X = transform.position.x,
-    Y = transform.position.y,
-    Z = transform.position.z,
+    x = transform.position.x,
+    y = transform.position.y,
+    z = transform.position.z,
 });
 ```
 
@@ -124,13 +128,16 @@ Game.Net.SendUnreliable(EMsg.PositionSync, new PositionData
 每次都要分配 requestID、往 pending 表插一项、挂一个超时定时器；同时服务端 `def/push.go` 里
 定义好的 `Push*` 消息号全程没人用、客户端也不注册 `OnMsg` —— 推送通道白白浪费。
 
-> 引擎 `pkg/app/app.go` 的注释确实认可「20fps 状态同步也可直接 `g.Reply` 轮询」，所以轮询**不算违规**。
+> 引擎的注释确实认可「20fps 状态同步也可直接 `g.Reply` 轮询」（原文在 `internal/app/facade.go:514`；
+> ⛔ `pkg/app/app.go` 只是**别名透传门面**，没有实现体也没有那段注释），所以轮询**不算违规**。
 > 但既然 `def/push.go` 已经定义了推送消息号，就应该真用起来，否则那些常量是死代码，还会误导后续维护者。
 >
 > **配套要求**：选轮询 → 切勿在 `def/push.go` 里留一堆没人用的推送消息号；选推送 → 客户端必须注册对应 `OnMsg`。
 >
 > **禁止未查证断言**：不确定引擎有没有某个 API 时，去 `clover-server-engine` 源码查
-> （推送在 `pkg/app/app.go`），**不要在注释或交付说明里写「引擎没有 X API」**——这是 `SKILL.md` 明列的违规项。
+> （`PushToPlayer/PushToScene/PushToAll` 在 `internal/app/facade.go`，JSON 版在 `internal/app/core.go`；
+> ⛔ 别去 `pkg/app/app.go` 找实现 —— 那里只有 `type X = internal.X` 的透传），
+> **不要在注释或交付说明里写「引擎没有 X API」**——这是 `SKILL.md` 明列的违规项。
 
 ## 4. 生命周期事件
 
@@ -386,7 +393,7 @@ catch (CloverCallException ex)
 >用户反复反馈键鼠输入不好使时，**禁止**凭猜去改 UI 布局、RectTransform、CanvasScaler、
 > 射线、DPI 缩放或 MaximizeOnPlay —— 历史证明这些都不是原因，全是白改。
 > **必须**按顺序做这两件事：
-> 1. 让用户贴出 Console 里 `[Clover.Input]` 那一行（它会直接告诉你当前生效的输入后端与可用性）；
+> 1. 让用户贴出 Console 里 `[Input]` 那一行（它会直接告诉你当前生效的输入后端与可用性）；
 > 2. 对照本文末尾的**排查清单**逐条核对（重点是 `activeInputHandler` 的取值   
 >    和「改完是否重启了 Unity」）。
 >一句话记忆：**键鼠无响应先查输入后端，不必排查 UI。**
@@ -439,15 +446,15 @@ UI 的输入模块**同步跟随**所选后端：新后端 → `InputSystemUIInp
 
 | 序号 | 检查项 | 命令 / 位置 |
 |---|---|---|
-| 1 | 日志里 `[Clover.Input] 输入后端=?` | 期望 `InputSystem`。若是 `Legacy`，看括号里的回退原因；若是 `None` → 按同一行给出的修复提示改 Active Input Handling |
+| 1 | 日志里 `[Input] 输入后端=?` | 期望 `InputSystem`。若是 `Legacy`，看括号里的回退原因；若是 `None` → 按同一行给出的修复提示改 Active Input Handling |
 | 2 | `ProjectSettings.asset` 的 `activeInputHandler` | `0`=Old、`1`=New、`2`=Both；**引擎默认走新后端（New），所以至少要含 New**（即 `1` 或 `2`） |
 | 3 | 改完设置后是否重启 Unity | **该设置在编辑器启动时只读一次，不重启不生效**。且 Unity 运行中手改该文件会被回写覆盖，必须先关编辑器再改 |
 | 4 | 日志里 `InputModule=` 是什么 | 期望 `InputSystemUIInputModule`。若是 `StandaloneInputModule` → 说明回退了旧模块，`activeInputHandler` 为「只新」时 UI 点击会全灭 |
-| 5 | 日志有没有 `[Clover.Input] EventSystem ...` | 没有 → 说明 `CloverInput.Init()` 没在构建 UI 之前调用 |
+| 5 | 日志有没有 `[Input] EventSystem ...` | 没有 → 说明 `CloverInput.Init()` 没在构建 UI 之前调用 |
 | 6 | 有没有第二个 InputModule | 引擎会打印「移除不匹配的输入模块」，出现两条并存即点击失效 |
 | 7 | 是否在跑 headless 实例 | 有残留 `Unity.exe`（批处理）占着工程时，正常编辑器打不开，别误判为代码问题 |
 
-> 排查顺序很重要：**先看 `[Clover.Input]` 的后端日志，再看 EventSystem**。
+> 排查顺序很重要：**先看 `[Input]` 的后端日志，再看 EventSystem**。
 > 「键鼠全死」几乎都是后端（Active Input Handling）问题，不是 UI 布局/射线/DPI 问题——
 > 不要再去调 RectTransform、CanvasScaler、MaximizeOnPlay 这些东西。
 

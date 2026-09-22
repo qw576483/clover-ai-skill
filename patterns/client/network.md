@@ -132,7 +132,7 @@ public async void BuyItem(int itemId, int count)
         Game.Logger.Error("Net", $"业务错误: {ex.ServerError}");
         HandleBusinessError(ex.ServerError);
     }
-    catch (TimeoutException)
+    catch (System.TimeoutException)
     {
         // 请求超时
         Game.Logger.Error("Net", "请求超时");

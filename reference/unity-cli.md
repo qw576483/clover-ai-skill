@@ -191,8 +191,16 @@ unity project audit --format csv                                  # Project Audi
 `unity editors list --format json` 返回结构（字段稳定，可安全解析）：
 
 ```json
-{ "success": true, "command": "editors", "data": [ { "version": "6000.0.58f2", "alias": "6.0.58f2", "architecture": "x86_64", "default": false } ] }
+{ "success": true, "command": "editors", "data": [
+  { "version": "6000.0.58f2", "alias": "6.0.58f2", "architecture": "x86_64", "default": true,
+    "location": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.0.58f2" },
+  { "version": "6000.0.47f1", "alias": "6.0.47f1", "architecture": "x86_64", "default": false }
+] }
 ```
+
+> ⛔ 上面**第二条没有 `location`** —— 那是"已知版本但没装"的形状（§1.1 的判据）。
+> 拿它去 `--editor-version` 会直接失败，所以**解析时必须以 `location` 是否存在为准**，
+> 而不是"数组里有没有这一项"。
 
 ### 4.1 跑引擎自带测试（EditMode / PlayMode）
 
@@ -410,7 +418,7 @@ unity command test_status                                                  # sta
 >
 > **截图要自己看，但按`类别`看**：`capture_game_view --source screen`（仅 Play 模式；编辑模式用 `--source camera`，
 > 否则报 `requires Play Mode`）。`表现类` 的项**采一次联络图、AI 只读那张汇总图**（格式见 `reference/visual-loop.md` 第八节）；
-> `数值类` **不必截图**（`SKILL.md` §2 硬性判定第 3 条）。
+> `数值类` **不必截图**（`SKILL.md` 的「取证清单」第 9 条）。
 > 数字全对但画面不对的静默失效（血条永不变化、角色纯白无贴图、血条细到看不见）只有看图才发现 ——
 > 这正是"`表现类` 必须进图"的理由。详见 `reference/design-review.md` §3.4。
 

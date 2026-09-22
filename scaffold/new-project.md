@@ -14,7 +14,7 @@ clover-{name}/
 │   │   └── SKILL.md                #   建项目时必须生成；动本项目代码前必须先读它
 │   ├── verify.ps1                  # ★ 开工四件套①：交付闸门（模板 = 全局 skill 的 reference/verify-template.md）
 │   └── env-check.ps1               # ★ 环境闸门：开工前 + 每次"卡/掉帧"投诉先跑（模板 = 全局 skill 的 scripts/env-check.ps1）
-├── server/                        # ★【仅"形态=联机"时才有】单机项目整个不生成（见 patterns/game-demo.md §1.5）
+├── server/                        # ★【仅"形态=联机"时才有】单机项目整个不生成（见 patterns/game-demo.md `reference/rules-full.md` 的「收尾闸门」）
 │   ├── configs/all/server.yaml     # 引擎配置（字段见 §2.3）
 │   ├── game/
 │   │   ├── datadef/                # 数据 schema
@@ -29,13 +29,13 @@ clover-{name}/
     ├── 数值文档/                    # ★ 配表：源表 *.txt（AI 写）+ -pack 出的 *.xlsx
     ├── 策划案/                      # 玩法 / 数值 / 需求转写的策划文档（*.md）
     ├── 验收表.md                    # ★ 交付闸门（§2：A 的系统清单逐行；开工时建）
-    ├── 对照表.md                    # ★ §0.5 的执行形态：元素 | 原版值(出处) | 我们的值 | 差值
+    ├── 对照表.md                    # ★ `reference/rules-full.md` 的「复刻 = 解析 + 搬运」 的执行形态：元素 | 原版值(出处) | 我们的值 | 差值
     └── 基线图/                      # ★ 开工四件套③：参考物那一侧的截图 + 场景清单（写外观代码前必须有）
 ```
 
 **禁止**：手写 `client/Assets/Scripts/...` 目录树来"假装"是 Unity 工程（缺 `.meta`/`ProjectSettings`/`Packages` 就不是 Unity 工程，Unity 打不开）。
 
-### 0.0 开工四件套（来自全局 skill §0.7 —— **缺哪个，就不许进哪个阶段**）
+### 0.0 开工四件套（来自全局 skill `reference/rules-full.md` 的「1:1 的四个部件」 —— **缺哪个，就不许进哪个阶段**）
 
 | 件 | 何时就位 | 怎么来 |
 |---|---|---|
@@ -70,14 +70,14 @@ clover-{name}/
 |---|---|---|
 | 范围 | 所有 Clover 项目通用（引擎 API / 范式 / 通用约定） | **只有本项目** |
 | 内容 | `patterns/**`、`reference/**`、`scaffold/**` | 本项目的消息号表、handler 表、面板表、配表、约束、范例 |
-| 优先级 | **规则层（`SKILL.md` §0~§7）不可被覆盖**；其余通用写法可被项目取代 | 只在「全局 skill 没写 / 明说可自选」的地方优先（技术选型、命名、目录细分、消息号分段） |
+| 优先级 | **规则层（`SKILL.md` 的规则层）不可被覆盖**；其余通用写法可被项目取代 | 只在「全局 skill 没写 / 明说可自选」的地方优先（技术选型、命名、目录细分、消息号分段） |
 
 **规则**：
 - ⛔ **项目级 skill 只能"加严"，不许"放宽"全局 skill 的规则层** ——
   凡全局标了 `§0~§7` / `⛔` / **硬规则** / **硬闸门** 的，项目约定一律不得冲突；
   冲突时：**照全局规则层做 → 把冲突的项目文档改掉 → 真觉得规则不合理就回报用户改 skill**。
-  ⛔ **不许**用「以本项目为准」把硬规则放过（实测形态：项目级 skill 把 §1.8 禁止的 `client/_dev/`
-  写成了"本项目探针位置"，子 agent 照章执行 ⇒ 该目录堆了**上百个文件**）。完整层级见 `SKILL.md` §1.10。
+  ⛔ **不许**用「以本项目为准」把硬规则放过（实测形态：项目级 skill 把 `reference/rules-full.md` 的「临时测试文件规范」 禁止的 `client/_dev/`
+  写成了"本项目探针位置"，子 agent 照章执行 ⇒ 该目录堆了**上百个文件**）。完整层级见 `SKILL.md` 的「通用约束」第 4 条。
 - 只记**本项目特有**的东西；通用规则**不许**抄进来（抄了必然两边漂移）。
 - 每次新增**对外可见**的设施（消息号 / handler / 面板 / 管理器 / 通用函数 / 配表），**回来补一行** ——
   这份文件的价值全在"保持更新"上，过期比没有更糟。
@@ -166,8 +166,10 @@ logic:
   reconnect_grace: 30s
 
 # 账号服：登录链路的必经依赖（all 角色会一并启动账号服）
-# 登录链路：客户端 HTTP 调 {verify_addr}/auth/login 换 token → 长连接发 EMsgLogin{token}
+# 登录链路：客户端 HTTP 调 **客户端配置的 server.auth_addr** + /auth/login 换 token → 长连接发 EMsgLogin{token}
 #           → 游戏服 POST {verify_addr}/auth/verify 换 owner
+# ⛔ 两个地址语义不同（数值常相同，所以极易写混）：verify_addr = **游戏服→账号服**（服务端配置，路径固定 /auth/verify）；
+#    auth_addr = **客户端→账号服**（客户端 config.json 的 server.auth_addr，路径 /auth/login）。
 auth:
   listen: "127.0.0.1:8051"             # 账号服 HTTP 监听（auth / all 角色必填）
   jwt_secret: "dev-only-change-me"     # JWT 签名密钥（HS256）；生产务必用强随机串
@@ -348,8 +350,8 @@ unity projects create "client" \
 # ⇒ 工程根 = clover-{项目名}/client/（目录名固定 "client"，Hub 显示名也是 client）
 ```
 
-> `clover-client-unity-engine` 包声明 `unity: 2022.3`，Unity 6 可打开并升级，
-> 而 AI 自动化操作强制走 Unity 6，故创建即选 6000.x。
+> `clover-client-unity-engine` 的 `package.json` 声明 **`unity: 6000.0`**（包本身就要求 Unity 6），
+> 且 AI 自动化操作强制走 Unity 6 ⇒ 创建工程即选 6000.x。
 
 ### 2.1.1 建完必须让用户「看得到」工程（硬约束）
 
@@ -461,6 +463,11 @@ unity projects list --format json        # 复核 isFavorite=true
 编辑 `client/Packages/manifest.json`。**只加引擎包一行是不够的** —— 模板自带的包清单里
 **没有 Unity 内置模块**，而引擎用到它们；缺了会在编译引擎时炸：
 
+> ⚠️ **本节与 `patterns/client/new-project.md` §3 的口径不一致**（那一份只加引擎包一行）。
+> 哪个对取决于 **Unity 对你所用的工程模板是否隐式引用内置模块**，⛔ 离线判不了，必须在真机验一次：
+> **先只加引擎包 → 编译；报 CS1069 就按本节把下表 `com.unity.modules.*` 补齐。**
+> 在此之前别把任何一份当定论。
+
 ```
 error CS1069: The type name 'RuntimeAnimatorController' could not be found in the namespace
 'UnityEngine'. ... Enable the built in package 'Animation' ... to fix this error.
@@ -510,7 +517,10 @@ error CS1069: The type name 'RuntimeAnimatorController' could not be found in th
 
 ### 2.3 业务程序集 `client/Assets/Scripts/{Name}.asmdef`
 
-> 位置是 `Assets/Scripts/`（覆盖 `Scripts/` 下的 Core / Network / Room / Table / UI 全部业务代码），
+> 位置是 `Assets/Scripts/`（覆盖 `Scripts/` 下的**全部**业务代码）。
+> ⛔ **目录骨架以 `reference/architecture.md` §4 为准**：`Def / Core / Module / UI / App` ——
+> 交付前自检命令认的是 `Scripts/Module/` 这一层，用别的分层名**会检不到**；
+> 本节只约定 asmdef 的**位置**（`Assets/Scripts/`），**不重新定义分层名**。
 > 与 `SKILL.md` 的目录骨架、`patterns/client/config.md` 的固定路径（`Assets/Scripts/Core/ClientConfig.cs`）一致。
 > 放在 `Assets/{Name}/` 会导致 `Assets/Scripts/` 下的业务脚本落到默认的 `Assembly-CSharp`，**反而不受约束**。
 
@@ -573,11 +583,15 @@ namespace {Name}.Def   // ← 换成实际项目名（如 CQ.Def），不要复�
 **`client/Assets/Scripts/Def/ProtoDef.cs`**
 
 ```c#
+using System;          // [Serializable]
+
 namespace {Name}.Def
 {
-    public class XxxRequest  { public string name; }
-    public class XxxReply    { public bool ok; public string err; }
-    public class XxxNotify   { public int value; }
+    // ⛔ 必须 [Serializable]：引擎走 JsonUtility 序列化，它**只认带该标签的类**
+    //    （引擎自带的 28 个协议 DTO 全部标了）。漏了就不参与序列化 —— 字段静默丢失。
+    [Serializable] public class XxxRequest  { public string name; }
+    [Serializable] public class XxxReply    { public bool ok; public string err; }
+    [Serializable] public class XxxNotify   { public int value; }
 }
 ```
 
@@ -611,8 +625,11 @@ Game.OnMsg(MsgDef.XxxNotify, ctx => { var n = ctx.Bind<XxxNotify>(); /* ... */ }
 }
 ```
 
-> `tls` 必须与服务端 `gateway.tcp_tls_disabled` **相反**：服务端配了 `tls_cert` 后 TCP 口也走 TLS（默认 `false`），
-> 所以新工程直接写 `true`；写成 `false` 连上去的表现是「连上就断」。证书只走系统信任链（无跳过校验开关）。
+> `tls` 必须与服务端**实际**是否启用 TLS 一致，判断依据是 **§1.3 的 `server.yaml` 有没有配 `gateway.tls_cert`/`tls_key`**：
+> **模板默认不配证书 ⇒ TCP 是明文 ⇒ 客户端这里写 `false`**（与 §1.3 模板配套，照抄即可跑通）。
+> 只有你确实给服务端配了证书（`tls_cert` + `tls_key` 成对）时才写 `true`。
+> ⛔ 写反的表现是「**连上就断** → 重连耗尽被踢 → 之后所有 `Call` 超时」。
+> 证书只走系统信任链，引擎没有跳过校验的开关。
 
 > **端口必须与 `gateway` 段严格对齐**：`addr` = `gateway.listen_tcp`（**8002**），
 > `udp_addr` = `gateway.listen_udp`（**8003**）。
@@ -718,7 +735,7 @@ public class GameMain : MonoBehaviour
 □ 消息号 >= 10001
 □ handler 签名 func(c event.Ctx) error，import 为 pkg/transport/event
 □ client 由 unity projects create 生成（有 Packages/ + ProjectSettings/）
-□ manifest.json 已加 com.clover.unity-engine 本地依赖
+□ manifest.json 已加 com.clover.unity-engine（**默认 git URL**；仅"工作区内联调引擎源码"时才用 `file:` 相对路径，⛔ 不许写绝对路径）
 □ client/Assets/Configs/config.json + Core/ClientConfig.cs 均已生成，业务代码无硬编码地址/账号/密码/超时
 □ server.addr 填的是网关 TCP 口（8002），不是 WS 口（8001）
 □ server.tls 与服务端 gateway.tcp_tls_disabled 相反（服务端默认 false → 客户端 true）
@@ -731,10 +748,10 @@ public class GameMain : MonoBehaviour
 □ 业务消息号已集中在 client/Assets/Scripts/Def/MsgDef.cs（脚本里无散落消息号字面量）
 □ 客户端 Def 与服务端 game/def 消息号逐条对齐
 □ <项目根>/tools/ai-skill/ 已生成（SKILL.md 按 scaffold/project-skill.md 填好：消息号 / handler / 面板 / 配表 / 约束）
-□ **项目级 skill 没有放宽全局规则层**（grep `以本项目为准|优先于全局`，逐条判"加严"；见 SKILL.md §1.10）
+□ **项目级 skill 没有放宽全局规则层**（grep `以本项目为准|优先于全局`，逐条判"加严"；见 SKILL.md 的「通用约束」第 4 条）
 □ 策划/数值文档/ 与 策划/策划案/ 两个目录已建（配表与策划案不混放）
-□ **交付前跑完 SKILL.md §1.11 的 8 条机械自检**（能脚本化就做成 `tools/verify.ps1`，照 `reference/verify-template.md`），并把原始输出贴进回报
-□ `策划/验收表.md` **每行带「类别」列**（`数值类` / `表现类`）；`表现类` 的行能在**联络图索引表**里查到格号（`SKILL.md` §2 硬性判定第 3 条）
+□ **交付前跑完 SKILL.md 的「交付清单」（已做成 `tools/verify.ps1`）**（能脚本化就做成 `tools/verify.ps1`，照 `reference/verify-template.md`），并把原始输出贴进回报
+□ `策划/验收表.md` **每行带「类别」列**（`数值类` / `表现类`）；`表现类` 的行能在**联络图索引表**里查到格号（`SKILL.md` 的「取证清单」第 9 条）
 □ 交付前的证据**只采一次**（一张或数张**联络图**，见 `reference/visual-loop.md` 第八节）；⛔ 没有逐项截图、没有逐张让 AI 读图
 □ `策划/验收表.md` 带「允许的差异」+「机械自检记录」两节；**汇总数字 = 表体统计**
 □ 项目里**不存在**交接/进度类文档（`docs/交接-*.md` / `NEXT.md` / `docs/进度*.md`）
@@ -745,7 +762,7 @@ public class GameMain : MonoBehaviour
 
 ```bash
 cd server && go mod tidy && go build -o {name}.exe .     # 服务端
-unity build ./client --editor-version 6000.0.47f1 --target StandaloneWindows64  # 客户端（可选）
+# 客户端构建（异步）—— 命令形态见 reference/unity-cli.md §4：`unity build run --target StandaloneWindows64 --output <路径>`
 ```
 
 起服前先确认本地依赖（etcd/nats/redis/mysql）已就绪，排障见 `reference/server-env.md`。

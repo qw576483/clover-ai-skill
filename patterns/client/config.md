@@ -41,7 +41,8 @@ client/Assets/Scripts/Core/ClientConfig.cs   # 唯一加载器（静态类 Cfg�
   },
   "game": {
     "default_nick": "玩家一",
-    "poll_interval_ms": 50
+    "poll_interval_ms": 50,
+    "res_root": ""
   }
 }
 ```
@@ -53,9 +54,12 @@ client/Assets/Scripts/Core/ClientConfig.cs   # 唯一加载器（静态类 Cfg�
 
 `udp_addr` 填 `gateway.listen_udp`（默认 8003）；不需要不可靠通道就留空字符串。
 
-`tls`：线路是否走 TLS（TCP→`SslStream`、WS→`wss://`）。**必须与服务端 `gateway.tcp_tls_disabled` 相反**——
-服务端配了 `tls_cert` 后 TCP 口默认也走 TLS（`false`），所以客户端 `tls: true` 是默认形态；
-两边不一致的症状是「连上就断」。证书只走系统信任链，引擎没有跳过校验的开关（§N7）。
+`tls`：线路是否走 TLS（TCP→`SslStream`、WS→`wss://`）。**判断依据是服务端有没有配 `gateway.tls_cert`/`tls_key`**：
+- **没配证书 = 服务端明文 ⇒ 客户端必须 `false`**（`scaffold/new-project.md` 的模板就是这个形态，照抄能跑通）；
+- 证书**成对配了** ⇒ 客户端 `true`。
+
+⛔ 别再按"`tcp_tls_disabled` 的零值是 `false` ⇒ 客户端取反写 `true`"这条公式 —— 它把"是否配证书"漏掉了，
+写反的症状是「**连上就断** → 重连耗尽被踢 → 之后所有 `Call` 超时」。证书只走系统信任链，引擎没有跳过校验的开关（§N7）。
 
 ## 2. `ClientConfig.cs` 加载器模板
 
@@ -64,6 +68,7 @@ client/Assets/Scripts/Core/ClientConfig.cs   # 唯一加载器（静态类 Cfg�
 ```csharp
 using System;
 using System.IO;
+using CloverEngine;        // Game.Logger（注意：本文件里 Cfg.Game 与引擎门面 Game 同名）
 using UnityEngine;
 
 namespace {Name}
@@ -93,6 +98,7 @@ namespace {Name}
     {
         public string default_nick = "玩家一";
         public int poll_interval_ms = 50;
+        public string res_root = "";             // 资源根；留空 = 纯 Resources 模式（CloverRes.Init 的入参）
     }
 
     [Serializable]
@@ -124,13 +130,16 @@ namespace {Name}
                 var path = FilePath;
                 if (!File.Exists(path))
                 {
-                    Game.Logger.Warn("Cfg", $"未找到 {path}，使用内置默认值");
+                    // ⛔ 必须写全限定 CloverEngine.Game：本类的静态属性 Game（GameSection）会遮蔽它，
+                    //    写成 Game.Logger 会解析成 Cfg.Game.Logger ⇒ CS1061 编译不过。
+                    CloverEngine.Game.Logger.Warn("Cfg", $"未找到 {path}，使用内置默认值");
                     return new RootSection();
                 }
                 var root = JsonUtility.FromJson<RootSection>(File.ReadAllText(path));
                 if (root == null)
                 {
-                    Game.Logger.Error("Cfg", $"解析失败（空/格式错误）: {path}，回退默认值");
+                    // 同上：全限定名。
+                    CloverEngine.Game.Logger.Error("Cfg", $"解析失败（空/格式错误）: {path}，回退默认值");
                     return new RootSection();
                 }
                 // JsonUtility 对 json 里缺失的字段会留 null，逐段兜底防下游空引用
@@ -141,7 +150,8 @@ namespace {Name}
             }
             catch (Exception e)
             {
-                Game.Logger.Error("Cfg", $"读取异常，回退默认值: {e.Message}");
+                // ⛔ 全限定：本类的静态属性 Game（GameSection）会遮蔽引擎门面，写成短名 ⇒ CS1061。
+                CloverEngine.Game.Logger.Error("Cfg", $"读取异常，回退默认值: {e.Message}");
                 return new RootSection();
             }
         }

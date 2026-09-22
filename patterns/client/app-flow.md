@@ -140,6 +140,9 @@ namespace {Name}.Module.Flow
         {
             // 站点：引擎在 Launch 时已预注册 Launching/CheckingUpdate/Logging/MainCity/Battle/Disconnected，
             // 运行时不自动驱动，业务可同名覆盖或另起状态名。这里用业务自己的站点名，避免与引擎语义打架。
+            // ⛔ Game.Fsm **全局唯一**（详见 `patterns/client/fsm.md` 文首）：这 8 个流程状态与
+            //    其它模块的状态**共用同一张状态表和一个 Current**。业务**只在这一处注册流程状态**，
+            //    ⛔ 不许再让角色 / UI / 动画模块往同一个 `Game.Fsm` 里塞自己的状态（会互相跑掉 OnExit/OnEnter）。
             Game.Fsm.RegisterState("Boot",     onEnter: () => ShowBoot(),     onExit: () => Game.UI.Close<BootPanel>());
             Game.Fsm.RegisterState("MainMenu", onEnter: () => ShowMainMenu(), onExit: () => Game.UI.Close<MainMenuPanel>());
             Game.Fsm.RegisterState("Login",    onEnter: () => Game.UI.Open<LoginPanel>());
@@ -286,7 +289,8 @@ namespace {Name}.App
 
             // 6) 网络生命周期：断了要回登录/主菜单，而不是停在游戏里假装没事
             //    Net.OnKicked 为无参发布 → 处理器必须零参
-            Game.Event.On("Net.OnKicked", () =>
+            // ⛔ 事件名取引擎常量，⛔ 不许裸字符串（本文件 §2 的规则 + 交付前 grep 自检会抓这一处）
+            Game.Event.On(CloverEvents.Net.OnKicked, () =>
             {
                 Game.Logger.Warn("App", "被踢出，回主菜单");
                 Game.UI.CloseAll();
@@ -481,7 +485,7 @@ namespace {Name}.UI
 □ 游戏内：暂停菜单能开、能继续、能回主菜单（有二次确认）
 □ 连续「回主菜单 → 再进图」两次，第二次画面与计数与第一次一致（§5 清场清单过了一遍）
 □ `表现类` 的界面**都在联络图里逐格出现**（启动 / 主菜单 / 创角 / 读条 / 游戏内 / 暂停 / 结算），
-  格号写进验收表；`数值类` 只留日志行（`SKILL.md` §2 硬性判定第 3 条）
+  格号写进验收表；`数值类` 只留日志行（`SKILL.md` 的「取证清单」第 9 条）
 □ ★ **与参考游戏的同角度截图逐项对照，全部"一致"**（`reference/design-review.md` §3.6）——
    **有任何一项不一致 = 不可交付**；**没有参考游戏名就先问用户要**
 □ 全工程 grep：无裸事件名（`Game.Event.On("` 命中 0）、UI 无 `using {Name}.Module`（命中 0）
@@ -507,7 +511,7 @@ grep 命令见 `reference/architecture.md` §4（②③④⑤ 允许为 0 命中
 
 ## 8. 与其他文档的关系
 
-- **首场景内容**（操作/相机/动画/战斗/UI/音效）→ `patterns/game-demo.md` §0.1；
+- **首场景内容**（操作/相机/动画/战斗/UI/音效）→ `patterns/game-demo.md`、`reference/rules-full.md` 的「两件绝不打折的事」；
 - **原版系统清单**（菜单/创角/技能/背包/NPC…逐个做完）→ `patterns/game-demo.md` §0.0c；
 - **感官验收**（**按类别取证**：`表现类` 的所有点**采一次联络图**、脚本按格判定、**AI 只读那张汇总图一次**；
   `数值类` 只留日志行）→ `reference/design-review.md` §3 与 `reference/visual-loop.md` 第八节；
