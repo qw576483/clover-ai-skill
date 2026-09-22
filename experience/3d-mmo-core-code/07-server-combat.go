@@ -86,7 +86,7 @@ func (l *gameLogic) applyDamage(scene mmo.Scene, attacker, target uint64, tpos m
 //
 // `scene.Around` 返回视野内**所有对象**（含假人），而假人没有连接。
 // 把假人 id 丢给 PushToPlayer 不报错、却会被投递出去 ⇒
-// 客户端**同一条事件收到 N 份**（实测：1 玩家 + 3 假人 ⇒ 一次命中客户端打 4 条日志）。
+// 客户端**同一条事件收到 N 份**（1 玩家 + 3 假人 ⇒ 一次命中客户端打 4 条日志）。
 // 纪律：先算"谁在看"，只推给**真实玩家**；移动/属性/战斗三条推送共用这一个函数。
 func (l *gameLogic) viewerIDs(scene mmo.Scene, center uint64) []string {
 	ids := scene.Around(center, viewRadius)

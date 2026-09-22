@@ -67,7 +67,7 @@
 | **基础域** | Event, Timer, Fsm, Dispatcher, Logger | 引擎基石，`Game.Launch` 时构造 |
 | **数据域** | Table, Localization | 经 `CloverData.InitDataTable/InitLocalization` 挂载（⛔ **`Setting` 不在这里** —— 它由 `Game.Launch` 直接构造并挂上门面） |
 | **网络域** | Net, Sync, Schema, Alert, CloverScene, FrameRoom, **Http** | 经 `CloverNet.Init` 一次挂载（**含 Http**；`CloverNet.InitHttp` 保留供「只用 HTTP 不连网关」的特例）。Schema 桥接 Sync；FrameRoom 需业务 `Configure()` 注入消息号 |
-| **资源域** | Res | 经 **`CloverRes.Init(root)`** 挂载 —— ⚠️ **不会**随 `CloverPresentation` 自动挂（表现域挂 Map/Entity/Pool/UI/Scene/Atlas/Anim/Sound/Camera/Quality）。**业务必须显式调用**，否则 `Game.Res` 恒为 null：模型/贴图**静默加载失败**（只剩占位几何体），并在加载点抛 `NullReferenceException` 打断业务主流程（实测踩过，见 `patterns/game-demo.md` §4.2） |
+| **资源域** | Res | 经 **`CloverRes.Init(root)`** 挂载 —— ⚠️ **不会**随 `CloverPresentation` 自动挂（表现域挂 Map/Entity/Pool/UI/Scene/Atlas/Anim/Sound/Camera/Quality）。**业务必须显式调用**，否则 `Game.Res` 恒为 null：模型/贴图**静默加载失败**（只剩占位几何体），并在加载点抛 `NullReferenceException` 打断业务主流程（见 `patterns/game-demo.md` §4.2） |
 | **表现域** | Map, Scene, UI, Atlas, Anim, Sound, Camera, Quality, Entity, Pool, Input | 契约在 `Runtime/Core/PresentationContracts.cs`，实现由 Presentation 提供；Map/Entity/Pool/UI/Scene/Atlas/Anim/Sound/Camera/Quality 由 `CloverPresentation.Init` 随 `Game.Launch` **自动挂载** |
 
 ## 模块 API 速查

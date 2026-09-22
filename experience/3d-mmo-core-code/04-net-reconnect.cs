@@ -20,7 +20,7 @@ namespace YourGame.Module.Net
             Game.Event.On("Net.OnConnected", () =>
             {
                 // ★ 只有"曾登录过但本连接未绑定"才算重连；首次连接由 App 启动流程负责，
-                //   否则会对同一账号**登录两次**（实测：旧连接绑定被顶掉却仍在发消息 → 互相拽回）
+                //   否则会对同一账号**登录两次**（旧连接绑定被顶掉却仍在发消息 → 互相拽回）
                 if (!_sessionBound && _everLoggedIn) _ = LoginAsync();
             });
             Game.Event.On("Net.OnDisconnected", () => SetInMap(false));                 // 立刻停发

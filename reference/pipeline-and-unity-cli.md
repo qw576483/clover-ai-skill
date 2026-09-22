@@ -7,7 +7,7 @@
 
 ## 一、闸门 1：360（及同类国产杀软）必须关闭
 
-**为什么**：360 会拦截 Unity 的安装目录与辅助进程。实测症状是
+**为什么**：360 会拦截 Unity 的安装目录与辅助进程。症状是
 `Unity.Licensing.Client` **进程在、但通道永远拒绝连接**（其内部在崩），编辑器于是无限重连：
 
 ```
@@ -235,7 +235,7 @@ Invoke-WebRequest -Uri "http://127.0.0.1:$($d.port)/api/status" `
 
 **别用 `clear_console` + grep 日志文件来判断"这次编译过没过"** —— 文件是追加写的，
 上一轮甚至上上轮的错误行都还在，`Select-Object -Last N` 抓到的很可能全是历史行，
-于是**明明已经修好、却看起来还在失败**（实测因此白绕一轮）。
+于是**明明已经修好、却看起来还在失败**（因此白绕一轮）。
 
 **判据只用权威状态**：`unity command recompile_status --format json` 的
 `failed` / `errors` / `compilationFailed` 三个字段；再配合 `Library/ScriptAssemblies/*.dll`

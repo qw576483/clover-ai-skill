@@ -56,7 +56,7 @@ namespace YourGame.Module.Map
 
         /// <summary>
         /// ① 分轴解算（先 X 后 Z）→ 撞墙**贴墙滑行**（不是一头撞停）；
-        /// ② 扫掠细分（每段 ≤0.25m）→ 只检查终点会**穿墙**（实测：一次 7.5m 位移从建筑左跳到右）。
+        /// ② 扫掠细分（每段 ≤0.25m）→ 只检查终点会**穿墙**（一次 7.5m 位移从建筑左跳到右）。
         /// </summary>
         public static Vector3 Resolve(Vector3 from, Vector3 to, float r)
         {

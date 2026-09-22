@@ -78,7 +78,7 @@ robocopy "$tmp\CityBits" "<client>\Assets\ThirdParty\KayKit\CityBits" /S /IF *.f
 > 判定顺序：**A 的素材（穷尽）→ 同类游戏成套素材 → 我们的兜底素材（§2.2）→ 让用户下**。
 > 找不到就**多找几轮**（换关键词、换站点、换语言、换镜像、换格式），不要一次没搜到就跳到"用别的游戏素材凑合"。
 
-### 2.2 我们的兜底素材（实测可 `git clone`，**直接自动下载使用**）
+### 2.2 我们的兜底素材（可 `git clone`，**直接自动下载使用**）
 
 **KayKit（Kay Lousberg）· 官方 GitHub · 免登录直连**
 组织：`https://github.com/KayKit-Game-Assets`（共 10 个仓库，已确认存在 6 个）：
@@ -92,7 +92,7 @@ robocopy "$tmp\CityBits" "<client>\Assets\ThirdParty\KayKit\CityBits" /S /IF *.f
 | `KayKit-Medieval-Hexagon-Pack-1.0` | 中世纪六边形地块 200+ |
 | `KayKit-Prototype-Bits-1.0` | 原型白盒块 |
 
-> 角色自带动画名（实测）：`Idle` / `Running_A` / `Walking_A` / `1H_Melee_Attack_Slice_Diagonal` /
+> 角色自带动画名：`Idle` / `Running_A` / `Walking_A` / `1H_Melee_Attack_Slice_Diagonal` /
 > `Hit_A` / `Death_A`（接入方式见 `reference/unity-cli.md` §8.1 与项目 `AnimSetup.cs`）
 
 **其他可直链源**（**「能否自动下」比「许可」更重要**，故按获取难度列）：
@@ -130,7 +130,7 @@ robocopy "$tmp\CityBits" "<client>\Assets\ThirdParty\KayKit\CityBits" /S /IF *.f
    - 动画 → Editor 生成 AnimatorController → Assets/Resources/Anim/
    - 贴图 → 派生材质 → Assets/Materials/
 ⑤ 量测后使用：**不许假定单位/枢轴**——实例化后实测 Renderer 包围盒反算缩放并贴地
-   （各包单位不一致是常态，实测踩过：不量测就会 100 倍大或半埋地里）
+   （各包单位不一致是常态，不量测就会 100 倍大或半埋地里）
 ⑥ 记一行：包名 / 来源 URL / 落地路径 → 《资源欠缺清单》（**够用了，不必展开许可分析**）
 ```
 
@@ -231,11 +231,11 @@ AI 负责**解包工具链的获取与运行**、素材的整理与接入 ——
 1. **所有"下载 / 解包 / 提取"来的原版素材**（安装包、`*.mpq`、解包产物、rip 的 PNG / 模型 / 音效 / 文本 / 字体 / 图标）
    **只放一个地方**：**`<项目根>/原版资源/`** —— **名字就叫这四个中文字**，⛔ 不许改名、不许改成英文。
    内部按用途分层（例：`原版资源/安装包/`、`原版资源/mpq/`、`原版资源/解包原始/`、`原版资源/导出的png/`），
-   ⛔ **不许散到工作区各处**（实测违规形态：解包产物在 `_assets_src/`、工作区根、项目里各来一份）。
+   ⛔ **不许散到工作区各处**（违规形态：解包产物在 `_assets_src/`、工作区根、项目里各来一份）。
 2. **工程里用的素材必须"复制"过去**：`原版资源/**` → `client/Assets/Resources/**`。
    ⛔ **不许**让 Unity 工程直接引用 / 依赖 `原版资源/`（它不是资源目录）；⛔ **不许**边解包边原地引用。
    ⛔ **更不许"整包 / 整表全量搬运"**：只复制**被业务代码 / 关卡数据真正引用**的那几个文件。
-   **实测代价（某 demo 工程，2026-09-20）**：三张原版素材表被整片切片进
+   三张原版素材表被整片切片进
    `Assets/Resources/Sprites/**` ⇒ `Resources` 里 953 个资源文件 **795 个无任何引用**
    （Items 95% / Enemies 88% / Tiles 80% / Scenery 72%）；`smb1_misc_sprites_0..548` 全在，
    而 `Core/ResPaths.cs` 只引用其中 **8 个**；`FlagpoleSprites` 10 张只用 `_0/_1/_6`。
@@ -268,15 +268,15 @@ AI 负责**解包工具链的获取与运行**、素材的整理与接入 ——
 | ④ | **目录级加载** | `LoadAll<T>(dir)` / `Resources.LoadAll` ⇒ 该目录已引用 |
 | ⑤ | **生成物登记** | 由导出器生成、带"本文件是生成物，改它=重跑导出器"头的 `.cs` / `manifest.json` 里登记过的 |
 
-#### 实测代价（2026-09-20，某 demo 工程）
+#### 案例：只按 ① 判会把 88% 判成"未引用"
 
-按老口径（只做 ①）跑：`resource-files=11957 unreferenced=10529（88%）unreferenced-MB=29.5`，
+按只做 ① 的口径跑：`resource-files=11957 unreferenced=10529（88%）unreferenced-MB=29.5`，
 听上去"整包全量搬运、该裁 88%"。**但逐组核对后全是假阳性**：
 
 ```
 Clover\D2\Monsters 5129 / Chars 3431 / UI 1621(Quest 565 + SkillIcon 419 + SkillTree 79) / Items 342
 这些目录 100% 被 ResPaths 常量（②）覆盖；Chars/Monsters 的帧名由 Frame(prefix,i)（③）拼出
-ResPaths.cs 实测：FrameCount* 常量 11 个、Frame( 调用 17 次、还写明「也可以一次取全部 Resources.LoadAll<Sprite>(path)」（④）
+ResPaths.cs FrameCount* 常量 11 个、Frame( 调用 17 次、还写明「也可以一次取全部 Resources.LoadAll<Sprite>(path)」（④）
 ```
 
 ⇒ **真该裁的接近 0**。若照老口径裁剪，`Quest 565 + SkillIcon 419 + SkillTree 79 + Chars 3431 + Monsters 5129` 张全部会被删掉、游戏大面积缺图。

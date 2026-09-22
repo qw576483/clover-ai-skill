@@ -25,9 +25,22 @@ function Say([string]$status, [string]$name, [string]$detail) {
     Write-Output ("{0,-5} {1}  {2}" -f $status, $name, $detail)
 }
 
-if ($Template -eq '') { $Template = Join-Path $root 'reference\verify-template.md' }
+# Template discovery order. Why it is not a single candidate: this script gets COPIED into
+# <project>/tools/, so $PSScriptRoot-1 = the PROJECT root there -- one candidate then resolves
+# to <project>/reference/verify-template.md, which no project has => "template not found" on
+# every project-level run unless -Template is passed by hand. Measured on cs16, 2026-09-22.
+if ($Template -eq '') {
+    $cands = @(
+        (Join-Path $root 'reference\verify-template.md'),
+        (Join-Path $root 'tools\verify-template.md'),
+        (Join-Path (Split-Path $PSScriptRoot -Parent) 'reference\verify-template.md'),
+        (Join-Path $env:USERPROFILE '.codebuddy\skills\ai-skill\reference\verify-template.md')
+    )
+    foreach ($c in $cands) { if (Test-Path $c) { $Template = $c; break } }
+    if ($Template -eq '') { $Template = $cands[0] }
+}
 if (-not (Test-Path $Template)) {
-    $fail++; Say 'FAIL' 'gate-sync' ('template not found: ' + $Template)
+    $fail++; Say 'FAIL' 'gate-sync' ('template not found: ' + $Template + ' -- pass -Template <path to verify-template.md>')
     exit 1
 }
 if ($Project -eq '') {

@@ -76,7 +76,7 @@ clover-{name}/
 - ⛔ **项目级 skill 只能"加严"，不许"放宽"全局 skill 的规则层** ——
   凡全局标了 `§0~§7` / `⛔` / **硬规则** / **硬闸门** 的，项目约定一律不得冲突；
   冲突时：**照全局规则层做 → 把冲突的项目文档改掉 → 真觉得规则不合理就回报用户改 skill**。
-  ⛔ **不许**用「以本项目为准」把硬规则放过（实测形态：项目级 skill 把 `reference/rules-full.md` 的「临时测试文件规范」 禁止的 `client/_dev/`
+  ⛔ **不许**用「以本项目为准」把硬规则放过（形态：项目级 skill 把 `reference/rules-full.md` 的「临时测试文件规范」 禁止的 `client/_dev/`
   写成了"本项目探针位置"，子 agent 照章执行 ⇒ 该目录堆了**上百个文件**）。完整层级见 `SKILL.md` 的「通用约束」第 4 条。
 - 只记**本项目特有**的东西；通用规则**不许**抄进来（抄了必然两边漂移）。
 - 每次新增**对外可见**的设施（消息号 / handler / 面板 / 管理器 / 通用函数 / 配表），**回来补一行** ——
@@ -316,7 +316,7 @@ func (l *gameLogic) onXxx(c event.Ctx) error {
 
 ### 2.0 动手前：先确认 360 已关闭（硬闸门，不过就别建）
 
-**360（及同类国产杀软）会拦截 Unity 的安装目录与辅助进程。** 实测症状：
+**360（及同类国产杀软）会拦截 Unity 的安装目录与辅助进程。** 症状：
 `Unity.Licensing.Client` 进程存在但通道永远拒绝连接（其内部在崩），编辑器于是无限重连：
 
 ```
@@ -362,11 +362,11 @@ unity projects create "client" \
 >
 > **为什么**：用户打开编辑器是一次**昂贵且不可打断**的操作（首次导入素材+编译动辄几分钟）。
 > 你在交给用户之后再补一个包/改一次 manifest，用户就得**再重启一次**。
-> 实测代价：用户为此重启了三次。
+> 用户为此重启了三次。
 
 `unity projects create "client" --path <项目根>` 建出来的是 `<项目根>/client`，
 而 **Hub 列表显示的标题 = 最后一级目录名 = `client`**；用户机器上常有好几个同名 `client` 
-（实测：`clover-cq/client`、`Atlantic/Project/client`…），用户**根本认不出**哪个是新的。
+（`clover-cq/client`、`Atlantic/Project/client`…），用户**根本认不出**哪个是新的。
 
 建完立刻：
 
@@ -448,7 +448,7 @@ unity projects list --format json        # 复核 isFavorite=true
 > `unity pipeline list --json` 的 `instances` 恒为 `[]`、`unity status` 永远是空表，
 > **用户必须再重启一次** Unity 才连得上。
 >
-> **实测代价**：因为这条没写进模板，用户被迫重启了 **3 次**。
+> 因为这条没写进模板，用户被迫重启了 **3 次**。
 >
 > **做法**（二选一，**都必须在让用户去添加项目 / 打开编辑器之前做完**）：
 >
@@ -705,7 +705,7 @@ public class GameMain : MonoBehaviour
 - [ ] **`.gitignore` 按 Unity 模板写好**（⚠️ 别等提交时才发现；建项目就写）：
       `client/{Library,Temp,obj,Logs,Build,Builds,UserSettings,setting}/`、`*.csproj`、`*.sln`、**`*.slnx`**、
       `.vsconfig`、`.vs/`、`.idea/`、`.ai-tmp/`、`原版资源/`。
-      **实测代价**：某项目第一次准备提交时 `client/Library` 已经 **1769 MB / 26821 文件** ——
+      某项目第一次准备提交时 `client/Library` 已经 **1769 MB / 26821 文件** ——
       忽略规则少一行，仓库就多一个 GB 级缓存（且**忽略只挡提交、不会让磁盘变小**）。
       判据：`git --git-dir=<tmp> --work-tree=<项目> status --porcelain -uall` 里
       `Library/` / `Logs/` / `Temp/` / `.ai-tmp/` / `原版资源/` 的**计数全为 0**。
@@ -713,14 +713,14 @@ public class GameMain : MonoBehaviour
       **看不见工作区级 `.gitignore`**）。**必须再补一次真实仓库判定**，否则会假绿：
 
       ```powershell
-      # ① 项目是否被上层 .gitignore 整目录吞掉（实测踩过：git add 报 "paths are ignored"）
+      # ① 项目是否被上层 .gitignore 整目录吞掉（git add 报 "paths are ignored"）
       git -C <工作区根> check-ignore -v -- <项目根相对路径>
       # ② 真实仓库里"会被提交的文件数 / 危险项计数"（pathspec 限定本工程，别用 -A）
       git -C <工作区根> add -n -- <项目根相对路径> | Measure-Object | Select-Object -ExpandProperty Count
       git -C <工作区根> status --porcelain -uall -- <项目根相对路径>
       ```
 
-      **实测代价（2026-09-20，某 demo 工程）**：临时目录判据给出"危险项全 0、
+      临时目录判据给出"危险项全 0、
       24788 条待提交"，看着完美；真实 `git add` 却直接
       `The following paths are ignored by one of your .gitignore files: <该工程目录名>`
       —— 工作区级 `.gitignore` 早有 `/<该工程目录名>/`（**有意排除**：该工程 8.7 GB）。

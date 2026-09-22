@@ -9,7 +9,7 @@ namespace YourGame.EditorTools
 {
     public static class EditorMeasurePlace
     {
-        /// <summary>格左上角 → 格**中心**（传角点会让整图偏移半格，实测踩过）。</summary>
+        /// <summary>格左上角 → 格**中心**（传角点会让整图偏移半格）。</summary>
         public static Vector3 TileCenter(int x, int z, float tile) => new Vector3(x + tile * 0.5f, 0f, z + tile * 0.5f);
 
         public static GameObject Place(string dir, string name, Vector3 posXZ, Transform parent,
@@ -43,7 +43,7 @@ namespace YourGame.EditorTools
             return go;
         }
 
-        static Bounds Measure(GameObject go)   // 实测：合并所有子 Renderer 的世界包围盒
+        static Bounds Measure(GameObject go)   // 合并所有子 Renderer 的世界包围盒
         {
             var rs = go.GetComponentsInChildren<Renderer>();
             if (rs.Length == 0) return new Bounds(go.transform.position, Vector3.one);

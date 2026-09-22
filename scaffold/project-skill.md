@@ -61,7 +61,7 @@
    ⛔ **特别注意这几条不许在本文件里被"项目化"放宽**：
    临时文件位置（全局 `reference/rules-full.md` 的「临时测试文件规范」：一律 `<项目根>/.ai-tmp/`，⛔ 不许 `client/_dev/`、项目根、`tools/`）；
    交付闸门（§2）；收尾机械自检（`reference/rules-full.md` 的「收尾机械自检」）；引擎能力优先（§6）。
-   （实测反面：项目级 skill 把探针位置写成 `client/_dev/` ⇒ 探针堆了**上百个文件**，子 agent 全照章执行。
+   （反面：项目级 skill 把探针位置写成 `client/_dev/` ⇒ 探针堆了**上百个文件**，子 agent 全照章执行。
    ⚠️ 这条反过来也成立：**新项目不许把全局规则层"本地化"成更松的版本**。）
 4. **子 agent 不会自动继承 skill**：派子 agent 时，任务书里必须写明「怎么拿到本 skill」——
    首选让它读 `<项目根>/tools/ai-skill/SKILL.md`，再给全局 `clover-engine` 与 `unity-cli` 的入口路径。

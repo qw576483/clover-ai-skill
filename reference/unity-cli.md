@@ -14,7 +14,7 @@
 - 客户端的一切自动化操作（创建工程 / 编译 / 测试 / 构建 / 改场景与资源）**一律 Unity 6（6000.x）+ Unity CLI**；
   **其他版本不支持**：老工程先 `unity projects upgrade` 或重建，**不要做降级适配**。
 - 自检只认**真装了的**：`unity editors list --format json` 里**必须有 `location` 字段**才算装了；
-  没有 `location` 的条目只是"已知版本"。**实测踩过**：拿这种条目 `--editor-version` 建工程直接失败  
+  没有 `location` 的条目只是"已知版本"。拿这种条目 `--editor-version` 建工程直接失败  
   （"未找到版本 X 的 Unity Editor"）。
 - 模板 id 现场查：`unity templates list --editor 6000.0.x --format json`（不要猜 id）。
 
@@ -42,7 +42,7 @@
    `editor_play` / `capture_game_view` / `recompile_status`。
 3. **用户没开 / 说不想开** → **停下，不继续做**。不许"我自己批处理一下也行"。
 
-**为什么不许自己跑**（实测代价，别重复踩）：
+**为什么不许自己跑**（代价，别重复踩）：
 
 - 首次导入几百上千张素材 + 全量脚本编译，会把**一次往返拖到十几分钟**；
 - 授权 / 杀软任一环节出问题就是**静默卡死**（见 §9），时间全烧在等它返回上；
@@ -404,8 +404,8 @@ unity command test_status                                                  # sta
 | # | 纪律 | 反例 |
 |---|---|---|
 | 1 | **必须 `--async_tests` + 轮询** | 同步调用报 `PlayMode tests cannot run synchronously over HTTP: entering play mode triggers a domain reload that drops the request` |
-| 2 | **等真实时间**（`yield return new WaitForSeconds(0.9f)`），不要只 `yield return null` 数帧 | 相机/插值类是**平滑**的：PlayMode 测试里 30 帧 ≈ **0.1 秒**，根本没收敛 ⇒ 断言读到"半路值"（实测相机距离 3.37m，看着像避障失效） |
-| 3 | 清理用 **`DestroyImmediate`**；**"是否重复投递"以服务端日志为准** | `Destroy` 延迟到帧末 ⇒ 上一用例的墙被下一用例的探针打到（实测读数 2.90m 正好是上一用例那堵 3m 墙）。 活编辑器里跑用例时，**测试与场景里的业务入口（Bootstrap）会抢同一个 `Game`/连接**，用例里的事件计数会虚高（实测 `enter=5347`）——那是**环境产物**，不是产品缺陷 |
+| 2 | **等真实时间**（`yield return new WaitForSeconds(0.9f)`），不要只 `yield return null` 数帧 | 相机/插值类是**平滑**的：PlayMode 测试里 30 帧 ≈ **0.1 秒**，根本没收敛 ⇒ 断言读到"半路值"（相机距离 3.37m，看着像避障失效） |
+| 3 | 清理用 **`DestroyImmediate`**；**"是否重复投递"以服务端日志为准** | `Destroy` 延迟到帧末 ⇒ 上一用例的墙被下一用例的探针打到（读数 2.90m 正好是上一用例那堵 3m 墙）。 活编辑器里跑用例时，**测试与场景里的业务入口（Bootstrap）会抢同一个 `Game`/连接**，用例里的事件计数会虚高（`enter=5347`）——那是**环境产物**，不是产品缺陷 |
 
 > 顺带一条：**别在 `eval_file` 里 `Thread.Sleep` 驱动游戏**。`eval_file` 跑在编辑器主线程上，
 > 睡眠会把"发送帧"一起卡住（你以为连打了 4 下，实际只出去 1 下）。

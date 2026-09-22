@@ -411,7 +411,7 @@ UI：真 HUD（血条/信息/按钮），预制体在 Resources/UI/
 | **别在许可上停下来** | 不为许可问用户、不把 `CREDITS.md` 当交付门槛、不因"来源不明"放弃合适素材 |
 | **记一行来源** | 包名 / 来源 URL / 落地路径，写进《资源欠缺清单》（够用；**将来商用**再照它统一替换，见 `asset-sources.md` §7） |
 
-> **可复用的取值途径**（实测可 `git clone` / 可直链，不靠网页按钮）：官方 GitHub 上的 CC0 套件（如 **KayKit** 系列：城市 / 地牢 / 角色 / 中世纪地块）、Khronos glTF-Sample-Assets、Poly Haven（HDRI/PBR，CC0）、ambientCG（CC0）。**链接一律现场取得，不许凭记忆编 URL。**
+> **可复用的取值途径**（可 `git clone` / 可直链，不靠网页按钮）：官方 GitHub 上的 CC0 套件（如 **KayKit** 系列：城市 / 地牢 / 角色 / 中世纪地块）、Khronos glTF-Sample-Assets、Poly Haven（HDRI/PBR，CC0）、ambientCG（CC0）。**链接一律现场取得，不许凭记忆编 URL。**
 
 #### 4.0.1 多模态闸门（要"自产资源"时必过）
 
@@ -472,7 +472,7 @@ unity projects create "client" --path "clover-{项目名}" \
   2. **自己的位置必须本地预测**：**绝不**用服务端插值位置逐帧覆盖自己（否则手感 = 网络延迟，服务端拒绝/丢包时表现为"按键不动"）；服务端权威位置只用于**校正**（小误差忽略、大误差拉回）；
   3. 相机：引擎的 `Game.Camera.Follow` 是**"锁 Z 的简单跟随"**（无环绕、无防穿墙）⇒ 第三人称请**业务自写**环绕相机（属 C 桶；只要**不调用** `Follow`，引擎就不会抢相机 Transform）。
 - **动画必须接线（硬约束）**：素材自带动画 → 用 Editor 脚本生成 `AnimatorController` → `Game.Anim.CreateAnimator(modelGo, controller)` → `SetFloat("Speed")` / `SetTrigger("Attack")` 驱动状态。（`AnimatorController` 是 Editor 资源类型，运行时建不出来；生成脚本记得 `using UnityEditor.Animations`。）
-- **引擎模块要显式初始化**：`Game.Res` **不会**随 `CloverPresentation` 自动挂载，必须业务调 `CloverRes.Init(root)`；漏了它 `Game.Res` 恒为 null ⇒ **模型永远加载不出来（只剩占位体）且会在加载点抛 NullReferenceException 打断进图流程**（实测踩过，见 §8 的验收自证）。
+- **引擎模块要显式初始化**：`Game.Res` **不会**随 `CloverPresentation` 自动挂载，必须业务调 `CloverRes.Init(root)`；漏了它 `Game.Res` 恒为 null ⇒ **模型永远加载不出来（只剩占位体）且会在加载点抛 NullReferenceException 打断进图流程**（见 §8 的验收自证）。
 
 **必须创建的文件夹结构**（在 `Assets/` 下）：
 

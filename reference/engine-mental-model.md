@@ -13,7 +13,7 @@
 |---|---|---|
 | Logger / Event / Timer / Fsm / Dispatcher / Setting | `Game.Launch` 自动 | 基础域 |
 | Net / Sync / Schema / Alert / CloverScene / FrameRoom / Http | **业务** `CloverNet.Init(addr, udpAddr)` | 不调就完全没网络（静默） |
-| Res | **业务** `CloverRes.Init(root)` | ⚠️ **不挂 ⇒ `Game.Res` 为 null**：模型/贴图静默加载失败（只剩占位体），并在加载点抛 `NullReferenceException` 打断主流程。**实测踩过** |
+| Res | **业务** `CloverRes.Init(root)` | ⚠️ **不挂 ⇒ `Game.Res` 为 null**：模型/贴图静默加载失败（只剩占位体），并在加载点抛 `NullReferenceException` 打断主流程。 |
 | Input | **业务** `CloverInput.Init()` | 同时创建 EventSystem + 匹配后端的 InputModule（UI 点击依赖它） |
 | Table / Localization | **业务** `CloverData.InitDataTable(dir)` / `InitLocalization(...)` | 不调就没配表 |
 | Map / Entity / Pool / UI / Scene / Atlas / Anim / Sound / Camera / Quality | `CloverPresentation.Init()`（**随 Launch 自动**，`AutoMount=true`） | 表现域全自动（Map 为纯数据模块） |
@@ -38,7 +38,7 @@ Awake()        ← 引擎还没 Launch：**禁止**碰 Game.Event / Game.UI / Ga
 Start()        ← 在这里 Game.Launch(...) + 各模块 Init + 订阅
 Update()       ← Game.Tick 由引擎的 EngineRunner 驱动（Camera/Anim 等模块也在这里 Tick）
 ```
-**实测踩过**：在 `Awake()` 里 `Game.Event.On(...)` → `NullReferenceException`。事件订阅一律放 `Start()`。
+在 `Awake()` 里 `Game.Event.On(...)` → `NullReferenceException`。事件订阅一律放 `Start()`。
 
 ## 3. 一条数据的完整链路（MMO 玩法的骨架）
 
@@ -58,7 +58,7 @@ Update()       ← Game.Tick 由引擎的 EngineRunner 驱动（Camera/Anim 等�
 > UI 构建、对象池、存档/设置、图集、本地化、配表、动画、相机、场景、音效 ——
 > **只要属于这十类，就必须先确认引擎有没有现成的；有就用引擎的。**
 >
-> **为什么单列这条**：实测一个项目手搓了 `UIBuilder`（7.7KB，节点/文本/按钮/铺满全自己写），
+> **为什么单列这条**：一个项目手搓了 `UIBuilder`（7.7KB，节点/文本/按钮/铺满全自己写），
 > 而引擎的 `UIWidgets` 里**这些全都有**（含专门的 `Stretch(rt)`）—— 业务不知道，
 > 于是白写一遍，还因为"面板根节点没铺满"踩了坑（引擎的 `Stretch` 正好能防住）。
 > **这份表当时只列了 Camera/Anim/UI/Input/Res 五项，漏了下面标 ★ 的那几行** ——
@@ -68,9 +68,9 @@ Update()       ← Game.Tick 由引擎的 EngineRunner 驱动（Camera/Anim 等�
 |---|---|---|
 | `Game.Camera` | `Follow(target, smoothTime)` / `Unfollow` / `Shake` / `SetBounds` | **`Follow` 是"锁 Z 的简单跟随"**（无环绕/无旋转/无防穿墙）⇒ 第三人称请业务自写；**只要不调 `Follow`，引擎不会抢相机 Transform**。**2D 跟随 + 夹关卡边界直接用 `SetBounds`**。另有相机侧三个**纯件**（能力下沉；**不经 `Game.Camera` 门面**，业务自持 / 自传配置）：`ViewBob`（第一人称视点晃动 + 落地沉降，纯逻辑类 + `ViewBobConfig` 七个数值）、`CameraMath`（`FovYFromFovX` 水平→垂直 FOV / `AimDirection` yaw,pitch→视线方向 / `Follow` 指数平滑）、`LookAccumulator`（鼠标位移 → yaw/pitch 累加；符号与夹紧口径由调用方给） |
 | `Game.Anim` | `CreateAnimator(go, RuntimeAnimatorController)` → `IAnimPlayer`（`Play/CrossFade/SetFloat/SetBool/SetInteger/SetTrigger/OnComplete`） | **`AnimatorController` 只能 Editor 侧生成**（`using UnityEditor.Animations`）。**注意**：它是"Unity Animator 驱动"的模型；**代码逐帧切 Sprite 的轻量动画它不覆盖**（那类要么改用 AnimatorController，要么业务自写） |
-| `Game.UI` | `Open<T>(param)` / `Close<T>()` / `CloseAll` / `Confirm`；面板预制体查 **`Resources/UI/{类名}`**，找不到只打 Error 且**不打开**；内置层：`ToastLayer` / `FloatTextLayer` / `LoadingLayer` / `ConfirmLayer` / `GuideLayer` | 纯代码搭 UI 也要生成真预制体（用 `CloverPresentation.PanelProvider` 可自定义来源）。⚠️ **`param` 在 `Awake` 之后才到**：面板**不要在 `Awake` 里读上下文**取状态值，用 `OnOpen(param)` 刷（实测踩过：读条屏命数恒显示默认值） |
+| `Game.UI` | `Open<T>(param)` / `Close<T>()` / `CloseAll` / `Confirm`；面板预制体查 **`Resources/UI/{类名}`**，找不到只打 Error 且**不打开**；内置层：`ToastLayer` / `FloatTextLayer` / `LoadingLayer` / `ConfirmLayer` / `GuideLayer` | 纯代码搭 UI 也要生成真预制体（用 `CloverPresentation.PanelProvider` 可自定义来源）。⚠️ **`param` 在 `Awake` 之后才到**：面板**不要在 `Awake` 里读上下文**取状态值，用 `OnOpen(param)` 刷（读条屏命数恒显示默认值） |
 | ★ **`CloverEngine.UIFactory`** | **`CreateNode / Stretch / CreateCentered / CreatePanel / CreateText / CreateButton / DefaultFont / UICamera`** —— 代码搭 uGUI 的全套脚手架 | **E2 起对业务公开**：业务"用代码搭 UI"一律用它，**不要再手写锚点/铺满/文本的工具类**（那类重复实现是踩坑高发区）。`Stretch(rt)` = 根节点铺满父层，`CreateCentered` = 相对父层中心定位。<br>❗**注意**：`DefaultFont()` 是引擎内置字体；**像素风项目要自己的像素字体**（字号还得按字体规格取整），那层包装仍归业务。通用件（Toast/飘字/Loading/确认框/引导）走 `Game.UI`，不要直接碰那些 internal 的 Layer |
-| ★ **`CloverEngine.UIFactory` 通用控件工厂** | `CreateSlider` / `CreateInputField` / `CreateSelector`（「◀ 值 ▶」选择行）/ `CreateToggleRow`（开关行）+ 布局助手 `Place` / `AnchoredTopLeft` / `AnchoredBottom` / `CreateLabel` / `CreateBoxRect` / `CreateBottomLabel` + 进度条比例 `SetBarWidth`（**锚点宽度**口径）+ 句柄类型 `CloverEngine.Selector` / `CloverEngine.ToggleRow`（都在 `Presentation` 程序集，`Runtime/Presentation/UIWidgetControls.cs`） | ⛔ **别再自己造锚点/控件工具类，也别自建 Slider/InputField/Selector/ToggleRow**（实测同一个 uGUI 控件在项目里被造了三遍、三份互指对方有坑）。**配色 / 文案 / 字号 / 回调一律由参数传入**（`Widget*Style` 结构体），引擎不含任何项目取值。三个已封在里面的坑：① `SetBarWidth` 走锚点宽度 —— 空 sprite 的 `Image.fillAmount` **静默失效**；② InputField 的 `placeholder` 声明类型是 `Graphic`，必须 `as Text` 才取得到 `.font/.fontSize/.text`（否则 CS1061）；③ Slider 别用 `DefaultControls.CreateSlider`（配色在私有层级里）。**安全区仍归业务面板**（`Screen.safeArea`），控件工厂只管摆放 |
+| ★ **`CloverEngine.UIFactory` 通用控件工厂** | `CreateSlider` / `CreateInputField` / `CreateSelector`（「◀ 值 ▶」选择行）/ `CreateToggleRow`（开关行）+ 布局助手 `Place` / `AnchoredTopLeft` / `AnchoredBottom` / `CreateLabel` / `CreateBoxRect` / `CreateBottomLabel` + 进度条比例 `SetBarWidth`（**锚点宽度**口径）+ 句柄类型 `CloverEngine.Selector` / `CloverEngine.ToggleRow`（都在 `Presentation` 程序集，`Runtime/Presentation/UIWidgetControls.cs`） | ⛔ **别再自己造锚点/控件工具类，也别自建 Slider/InputField/Selector/ToggleRow**（同一个 uGUI 控件在项目里被造了三遍、三份互指对方有坑）。**配色 / 文案 / 字号 / 回调一律由参数传入**（`Widget*Style` 结构体），引擎不含任何项目取值。三个已封在里面的坑：① `SetBarWidth` 走锚点宽度 —— 空 sprite 的 `Image.fillAmount` **静默失效**；② InputField 的 `placeholder` 声明类型是 `Graphic`，必须 `as Text` 才取得到 `.font/.fontSize/.text`（否则 CS1061）；③ Slider 别用 `DefaultControls.CreateSlider`（配色在私有层级里）。**安全区仍归业务面板**（`Screen.safeArea`），控件工厂只管摆放 |
 | `Game.Input` | `State.MoveDirection`（WASD 已归一）、`GetKey/GetKeyDown/GetKeyUp(GameKey)`、`GetMouseButton*/MouseDelta/MousePosition/GetAxis`、`Lock/Unlock` | **后端无关**（Legacy/InputSystem 自动探测）⇒ **业务永远用 `Game.Input`，不要直连 `Keyboard.current`**（旧后端下为 null） |
 | `Game.Res` | `LoadAsset<T>(path, cb)` / `Release` / `Preload` / `UnloadAll` / **`TryGet<T>(path)`**（同步取**已驻留**资源；不触发加载、不阻塞、纯读）/ **`Exists(path)`**（**同步回答"在不在"**，不驻留、不动引用计数；Resources 后端探测一次并按路径缓存）/ **`LoadAll<T>(path)`**（**同步批量取**，会加载、不进缓存；条带/图集整条取）；热更成员另有 `CheckUpdate` / `DownloadUpdate` / `ClearDownloaded` / `Version` / `UpdateState` | 路径相对 `Resources`（`CloverRes.Init(root)` 决定前缀）。**无阻塞式单资源加载，但有同步批量取** —— 要"立刻拿到一个"就**先 `Preload`、后 `TryGet`**；要"这条在不在"用 `Exists`；要"整条帧序列"用 `LoadAll`。⛔ **别用 `Resources.Load*` 绕开 `Game.Res`**（缓存 / LRU / 根前缀 / 热更后端全失效，换后端时静默不跟着变；`Exists`/`LoadAll` 就是为消掉这类绕开才加的） |
 | ★ **`CloverEngine.Rng`** | 注入式**可复现**随机：`Next / Next(max) / Next(min,max) / NextFloat / Range / Chance / Pick / PickWeighted / Shuffle / NextGrid / Index` + `FromTime / Derive / DeriveSeed` | ⛔ **禁止 `UnityEngine.Random`**（全局静态状态 ⇒ 序列不可复现，地图/掉落对不上）。由调用方持有实例并**显式传参**；非法参数**不抛异常**（返回安全值 + 限频告警） |
@@ -95,7 +95,7 @@ Update()       ← Game.Tick 由引擎的 EngineRunner 驱动（Camera/Anim 等�
 1. **输入走 `Game.Input`**（见上表）；`State.MoveDirection` 直接可用；
 2. **本地预测 + 服务端校正**：本地立即移动（手感），20Hz 上行；服务端权威位置只做校正
    （<0.3m 忽略 / 0.3~1.5m 缓收 / >1.5m 硬贴 + 告警）。**绝不能用权威位置逐帧覆盖自己**   
-   —— 那是"按了 WASD 不动/漂移"的经典根因（实测踩过）；
+   —— 那是"按了 WASD 不动/漂移"的经典根因；
 3. **相机自写第三人称**：`LateUpdate` 跟随 + `SphereCast` 防穿墙 + 收缩快/拉伸慢，避免抖动。
 
 ## 6. 素材接入的"量测优先"原则（第三方 FBX/GLB 通用）
