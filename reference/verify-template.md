@@ -87,7 +87,7 @@ engine-credit||required|credit judged on RENDERED text, not on a source grep
 baseline-images||required|reference-side baseline screenshots exist
 spec-doc||required|the reference spec document exists
 asset-research-doc||required|asset research log exists (gate 3)
-no-team-sessions||required|no async/team dispatch channel (it bypasses model:inherit)
+no-sync-subagents||required|dispatch only through team members (the sync channel stalls: code=10003)
 row-category||required|every verdict row carries numeric / visual / performance class
 no-escaped-artifacts||required|no one-off artifact outside the project
 sampler-selfcheck||required|every .ai-tmp ps1 parses and is ASCII-or-BOM
@@ -154,7 +154,7 @@ if (Test-Path $shotInAsm) {
 > **类别是"该不该截图"的唯一判据，所以必须落在表里**，不能靠执行者临场判断。
 > 联络图的做法见 `reference/visual-loop.md` 第八节。
 
-> **第 11 条的代价**（必须写死，否则会重犯）：曾把一条"不许有异步成员会话"的检查写成
+> **第 11 条的代价**（必须写死，否则会重犯）：曾把一条"不许有某某成员会话"的检查写成
 > "**工作区里存在该目录就 FAIL**"，结果把**九天前另一个任务**留下的目录报成本次违规，
 > 差点据此停掉正常流程去"修"一个不存在的问题。
 > 判据一句话：**检查必须限定在本次任务的时间窗 / 作用域内** ——
