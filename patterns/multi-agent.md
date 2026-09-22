@@ -67,7 +67,9 @@
    **新建项目必须逐字写上这条**：「**只许读本项目（`<项目根>/…`）与引擎源码 / `clover-doc` / skill；
    工作区里**其它** `clover-project-*` 一律不许读、不许 grep、不许照抄**（它的源码 / `tools/ai-skill/` /
    `策划/` / `docs/` / Editor 生成器 / 素材全算）——要抄"通用形状"就看 skill 的
-   `patterns`/`scaffold`/`experience`。」**唯一例外**：用户在本轮明确点名了某个工程。
+   `patterns`/`scaffold`/`experience`。」**两个例外**：① 用户在本轮明确点名了某个工程；
+   ② [游戏 Demo 清单](https://github.com/qw576483/clover-doc/blob/main/ai/game-demo.md) 里列出的成品工程
+   （引擎 + skill 交付出来的）**可读、可对照其做法与形状**，⛔ 领域内容（专有名词 / 数值 / 素材）不许沿用。
    **并且再逐字写上这条**：「⛔ **不许改任何 skill** —— 项目级 `<项目根>/tools/ai-skill/`、
    仓库里的全局源 `ai-skill/`、宿主的安装副本（`<宿主>/skills/ai-skill/`）**全都不许改**；
    发现 skill 有问题 ⇒ **写进回报**，由主 agent 改。」

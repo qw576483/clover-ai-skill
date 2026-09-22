@@ -101,6 +101,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 **4. 禁用 API（会被闸门测红）**：`PlayerPrefs` / 裸 `Input` / `GameObject.Find` / `FindObjectOfType` / `Instantiate(` / `Resources.Load`。有例外 ⇒ 必须在 `策划/验收表.md` 的「允许的差异」里逐条登记（**只写在代码注释里 = 没登记 = 违规**）。
 
 **5. 临时文件**：一次性产物只放 `<项目根>/.ai-tmp/test/`；驱动 `.ai-tmp/drivers/`；宿主 `.ai-tmp/hosts/`；**取证截图 `.ai-tmp/screenshots/`**（⛔ 不进 `Assets/`）；**判据资产**（探针 / 驱动 / 量法脚本）⇒ 落 `tools/probes/` 并提交。⛔ 不许散落到项目根 / `client/_dev/` / `Assets/` / `策划/` / 工程外。
+🚨 **一律写绝对路径**（`<项目根>/.ai-tmp/...`），⛔ **不许写相对路径** `.ai-tmp/...` —— **主 agent / 执行者的当前目录常常是工作区根**，而一个工作区里往往并排好几个 `clover-*` 仓库 ⇒ 相对写法会把产物落到**工作区根**，并让**多个项目共用一个 `.ai-tmp`**（2026-09-22 实测：`<工作区根>\.ai-tmp\test\` 里混着 cs16 的 `heartbeat-片*.tsv` 与其它会话的 `msg-*.txt` / 全仓扫描件）。**判据**：产物路径必须能以"绝对路径"直接打开；⛔ 相对路径写出的产物 = 落错位置 = 违规。
 
 **6. 原版资源**：下载 / 解包素材只放 `<项目根>/原版资源/`（含 `清单.md`）；进工程**只复制被引用的那几个**（⛔ 整包 / 整表全量搬），路径收敛到 `Core/ResPaths.cs`。
 
@@ -198,7 +199,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 **1. 找依据的顺序**：**本项目 skill / 文档 / 源码** ⇒ **引擎源码 / `clover-doc` / 本 skill** ⇒ **联网** ⇒ **自创**（标注"本项目新增"）。冲突时：**用户 > 引擎 > 联网 / 自创**。
 ⛔ **不许编 API**（每个类名 / 方法名都要有出处）。
 
-**2. ⛔ 红线**：新建项目时，工作区里**别的** `clover-project-*`（源码 / skill / 策划 / docs / 生成器 / 素材）**不许读 / grep / 照抄**；通用形状只从本 skill 的 `patterns` / `scaffold` / `experience` 取。唯一例外：用户本轮点名。
+**2. ⛔ 红线**：新建项目时，工作区里**别的** `clover-project-*`（源码 / skill / 策划 / docs / 生成器 / 素材）**不许读 / grep / 照抄**；通用形状只从本 skill 的 `patterns` / `scaffold` / `experience` 取。**两个例外**：① 用户本轮点名；② [**游戏 Demo 清单**](https://github.com/qw576483/clover-doc/blob/main/ai/game-demo.md) **列出的** `clover-project-*`（= 引擎 + skill 交付出来的成品）**可读、可对照**其**做法与形状**（目录 / 交付口径 / 生成器组织），⛔ 但它的领域内容（游戏专有名词 / 数值 / 素材）不许沿用。
 **路径可达的证据**：交付前跑 `tools/verify.ps1`；验收表里每个 `<路径>:<行号>`、每个截图路径都要**能查到**（悬空 = 等于没证据）。
 
 **3. 闸门是什么、为什么必须有**：**提示词是请求，闸门才是保证。** "必须始终成立"的事 ⇒ **同时**落 ① `tools/verify.ps1` 检查项 ② 强制层（git hook / CI / 打包入口）③ 会话起始必读卡。

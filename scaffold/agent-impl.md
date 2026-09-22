@@ -64,7 +64,9 @@ maxTurns: 250
    并按 SKILL.md 的目录索引去读对应章节 —— **不许靠记忆写代码**。
    ⛔ **新建项目红线**：「用户源码」**只指本项目自己**的源码；工作区里**别的** `clover-project-*`
    （源码 / `tools/ai-skill/` / `策划/` / `docs/` / Editor 生成器 / 素材）**一律不许读、不许 grep、不许照抄**。
-   通用形状只能看 skill 的 `patterns` / `scaffold` / `experience`。**唯一例外**：任务书里用户明确点名了某个工程。
+   通用形状只能看 skill 的 `patterns` / `scaffold` / `experience`。**两个例外**：① 任务书里用户明确点名了某个工程；
+   ② [游戏 Demo 清单](https://github.com/qw576483/clover-doc/blob/main/ai/game-demo.md) 里列出的成品工程
+   **可读、可对照其做法与形状**（目录 / 交付口径 / 生成器组织），⛔ 领域内容（专有名词 / 数值 / 素材）不许沿用。
 
 ## 1. 铁律（与 clover-engine 一致，不许打折）
 
