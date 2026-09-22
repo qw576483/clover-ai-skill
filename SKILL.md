@@ -62,7 +62,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 
 **11. 先确认「执行者通道」可用**（读代码 / 写代码之前的第一件事）：
 - **能派**（看得见 `clover-impl`）⇒ 直接派活。
-- **看不见 ⇒ 先把它配出来**：按 `scaffold/agent-impl.md` 建 `clover-impl.md`（⛔ `---` 必须在**第 1 行**；`tools:` 含 `use_skill`；**`maxTurns: 250`**；`model: inherit`），放到 `~/.codebuddy/agents/` 或 `<工作区>/.codebuddy/agents/`。
+- **看不见 ⇒ 先把它配出来**：按 `scaffold/agent-impl.md` 建 `clover-impl.md`（⛔ `---` 必须在**第 1 行**；`tools:` 含 `use_skill`；**`maxTurns: 250`**；`model: inherit`），放到**你所用宿主的 agents 目录**（`~/.<工具>/agents/`：CodeBuddy `~/.codebuddy/`、Claude Code `~/.claude/`、Cursor `~/.cursor/`；工作区级同理 `.<工具>/agents/`）。
   **"没有执行者"永远不是"我自己做"的理由 —— 它是"先把执行者建出来"的信号。**
 
 ---

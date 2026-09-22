@@ -3,9 +3,9 @@
 > **怎么用**：新建 `clover-impl.md`，内容 = **本文件从 `---` 起的全部内容**（含 frontmatter）。
 > ⛔ **`---` 必须在文件第 1 行**（它前面不许留标题 / 说明 / 分隔线）——
 > frontmatter 不在首行 ⇒ `name` / `tools` / `maxTurns` **全部静默失效**（工具集与轮数上限悄悄变默认）。
-> 放到 ——
-> - `~/.codebuddy/agents/clover-impl.md` —— **用户级，所有项目可用（推荐）**；或
-> - `<工作区>/.codebuddy/agents/clover-impl.md` —— 只在该工作区可用。
+> 放到 ——（`~/.<工具>/` 的 `<工具>` = 你所用宿主的配置根：CodeBuddy `codebuddy` / Claude Code `claude` / Cursor `cursor`）
+> - `~/.<工具>/agents/clover-impl.md` —— **用户级，所有项目可用（推荐）**；或
+> - `<工作区>/.<工具>/agents/clover-impl.md` —— 只在该工作区可用。
 >
 > 同名时**项目级覆盖用户级**。**放好后下一条消息即可 spawn，不必重启**；`/agents` 可确认是否已加载。
 

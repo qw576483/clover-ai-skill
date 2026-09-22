@@ -19,11 +19,18 @@ Clover 引擎的 **AI 交付 skill**：把「做游戏 / 写业务代码 / 改�
 
 ## 怎么用
 
-**方式一：装到 AI 宿主的 skills 目录**（例如 CodeBuddy）
+**方式一：装到 AI 宿主的 skills 目录**（目录名用 `ai-skill`）
+
+| 宿主 | skill 目录 |
+|---|---|
+| CodeBuddy | `~/.codebuddy/skills/ai-skill/` |
+| Claude Code | `~/.claude/skills/ai-skill/` |
+| Cursor | `~/.cursor/skills/ai-skill/` |
+| 其他工具 | `<它自己的 skill 根目录>/ai-skill/` |
 
 ```bash
 git clone https://github.com/qw576483/clover-ai-skill.git
-# 复制或软链到宿主 skills 目录，目录名用 ai-skill（例如 ~/.codebuddy/skills/ai-skill）
+# 复制或软链到上表对应目录
 ```
 
 装好后，涉及 `clover-*` 仓库、Clover 工程、Unity 客户端或 Go 服务端开发的任务会自动命中该 skill。
