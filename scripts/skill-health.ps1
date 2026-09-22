@@ -11,6 +11,7 @@
 #   2 router-reachable    every file referenced by SKILL.md must exist (no dangling pointers)
 #   3 no-relaxed-phrasing the rule layer must never be relaxed by "project wins over global" wording
 #   4 copies-synced       host install copy == repo source copy (name + size)
+#                         + refuses to compare a copy against ITSELF (that always passes)
 #   5 archive-pending     the transitional full-rules archive must eventually be digested away
 #
 # ASCII-only on purpose (PowerShell 5.1 parses non-ASCII .ps1 without BOM as ANSI).
@@ -99,13 +100,25 @@ else {
 }
 
 # -- 4) the two copies must be identical ----------------------------------------------
-if ($RepoRoot -ne '' -and (Test-Path $RepoRoot)) {
-    $a = @(Get-ChildItem $root -Recurse -File | ForEach-Object { $_.FullName.Substring($root.Length + 1) })
-    $b = @(Get-ChildItem $RepoRoot -Recurse -File | ForEach-Object { $_.FullName.Substring($RepoRoot.Length + 1) })
+#    Guard first: this check is $root vs $RepoRoot, and $root is derived from this script's own
+#    location -- so running it FROM the repo with -RepoRoot <same repo> compares a copy with
+#    itself and passes no matter how stale the install copy is (measured 2026-09-22: the host
+#    copy was 44 files behind and it still said PASS). Refuse that usage instead of green-on-nothing.
+#    Normalize BOTH paths first: a trailing separator (or any spelling variance) used to make
+#    every relative name lose its first character, so one trailing "\" printed a wall of bogus
+#    ONLY-HOST / ONLY-REPO lines. Normalize, then compare, then slice with the normalized lengths.
+$rootFull = ([System.IO.Path]::GetFullPath($root)).TrimEnd('\')
+$repoFull = ''
+if ($RepoRoot -ne '') { if (Test-Path $RepoRoot) { $repoFull = ([System.IO.Path]::GetFullPath($RepoRoot)).TrimEnd('\') } }
+if ($RepoRoot -ne '' -and $repoFull -ne '' -and $repoFull -eq $rootFull) {
+    $fail++; Say 'FAIL' 'copies-synced' ('-RepoRoot is THIS copy (' + $rootFull + ') -- run it from the OTHER copy: -File <host>\scripts\skill-health.ps1 -RepoRoot <repo>')
+} elseif ($RepoRoot -ne '' -and $repoFull -ne '') {
+    $a = @(Get-ChildItem $rootFull -Recurse -File | ForEach-Object { $_.FullName.Substring($rootFull.Length + 1) })
+    $b = @(Get-ChildItem $repoFull -Recurse -File | ForEach-Object { $_.FullName.Substring($repoFull.Length + 1) })
     $d = @()
     foreach ($f in $a) {
         if ($b -notcontains $f) { $d += ('ONLY-HOST ' + $f) }
-        elseif ((Get-Item (Join-Path $root $f)).Length -ne (Get-Item (Join-Path $RepoRoot $f)).Length) { $d += ('SIZE ' + $f) }
+        elseif ((Get-Item (Join-Path $rootFull $f)).Length -ne (Get-Item (Join-Path $repoFull $f)).Length) { $d += ('SIZE ' + $f) }
     }
     foreach ($f in $b) { if ($a -notcontains $f) { $d += ('ONLY-REPO ' + $f) } }
     if ($d.Count -eq 0) { Say 'PASS' 'copies-synced' ('host == repo (' + $a.Count + ' files)') }
