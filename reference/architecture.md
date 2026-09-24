@@ -76,7 +76,7 @@ namespace CloverMmo1.Module.Combat
 
 **反面教材**：把登录流程 + 实体视图创建销毁 + 模型加载与归一化 + 动画装配 + HUD 刷新 + 热键 / 探针 + 相机装配全塞进 `Bootstrap` ⇒ 任何一处改动都要动同一个文件，一次网络异常引发全部功能瘫痪。**这就是"耦合"的代价。**
 
-## 4. 自检（交付前必须跑）
+## 4. 自检（**需要时自查**；⛔ 默认不跑、不拦交付 —— `SKILL.md` §4）
 
 ```bash
 # ① 上帝类体检：App 行数
@@ -102,7 +102,7 @@ grep -rnE '(^|[^.])\bInput\.(GetKey|GetMouse|mousePosition|GetAxis)' client/Asse
 grep -rn --include=*.cs --include=*.ps1 '' client/_dev _assets_src _assets_tmp 2>/dev/null | wc -l
 ```
 
-> ⑥⑦ 与 §1~§5 一样是**交付前必跑**（完整 **8 条**见 `SKILL.md` 的「交付清单」）。**没有这两条时，「临时文件遍地」「`Resources.Load` 绕过 `Game.Res`」这类违反不留任何痕迹**，交付时"看起来完全合规"。
+> ⑥⑦ 与 §1~§5 一样，是**想查时才跑**（⛔ 默认不跑；完整 **8 条**见 `SKILL.md` 的「交付清单」）。**没有这两条时，「临时文件遍地」「`Resources.Load` 绕过 `Game.Res`」这类违反不留任何痕迹**，交付时"看起来完全合规"。
 > ②③④⑤ **允许为 0 命中**；有命中就必须在交付说明里给出理由，否则返工。
 
 ## 5. 服务端分层（沿用仓库既有约定，不要另发明）

@@ -249,7 +249,7 @@ unity command capture_game_view --source screen --width 1600 --height 900 --save
 unity command editor_stop                            # ⑤ 退 Play，别把编辑器留在 Play 模式
 ```
 
-> **截图要自己看，但按「类别」看**：`表现类` 的项**采一次联络图、AI 只读那张汇总图**（`reference/visual-loop.md` 第八节）；`数值类` **不必截图**。数字全对但画面不对的静默失效（血条永不变化、角色纯白无贴图、血条细到看不见）只有看图才发现。
+> **截图要自己看**：`表现类` 的项**截一张看一眼**（多屏才考虑拼联络图，`reference/visual-loop.md` 第八节）；`数值类` **不必截图**。数字全对但画面不对的静默失效（血条永不变化、角色纯白无贴图、血条细到看不见）只有看图才发现。
 > `verify-runtime.cs` 放**工程根（`Assets/` 之外**，Unity 就不会把它当业务脚本编译**），内容是一段 top-level 语句：`FindFirstObjectByType<T>()` 找到自己的组件，打印"是否挂上 / 目标是否绑定 / 模型是否加载 / Animator 当前 clip 与 normalizedTime"。
 
 ### 8.2 在**活编辑器里**跑 PlayMode 用例（不用抢工程）

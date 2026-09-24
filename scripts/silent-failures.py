@@ -363,7 +363,7 @@ namespace S {
 def self_test(out):
     w = out.write
     ok = True
-    w('=== silent-failures self-test (anti-gaming.md section 5: one clean sample AND one defect) ===\n')
+    w('=== silent-failures self-test: one clean sample AND one defect ===\n')
     w('--- sample A: the banned shapes appear ONLY in comments and a string (must PASS) ---\n')
     a = scan_text(_GOOD, 'Sample.Good.cs')
     rc_a = report(a, 1, '.', '<mem>', out)

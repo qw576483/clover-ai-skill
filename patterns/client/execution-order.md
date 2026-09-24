@@ -100,7 +100,7 @@ $n200 = @($rows | Where-Object { $_.Value -eq -200 }).Count
 if ($n200 -ne 1) { Write-Output ("FAIL execution-order: -200 count = $n200 (must be exactly 1: 0 = input moves to the sim phase silently)") }
 ```
 
-> ⚠️ 上例只认**字面量**（`[DefaultExecutionOrder(-200)]`）。若代码里写成 `[DefaultExecutionOrder(ExecutionOrder)]`（cs16 的 `ViewModule` 就是这么写的：常量是编译期常量，attribute 接受它），脚本要回读**同一个文件里的 `ExecutionOrder` 常量**再判 —— §4 的完整脚本就是这么做的。**自查一下你的解析器能覆盖两种写法**，否则它会静默漏掉一整类（这正是"闸门自己也要被闸"）。
+> ⚠️ 上例只认**字面量**（`[DefaultExecutionOrder(-200)]`）。若代码里写成 `[DefaultExecutionOrder(ExecutionOrder)]`（cs16 的 `ViewModule` 就是这么写的：常量是编译期常量，attribute 接受它），脚本要回读**同一个文件里的 `ExecutionOrder` 常量**再判 —— §4 的完整脚本就是这么做的。**自查一下你的解析器能覆盖两种写法**，否则它会静默漏掉一整类（这正是"判据自己也会骗人"）。
 
 ### 3.2 「缺一个阶段值」会被谁抓到
 
@@ -112,7 +112,7 @@ if ($n200 -ne 1) { Write-Output ("FAIL execution-order: -200 count = $n200 (must
 | 用 Editor 面板改顺序 | §3.1 第 4 条（`m_ExecutionOrder` 非空） | 检查转红（否则它对面板改动完全瞎） |
 | 表现层写成 `Update` 而不是 `LateUpdate` | ⛔ 无机械判据 | **只能靠人**：`Update` 里画 = 画面慢一帧，属于"逐帧表现"，按 `experience/per-frame-jitter-evidence.md` 走逐帧通道 |
 
-> ⛔ 最后一行要留在验收表里当**已知盲区**，不许假装它也被闸门覆盖了。
+> ⛔ 最后一行要留在验收表里当**已知盲区**，不许假装它也被自检覆盖了。
 
 ---
 
@@ -169,7 +169,7 @@ exit $(if ($fail -gt 0) { 1 } else { 0 })
 > 格式：`| 符号 | 域 | 出处 | 该行必须出现的原文 |`。
 > 域 = `cs16`（被上浮的项目，路径相对工作区根）或 `引擎`（API 出处）。
 > 校验方式：**回读该 `文件:行`，断言行内含「必须出现的原文」，且符号能在对应源码树里 grep 到**；任一不成立即点名 FAIL。
-> 负控（必做）：往这张表里塞一行**不存在的符号名** ⇒ 检查必须转红并点名该行 ⇒ 删掉复绿。没有负控的锚点检查等于没做（它可能一直在"未解析就跳过"）。
+> 自查：抽查一行**不存在的符号名** ⇒ 检查必须转红并点名该行（转不了红 ⇒ 这条锚点检查等于没做，它可能一直在"未解析就跳过"）。
 
 <!-- cs16-symbol-roots: AppFlow,IAppFlow,Bootstrap,PlayerModule,PlayerMotor,ViewModule,MatchModule,AudioModule,BotModule,CsMapModule,CsHudSnapshot,CsMatchConfig,CsTeam,CsConst,SceneNames,ResPaths,Events,State,Trigger,GameKey,CsPlayerSettingsStore,CloverRes,CloverInput,ICsMatch,ICsMap -->
 

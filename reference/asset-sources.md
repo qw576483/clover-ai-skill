@@ -178,9 +178,9 @@ robocopy "$tmp\CityBits" "<client>\Assets\ThirdParty\KayKit\CityBits" /S /IF *.f
 
 > 硬规则（**只放 `<项目根>/原版资源/`、必须复制而不是引用、不整包搬运、默认不进 git、留 `清单.md`**）的原文在 **`SKILL.md` 的「写码清单」第 6 条** 与 **`reference/rules-full.md` 的「原版资源目录」**；用户要求"原版素材随交付一起给"时走本节 §8.2。以下是本文件独有的两条。
 
-### 8.1 按需取用（pull）——**做成闸门，不做成提醒**
+### 8.1 按需取用（pull）——**做成一个可查的工具**（⛔ 默认不跑、需要时自查）
 
-**闸门**：`tools/check-assets.ps1`（骨架 = `reference/check-assets-template.md`）—— `client/Assets/Resources/**` 里**未被任何引用形态覆盖**的文件 ⇒ 记一行；**默认只报不删**。
+**工具**：`tools/check-assets.ps1`（骨架 = `reference/check-assets-template.md`；⛔ 默认不跑，需要时自查）—— `client/Assets/Resources/**` 里**未被任何引用形态覆盖**的文件 ⇒ 记一行；**默认只报不删**。
 
 #### 引用形态清单（⛔ 漏一种就会把**活资源**判成未引用）
 
@@ -195,7 +195,7 @@ robocopy "$tmp\CityBits" "<client>\Assets\ThirdParty\KayKit\CityBits" /S /IF *.f
 | ⑤ | **生成物登记** | 由导出器生成、带"本文件是生成物"头的 `.cs` / `manifest.json` 里登记过的 |
 
 **案例（只按 ① 判的后果）**：按只做 ① 的口径跑，会得出 `unreferenced = 88%`、听着"该裁 88%"；**但逐组核对后全是假阳性** —— 那些目录 100% 被 `ResPaths` 常量（②）覆盖，帧名由 `Frame(prefix,i)`（③）拼出，还有 `LoadAll`（④）。**真该裁的接近 0**；照老口径裁剪会把数千张**在用**的图删掉、游戏大面积缺图。
-⇒ **结论：闸门必须按上表五种形态判"覆盖"，且默认"保留优先"（fail-safe）；存量清理只报数（`-Warn`），删不删由人裁决。**
+⇒ **结论：要用它时，必须按上表五种形态判"覆盖"，且默认"保留优先"（fail-safe）；存量清理只报数（`-Warn`），删不删由人裁决。**
 
 ### 8.2 用户要求"原版素材随交付一起给"时：zip + git-lfs
 

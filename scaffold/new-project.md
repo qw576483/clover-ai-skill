@@ -9,8 +9,8 @@
 clover-{name}/
 ├── tools/
 │   ├── ai-skill/                   # ★ 项目级 skill（模板 = scaffold/project-skill.md）；动本项目代码前必须先读
-│   ├── verify.ps1                  # ★ 四件套①：交付闸门（模板 = reference/verify-template.md）
-│   └── env-check.ps1               # ★ 环境闸门：开工前 + 每次"卡/掉帧"投诉先跑（模板 = scripts/env-check.ps1）
+│   ├── verify.ps1                  # ☆ 可选：要查时的自检脚本（模板 = reference/verify-template.md；⛔ 默认不建）
+│   └── env-check.ps1               # ★ 环境自检（保留）：开工前 + 每次"卡/掉帧"投诉先跑（模板 = scripts/env-check.ps1）
 ├── server/                        # ★【仅"形态=联机"时才有】单机项目整个不生成
 │   ├── configs/all/server.yaml     # 引擎配置（字段见 §1.3）
 │   ├── game/{datadef,def,logic}/   # schema / 消息号(msg.go+reply.go+push.go) / handler(init 挂载)
@@ -20,26 +20,26 @@ clover-{name}/
 └── 策划/
     ├── 数值文档/                    # ★ 配表：源表 *.txt（AI 写）+ -pack 出的 *.xlsx
     ├── 策划案/                      # 玩法 / 数值 / 需求转写的策划文档（*.md）
-    ├── 验收表.md                    # ★ 交付闸门：A 的系统清单逐行；开工时建
+    ├── 验收表.md                    # ★ 系统清单：A 的系统清单逐行；开工时建
     ├── 对照表.md                    # ★ 元素 | 原版值(出处) | 我们的值 | 差值
-    └── 基线图/                      # ★ 四件套③：参考物那一侧的截图 + 场景清单（写外观代码前必须有）
+    └── 基线图/                      # ☆ 可选：参考物那一侧的截图 + 场景清单（只有真要逐像素比原版时才建）
 ```
 
 ⛔ **禁止**手写 `client/Assets/Scripts/...` 目录树来"假装"是 Unity 工程（缺 `.meta`/`ProjectSettings`/`Packages` 就不是 Unity 工程）。
 
-### 0.0 开工四件套（**缺哪个，就不许进哪个阶段**）
+### 0.0 开工只有一件必备（⓪ 环境自检）+ 四件可选（⛔ 别为"备齐"拖住开工）
 
 | 件 | 何时就位 | 怎么来 |
 |---|---|---|
-| **⓪ `tools/env-check.ps1` 环境闸门** | **建项目时**（且每次判"卡/掉帧"前都跑） | 从 `scripts/env-check.ps1` 复制。**exit 1**（物理卡 `Code 22/10/43`，或 Unity 落到 `Microsoft Basic Render Driver` 软光栅）⇒ **停，先修机器**；⛔ 该机器上一切"卡 / 帧率"结论**无效** |
-| ① `tools/verify.ps1` 闸门 | **建项目时** | 从 `reference/verify-template.md` 复制，按项目改路径 |
-| ② 强制层（让闸门在"必经点"自动跑） | **建项目时** | 优先**通用层**：git `pre-commit`/`pre-push` 或 CI 跑 `tools/verify.ps1`（与宿主无关）；有钩子的宿主再加钩子（`reference/deterministic-gates.md` 第五节） |
-| ③ `策划/基线图/` + 场景清单 | **写第一行外观/UI 代码之前** | 采集参考物那一侧：固定分辨率 / 冻结动画 / 固定相机位姿（`reference/visual-loop.md`） |
-| ④ diff 闭环器 | **写第一行外观/UI 代码之前** | 通用引擎；换引擎只换"采集器" |
+| **⓪ `tools/env-check.ps1` 环境体检** | **建项目时**（且每次判"卡/掉帧"前都跑） | 从 `scripts/env-check.ps1` 复制。**exit 1**（物理卡 `Code 22/10/43`，或 Unity 落到 `Microsoft Basic Render Driver` 软光栅）⇒ **停，先修机器**；⛔ 该机器上一切"卡 / 帧率"结论**无效** |
+| ① `tools/verify.ps1`（**可选**；要查时的 3 招） | **可选**：想要个机械兜底时再建，⛔ 别拖住开工 | 从 `reference/verify-template.md` 复制，按项目改路径 |
+| ② 强制层（**可选**） | 真要挂就挂**打包 / 发布入口**或 CI | ⛔ **别挂 `pre-commit`** —— 挡在提交这条高频路径上就开始吃做东西的时间（实测某项目每次提交跑整套 78 秒检查、还 fail-closed）→ `reference/deterministic-gates.md` §5 |
+| ③ `策划/基线图/` + 场景清单（**可选**） | 只有真要**逐像素**跟原版比时才建 | 采集参考物那一侧：固定分辨率 / 冻结动画 / 固定相机位姿（`reference/visual-loop.md`） |
+| ④ diff 闭环器（**可选**） | 同上 | 通用引擎；换引擎只换"采集器" |
 
-⛔ ①② 缺 ⇒ **不许写任何代码**；③④ 缺 ⇒ **只许做逻辑/数据，不许碰外观/UI**。
+**硬规则（`SKILL.md` §1 第 7 条）**：⛔ 缺 **⓪** 才不许写代码（⓪ = 坏机器上别下性能结论）；**①②③④ 默认可不做**，要查时就用那 3 招（`SKILL.md` §4）⇒ 外观走"截图 + 目检"（"这条线歪没歪"一眼就能看出，⛔ 不写脚本判）。
 
-**`<项目根>/引擎问题.md` 建项目时就建**（三段各写"本轮无"即可）。⛔ 发现**引擎缺口 / 引擎 bug / skill 说不清** ⇒ **追加一行**，然后**用绕法把活做完**（⛔ 不许改引擎源码、⛔ 不许改 skill）—— 格式与闸门见 `patterns/engine-fix.md`。顺手把 `.ai-tmp` 预算写进项目级 `constraints.md`（≤300 文件 / ≤200 MB，构建缓存不进 `.ai-tmp`）。
+**`<项目根>/引擎问题.md` 建项目时就建**（三段各写"本轮无"即可）。⛔ 发现**引擎缺口 / 引擎 bug / skill 说不清** ⇒ **追加一行**，然后**用绕法把活做完**（⛔ 不许改引擎源码、⛔ 不许改 skill）—— 格式见 `patterns/engine-fix.md`。顺手把 `.ai-tmp` 预算写进项目级 `constraints.md`（≤300 文件 / ≤200 MB，构建缓存不进 `.ai-tmp`）。
 
 ### 0.1 项目级 skill：`<项目根>/tools/ai-skill/`（★ 建项目时**必须**生成）
 
@@ -111,7 +111,7 @@ README 是**交付物的一部分**（别人 clone 下来第一眼看到的东�
 |---|---|
 | `client/` | Unity 工程（本体；`Library/` `Temp/` `Logs/` 等生成物不入库） |
 | `策划/` | 参考规格、对照表、验收表、原版基线图、**实机图** |
-| `tools/` | `verify.ps1`（一次跑全部判据）、`probes/`（探针与量法脚本） |
+| `tools/` | `verify.ps1`（可选：一次跑全部判据）、`probes/`（探针与量法脚本） |
 | `docs/` | 任务书 |
 
 ## 声明
@@ -130,7 +130,7 @@ README 是**交付物的一部分**（别人 clone 下来第一眼看到的东�
 #### ⛔ 硬要求：README 的实机图**不许指向 `.ai-tmp`**
 
 - `.ai-tmp/` 是 **gitignored 的一次性产物区**，clone 下来**根本没有这个目录** ⇒
-  指向它的图片链接在仓库里是**悬空**（README 一打开就是破图），而"**证据路径可达**"是本 skill 的硬闸门。
+  指向它的图片链接在仓库里是**悬空**（README 一打开就是破图），而"**引用可达**"是要查时的 3 招之一（`SKILL.md` §4）。
 - 正确链路：**探针产出**（`tools/probes/probe.cs` 的 `Probe.<Entry>`，落 `.ai-tmp/screenshots/`，带机位日志）
   → **发布脚本**（`tools/probes/<发布脚本>.ps1`）把**选定**的那几张复制到仓库目录（如 `策划/实机图/`）
   → README 只引用**仓库目录**里的路径。
@@ -733,10 +733,10 @@ public class GameMain : MonoBehaviour
 □ <项目根>/tools/ai-skill/ 已生成（按 scaffold/project-skill.md 填好：消息号 / handler / 面板 / 配表 / 约束）
 □ **项目级 skill 没有放宽全局规则层**（grep `以本项目为准|优先于全局`，逐条判"加严"）
 □ 策划/数值文档/ 与 策划/策划案/ 两个目录已建（配表与策划案不混放）
-□ 交付前跑完 `tools/verify.ps1`（照 `reference/verify-template.md`），并把原始输出贴进回报
-□ `策划/验收表.md` **每行带「类别」列**（`数值类` / `表现类`）；`表现类` 的行能在**联络图索引表**里查到格号
-□ 交付前的证据**只采一次**（一张或数张**联络图**）；⛔ 没有逐项截图、没有逐张让 AI 读图
-□ `策划/验收表.md` 带「允许的差异」+「机械自检记录」两节；**汇总数字 = 表体统计**
+□ （**需要时自查**）想查时跑一次 `tools/verify.ps1`（**3 招**：编译 / 交付卫生 / 引用可达；照 `reference/verify-template.md`），把原始输出贴进回报。⛔ 默认不跑、不拦交付
+□ `策划/验收表.md` = **系统清单**（一行一个系统，状态只有 `没做` / `做了`）；**没有空行**
+□ 交付前**关键路径真跑过一遍**、表现类的界面**自己看过截图**（`SKILL.md` §4 三件事）
+□ `策划/验收表.md` 带「允许的差异」一节（默认应为空）
 □ 项目里**不存在**交接/进度类文档（`docs/交接-*.md` / `NEXT.md` / `docs/进度*.md`）
 □ 一次性产物只在 `<项目根>/.ai-tmp/`（⛔ 无 `client/_dev/`、无项目根散落脚本），已写进 `.gitignore`
 □ 交付用 `README.md` **五节齐**（实机画面 / 怎么玩 / 工程结构 / 声明 / 相关仓库），见 §0.2

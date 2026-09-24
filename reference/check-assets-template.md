@@ -1,12 +1,12 @@
-# 资源引用闸门模板（`tools/check-assets.ps1`）
+# 资源引用自查模板（`tools/check-assets.ps1`）—— ⛔ 默认不跑，需要时自查（`SKILL.md` §4）
 
-> **为什么有这个文件**：`SKILL.md` 的「写码清单」/ `asset-sources.md` §8.1 / `game-delivery.md` §9.5 / `reference/rules-full.md` 的「原版资源」目录第 7 条 **四处点名**"闸门 `tools/check-assets.ps1`"，但此前**一处都没给骨架** —— 结果是每个项目自己现编，而现编出来的那一版（只做"文件名在源码里 `-notmatch`"）**必然把帧序列资源判成未引用**。本文件补上骨架，并把判据升级成"**五种引用形态覆盖**"。
+> **为什么有这个文件**：`SKILL.md` 的「写码清单」/ `asset-sources.md` §8.1 / `game-delivery.md` §9.5 / `reference/rules-full.md` 的「原版资源」目录第 7 条 **四处点名**"工具 `tools/check-assets.ps1`"，但此前**一处都没给骨架** —— 结果是每个项目自己现编，而现编出来的那一版（只做"文件名在源码里 `-notmatch`"）**必然把帧序列资源判成未引用**。本文件补上骨架，并把判据升级成"**五种引用形态覆盖**"。
 
-## 怎么用
+## 怎么用（**需要时自查**；⛔ 默认不跑、不是交付的拦路虎）
 
-1. 复制下面骨架到 **`<项目根>/tools/check-assets.ps1`**（正文一律 ASCII ⇒ 存 **UTF-8 无 BOM** 即可；一旦里面出现任何非 ASCII 字节，**整个文件必须改存 UTF-8 with BOM** —— 口径见 `reference/verify-template.md` 硬坑 1）。
+1. **需要时**复制下面骨架到 **`<项目根>/tools/check-assets.ps1`**（正文一律 ASCII ⇒ 存 **UTF-8 无 BOM** 即可；一旦里面出现任何非 ASCII 字节，**整个文件必须改存 UTF-8 with BOM** —— 口径见 `reference/verify-template.md` 硬坑 1）。
 2. 存量工程先跑 **`-Warn`**（只报数、退出码 0）：`powershell -NoProfile -ExecutionPolicy Bypass -File tools/check-assets.ps1 -Warn`
-3. 新项目 / 新加素材：**不带 `-Warn`** ⇒ 有未覆盖文件即退出码 1（闸门形态）。
+3. 新项目 / 新加素材：**不带 `-Warn`** ⇒ 有未覆盖文件即退出码 1（硬失败形态；⛔ 默认不跑，需要时自查）。
 4. ⛔ **`-Warn` 的报告不是删除清单**。必须逐组人工核过（尤其大目录），确认不是形态 ②③④ 漏配，才谈裁剪。
 
 ## 判据（五种引用形态，任一覆盖即"已引用"）

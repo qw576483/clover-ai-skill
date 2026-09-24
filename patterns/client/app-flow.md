@@ -286,7 +286,7 @@ namespace {Name}.App
 
             // 6) 网络生命周期：断了要回登录/主菜单，而不是停在游戏里假装没事
             //    Net.OnKicked 为无参发布 → 处理器必须零参
-            // ⛔ 事件名取引擎常量，⛔ 不许裸字符串（交付前 grep 自检会抓这一处）
+            // ⛔ 事件名取引擎常量，⛔ 不许裸字符串（交付前 grep 自查会抓这一处）
             Game.Event.On(CloverEvents.Net.OnKicked, () =>
             {
                 Game.Logger.Warn("App", "被踢出，回主菜单");
@@ -435,7 +435,7 @@ namespace {Name}.UI
 }
 ```
 
-> 进度条的经典静默失效：`Image.Type = Filled` 但 **sprite 为空** ⇒ `fillAmount` 完全无效、看着像"永远不动"。交付前必须**看图**确认它在动（`reference/design-review.md` §3.4）。
+> 进度条的经典静默失效：`Image.Type = Filled` 但 **sprite 为空** ⇒ `fillAmount` 完全无效、看着像"永远不动"。交付前**看一眼图**确认它在动（`reference/design-review.md` §3.4）。
 
 ---
 
@@ -470,7 +470,7 @@ namespace {Name}.UI
 
 ---
 
-## 6. 交付前自检清单
+## 6. 交付前自查清单（**需要时才逐项过**；⛔ 默认不跑）
 
 ```text
 □ 打开应用（Play）后先进「启动画面 / 主菜单」，不直接落到游戏场景
@@ -481,8 +481,8 @@ namespace {Name}.UI
 □ 读条：进度条真的在动（截图两张不同进度），加载完才关面板
 □ 游戏内：暂停菜单能开、能继续、能回主菜单（有二次确认）
 □ 连续「回主菜单 → 再进图」两次，第二次画面与计数与第一次一致（§5 清场清单过了一遍）
-□ `表现类` 的界面**都在联络图里逐格出现**（启动 / 主菜单 / 创角 / 读条 / 游戏内 / 暂停 / 结算），
-  格号写进验收表；`数值类` 只留日志行（`SKILL.md` 的「取证清单」第 9 条）
+□ `表现类` 的界面**自己都看过截图**（启动 / 主菜单 / 创角 / 读条 / 游戏内 / 暂停 / 结算）；
+  `数值类` 只留日志行（`SKILL.md` §4 第 4 条）
 □ ★ **与参考游戏的同角度截图逐项对照，全部"一致"**（`reference/design-review.md` §3.6）——
    **有任何一项不一致 = 不可交付**；**没有参考游戏名就先问用户要**
 □ 全工程 grep：无裸事件名（`Game.Event.On("` 命中 0）、UI 无 `using {Name}.Module`（命中 0）
@@ -510,7 +510,7 @@ grep 命令见 `reference/architecture.md` §4（②③④⑤ 允许为 0 命中
 
 - **首场景内容**（操作 / 相机 / 动画 / 战斗 / UI / 音效）→ `patterns/game-demo.md`、`reference/rules-full.md` 的「两件绝不打折的事」；
 - **原版系统清单**（菜单 / 创角 / 技能 / 背包 / NPC…逐个做完）→ `patterns/game-demo.md` §0.0c；
-- **感官验收**（`表现类` 采一次联络图、脚本按格判定、**AI 只读那张汇总图一次**；`数值类` 只留日志行）→ `reference/design-review.md` §3 与 `reference/visual-loop.md` 第八节；
+- **感官验收**（`表现类` 截一张自己看；`数值类` 只留日志行）→ `reference/design-review.md` §3 与 `reference/visual-loop.md` 第八节；
 - **分层与自检**（UI 不引 Module、App ≤ 200 行）→ `reference/architecture.md`；
 - **复杂项目拆多 agent**（菜单链路与首场景可并行）→ `patterns/multi-agent.md`；
 - **本页 §9 是 cs16 的实测骨架**（单机版站点清单 / `Enter`·`Exit` 配对 / 面板与流程的边界 / 坑清单）。
@@ -584,7 +584,7 @@ grep 命令见 `reference/architecture.md` §4（②③④⑤ 允许为 0 命中
 
 ### 9.4 "缺一个状态 / 漏一次 Exit" 会被哪个断言抓到
 
-cs16 的现成判据是 `tools/probes/check-ui-flow-matrix.py`：**16 流程态 × 16 面板**的"期望可见 vs 实际可见"对账，期望表 `EXPECTED`（`:26-54`）**每一行都带源码锚点**；脚本先回读锚点（`:80-95`）、再与运行时节点树的 `activeInHierarchy` 比对（`:186-211`）。
+做法：**把"每个流程态该看到哪些面板"列成一张小表**（16 流程态 × 16 面板），运行时 dump 节点树的 `activeInHierarchy`，两边一比就对上了 —— 期望表每行都写清**依据在哪**（源码 `文件:行`）。⛔ 不必写成常驻脚本 / 对账矩阵（那是一代验收机器，已废）：**改完流程时跑一次探针看一眼**就够。
 
 | 你漏了什么 | 谁抓到 | 转红的话术 |
 |---|---|---|
@@ -634,7 +634,7 @@ HUD 快照    CsHudSnapshot.Reset()            ← 静态的；不清会在"快�
 ### 9.7 cs16 锚点表
 
 > 格式与校验方式同 `patterns/client/execution-order.md` §5：`| 符号 | 域 | 出处 | 该行必须出现的原文 |`；校验 = 回读该 `文件:行`（断言含原文）+ 符号能在对应源码树里 grep 到。
-> 负控（必做）：往表里塞一行不存在的符号名 ⇒ 必须转红点名 ⇒ 删掉复绿。
+> 自查：抽查一行**不存在的符号名** ⇒ 检查必须转红并点名该行（转不了红 ⇒ 这条检查等于没做）。
 
 | 符号 | 域 | 出处 | 该行必须出现的原文 |
 |---|---|---|---|
@@ -731,9 +731,6 @@ HUD 快照    CsHudSnapshot.Reset()            ← 静态的；不清会在"快�
 | `Assets/Scenes/Boot.unity` | cs16 | `clover-project-cs16/client/ProjectSettings/EditorBuildSettings.asset:9` | `path: Assets/Scenes/Boot.unity` |
 | `Assets/Scenes/Menu.unity` | cs16 | `clover-project-cs16/client/ProjectSettings/EditorBuildSettings.asset:12` | `path: Assets/Scenes/Menu.unity` |
 | `Assets/Scenes/StageDust2.unity` | cs16 | `clover-project-cs16/client/ProjectSettings/EditorBuildSettings.asset:15` | `path: Assets/Scenes/StageDust2.unity` |
-| `EXPECTED` | cs16 | `clover-project-cs16/tools/probes/check-ui-flow-matrix.py:26` | `EXPECTED = {` |
-| `FSM_STATES` | cs16 | `clover-project-cs16/tools/probes/check-ui-flow-matrix.py:76` | `FSM_STATES = {` |
-| `check_anchors` | cs16 | `clover-project-cs16/tools/probes/check-ui-flow-matrix.py:80` | `def check_anchors():` |
 | `CurrentScene` | 引擎 | `clover-client-unity-engine/Runtime/Presentation/Scene.cs:22` | `public string CurrentScene => _currentScene;` |
 | `_currentScene` | 引擎 | `clover-client-unity-engine/Runtime/Presentation/Scene.cs:76` | `_currentScene = sceneName;` |
 | `IFsm.RegisterState` | 引擎 | `clover-client-unity-engine/Runtime/Core/Fsm.cs:24` | `void RegisterState(string state, Action onEnter = null, Action<float> onTick = null, Action onExit = null);` |
@@ -748,7 +745,7 @@ HUD 快照    CsHudSnapshot.Reset()            ← 静态的；不清会在"快�
 
 > 第二行是**范式占位名**清单：§1 的通用表里那些"登录 / 创角 / 选角 / 设置 / 结算"面板名属于**任何项目都可能没有**的占位（`{Name}` 工程的模板面），不是 cs16 的真实类名 ⇒ 不参与"符号必须能在源码里 grep 到"的清扫。⛔ 例外只许加在这一行里，不许在正文里临时豁免。
 
-校验口径（与本 skill 的"闸门"口径一致）：
+校验口径（与本 skill 的"需要时自查"口径一致）：
 
 1. **锚点回读**：§9.7 每一行的 `文件:行` 必须存在，且该行必须含「该行必须出现的原文」；
 2. **符号落点**：每行的「符号」必须在对应域（`cs16` / `引擎`）的源码树里 grep 到 —— `0 命中` 即 FAIL 并点名该行；

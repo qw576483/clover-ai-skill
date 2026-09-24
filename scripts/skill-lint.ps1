@@ -11,9 +11,8 @@
 #       copied into a BOM-less .ps1, and a label the prose cites but no code block emits sends the
 #       reader looking for output that does not exist (both measured). Checked as label-ascii /
 #       label-cited, zero false reds (see the section comment).
-# This script closes (a), (b) and (d). (c) has no mechanical answer; it is covered by the
-# two-sample rule in reference/anti-gaming.md section 5 and must be done by whoever writes
-# the check.
+# This script closes (a), (b) and (d). (c) has no mechanical answer; it must be done by
+# whoever writes the check.
 #
 # DESIGN RULE FOR THIS FILE: ZERO FALSE REDS. Two revisions of this script were themselves
 # wrong before shipping, both times by over-reaching:
