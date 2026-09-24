@@ -3,30 +3,16 @@
 通过 `Game.Timer`（底层 `pkg/runtime/timer`）注册。在 `app.Mount(app.RoleGame, ...)` 内挂载。
 
 ```go
-package logic
-
-import (
-    "time"
-
-    "github.com/qw576483/clover-server-engine/pkg/app"
-)
-
 func init() {
     app.Mount(app.RoleGame, func(g *app.Game) {
         // 每 60 秒执行一次（回调签名是 timer.Task = func()，无参数）
-        g.Timer.Every("announce_tick", 60*time.Second, func() {
-            // ...
-        })
+        g.Timer.Every("announce_tick", 60*time.Second, func() { /* ... */ });
 
         // 启动后 10 秒执行一次
-        g.Timer.After("warmup", 10*time.Second, func() {
-            // ...
-        })
+        g.Timer.After("warmup", 10*time.Second, func() { /* ... */ });
 
         // Cron 表达式：每天 0 点（5 段：分 时 日 月 周）
-        g.Timer.Cron("daily_reset", "0 0 * * *", func() {
-            // ...
-        })
+        g.Timer.Cron("daily_reset", "0 0 * * *", func() { /* ... */ });
     })
 }
 ```
@@ -45,17 +31,8 @@ func init() {
 > **适用**：行军到达、建造 / 征兵完成、挂机产出、拍卖截止、邮件过期、CD 结束……
 > **一句话**：把「何时该发生」写进**数据**（绝对时间戳），定时器只做「到点主动做一次」的**加速器**。
 
-### 为什么不能只挂内存定时器
-
-`pkg/runtime/timer` 是**进程内**结构（单 goroutine + 截止时间最小堆）。进程重启 / 崩溃 / 滚动发布 → 堆没了、任务蒸发。
-**别指望 `PersistScope` 兜底**：
-
-- `g.Timer` 建调度器时只传时区（`internal/app/mount.go:131-140`，`timer.NewScheduler(timer.WithLocation(t.loc))`）、
-  **未注入 `PersistBackend`** ⇒ 业务调 `PersistScope` / `RestoreScope` 直接得 `timer.ErrNoBackend`
-  （缺迁移后端的原因写在类型注释里，`internal/app/mount.go:107-113`）；
-- 即便注入：`DumpScope` 存的是**相对剩余时间**（`pkg/runtime/timer/timer.go:665-670` 的 `TimerState.RemainingMs`、
-  `:674-698` 的 `Scheduler.DumpScope`），`ImportScope` 按剩余量重新入堆、
-  **不补触发已过期任务**（`pkg/runtime/timer/timer.go:746-801`）⇒ 停机 2 小时会把任务**顺延**而不是补算。
+**为什么不能只挂内存定时器**：`pkg/runtime/timer` 是**进程内**结构（单 goroutine + 截止时间最小堆）。进程重启 / 崩溃 / 滚动发布 → 堆没了、任务蒸发。
+**别指望 `PersistScope` 兜底**：① `g.Timer` 建调度器时只传时区（`internal/app/mount.go:131-140`）、**未注入 `PersistBackend`** ⇒ 业务调 `PersistScope` / `RestoreScope` 直接得 `timer.ErrNoBackend`（缺迁移后端的原因见 `internal/app/mount.go:107-113`）；② 即便注入，`DumpScope` 存的是**相对剩余时间**（`pkg/runtime/timer/timer.go:665-670`、`:674-698`），`ImportScope` 按剩余量重新入堆、**不补触发已过期任务**（`:746-801`）⇒ 停机 2 小时会把任务**顺延**而不是补算。
 
 ### 三条铁律
 
@@ -75,9 +52,7 @@ func init() {
 
 ### 核心原语：`Group.OnTimer`（绝对时刻，已过期立即触发）
 
-`Group.OnTimer(name string, when time.Time, task timer.Task)`（`pkg/runtime/timer/timer.go:605-613`）：
-`when` 是**绝对时刻**，内部 `delay < 0 → 0` ⇒ **已过期立即执行**。这正是「按 deadline 精确重建」的入口 ——
-过期 → 立即补算；未过期 → 到点触发。
+`Group.OnTimer(name string, when time.Time, task timer.Task)`（`pkg/runtime/timer/timer.go:605-613`）：`when` 是**绝对时刻**，内部 `delay < 0 → 0` ⇒ **已过期立即执行**。这正是「按 deadline 精确重建」的入口 —— 过期 → 立即补算；未过期 → 到点触发。
 
 ### 模板 1：玩家维度（照抄可编译）
 
@@ -229,32 +204,20 @@ func init() {
 
 ### 定时器回调里没有 `event.Ctx`
 
-> `g.Timer` / `g.Data()` 这类**非 event.Ctx 方法**由 `pkg/app.Game` 嵌入 internal 实现后**自动提升**，
-> 业务可直接调用、无需 import internal（门面类型以包装结构嵌入 internal 实现：`internal/app/facade.go:58-61`）。
+> `g.Timer` / `g.Data()` 这类**非 event.Ctx 方法**由 `pkg/app.Game` 嵌入 internal 实现后**自动提升**，业务可直接调用、无需 import internal（门面类型以包装结构嵌入 internal 实现：`internal/app/facade.go:58-61`）。
 
 `timer.Task` 是 `func()`，所以：
 
-1. 读写数据走 `g.Data()` 的 `Load / Save / LoadJSON / SaveJSON`（ID 用 `data.Key{Owner, ID, Type}` 显式拼）；
-   **回调里用不了 `g.LoadStruct`** —— 它需要 `event.Ctx`；
+1. 读写数据走 `g.Data()` 的 `Load / Save / LoadJSON / SaveJSON`（ID 用 `data.Key{Owner, ID, Type}` 显式拼）；**回调里用不了 `g.LoadStruct`** —— 它需要 `event.Ctx`；
 2. 或者把活再投递回有 Ctx 的语义：`g.SendEventToPlayer(...)` / `g.SendEventToGObject(...)`。
 
-> ⚠️ `g.Data()` 直写**不经过 handler 的 commit 通道** ⇒ 不会自动做字段级增量广播（对比
-> `patterns/datadef.md` §4）。需要同步给客户端的，用 `g.PushToPlayer(...)` 显式推。
+> ⚠️ `g.Data()` 直写**不经过 handler 的 commit 通道** ⇒ 不会自动做字段级增量广播（对比 `patterns/datadef.md` §4）。需要同步给客户端的，用 `g.PushToPlayer(...)` 显式推。
 
 ### 常见坑
 
-- **scope 别用 `owner`**：引擎断线时只清 `StopTimerGroup(owner)` 这一个 scope，而 `owner` 是**连接级 owner**
-  （登录回执的 `owner` / `AccountID`，`internal/app/game.go:870-885`（硬掉线同一清理在 `:897-909`）、
-  `internal/app/bootstrap.go:451-452` 登录回包提取 owner），**不是角色 ID**。  
-  给「离线也要跑」的任务加显式前缀（`"todo:"+playerID`）即与它错开。  
-  反过来看：`"player:"+PlayerID` 这类 scope 与 owner **不同名**，**不会**被自动清理 ——  
-  要依赖自动清理就得让 scope 等于 owner，否则业务得自己 `StopTimerGroup`   
-  （[`clover-doc/server/concepts/timer.md`](https://github.com/qw576483/clover-doc/blob/main/server/concepts/timer.md) §作用域与清理 已按源码更正）。
+- **scope 别用 `owner`**：引擎断线时只清 `StopTimerGroup(owner)` 这一个 scope，而 `owner` 是**连接级 owner**（登录回执的 `owner` / `AccountID`，`internal/app/game.go:870-885`，硬掉线同一清理在 `:897-909`；`internal/app/bootstrap.go:451-452` 提取），**不是角色 ID**。给「离线也要跑」的任务加显式前缀（`"todo:"+playerID`）即与它错开。反过来：`"player:"+PlayerID` 这类 scope 与 owner **不同名**，**不会**被自动清理 —— 要依赖自动清理就得让 scope 等于 owner，否则业务得自己 `StopTimerGroup`。
 - **数据里存绝对时刻**，重建时才换算成 `when`；不要在 `OnTimer` 里用 `time.Now().Add(剩余)` 糊 deadline。
 - **`OnTimer` 名字要稳定**：只有具名任务才能被 `StopTimer` / 迁移导出；匿名任务不可重建。
 - **结算幂等**：定时器 + 启动扫描 + 登录补算会同时命中同一任务。
-- **日志**：所有失败分支都要打（`logger.*`）；周期扫描 / 高频回调必须防刷屏（首次打全量或降频，见 SKILL.md「错误处理与日志」）。
-- **规模**：上万行的世界待办不要塞进单个 struct —— 目前**没有**「按 owner 穷举记录」的业务可用入口
-  （`Store.LoadAll` 要给定 `id`、`LoadRecord` 要 `event.Ctx`），需要业务自建索引  
-  （如 `Key{OwnerServer, "world", "march_index"}` 存 id 列表）或按玩家 / 地图分块存放。
-  该限制属**已定设计**（原登记 `服务器待做.md` §三 C1(b) 已判定为"已有入口即设计选择"并随该节删除）；需要通用入口时另开条目登记。
+- **日志**：所有失败分支都要打（`logger.*`）；周期扫描 / 高频回调必须防刷屏（首次打全量或降频）。
+- **规模**：上万行的世界待办不要塞进单个 struct —— 目前**没有**「按 owner 穷举记录」的业务可用入口（`Store.LoadAll` 要给定 `id`、`LoadRecord` 要 `event.Ctx`），需要业务自建索引（如 `Key{OwnerServer, "world", "march_index"}` 存 id 列表）或按玩家 / 地图分块存放。该限制属**已定设计**。

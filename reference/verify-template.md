@@ -1,75 +1,66 @@
 # 一键复检脚本模板（`tools/verify.ps1`）
 
-> **为什么要有这个文件**：`reference/rules-full.md` 的「收尾机械自检」 的 8 条机械自检 + `reference/rules-full.md` 的「判定权与证据契约」 的证据契约，如果只写成"规则"，
-> 执行者会忘、会解释着绕过去。**做成脚本，它每次都会跑，不依赖任何人的记性。**
-> **能算出来的东西，不要写成规则 —— 写成脚本。**
+> **为什么要有这个文件**：「收尾机械自检」8 条 + 证据契约如果只写成规则，执行者会忘、会解释着绕过去。**做成脚本，它每次都会跑，不依赖任何人的记性。能算出来的东西，不要写成规则 —— 写成脚本。**
 
 ## 怎么用
 
-1. 新项目开工时把下面的骨架复制成 **`<项目根>/tools/verify.ps1`**（编码用 **UTF-8 无 BOM**）。
+1. 新项目开工时把下面的骨架复制成 **`<项目根>/tools/verify.ps1`**。
 2. 交付前跑一次：`powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify.ps1`
 3. **逐行读输出**，只允许三种结论：`PASS` / `FAIL` / `HUMAN-ONLY`。
-   - 出现任何 `FAIL` ⇒ **不许出现"完成 / 交付 / 实测通过"字样**（见 `SKILL.md`「交付清单」的"交付前跑一次 `tools/verify.ps1`"）。
-   - `HUMAN-ONLY` 是"只能由人或多模态判"的项，**必须由人过目**，不许执行者代签（见 `SKILL.md`「取证清单」的"判定权三分"与"证据必须有锚点 + 分级"）。
+   - 出现任何 `FAIL` ⇒ ⛔ 不许出现"完成 / 交付 / 实测通过"字样。
+   - `HUMAN-ONLY` = "只能由人或多模态判"的项，**必须由人过目**，不许执行者代签。
 4. 用户**只跑这一次**，不陪执行者逐点调参。
 
-## ⛔ 写这个脚本时的两个硬坑（必须在模板里避开）
+## ⛔ 写这个脚本时的四个硬坑（模板里已避开）
 
-1. **`.ps1` 必须 ASCII-only，或者存成 UTF-8 带 BOM。**
-   Windows PowerShell 5.1 在没有 BOM 时按 **ANSI/GBK** 解析 `.ps1` —— 文件里的中文会被解码成乱码，
-   **直接导致解析失败**（报 `Unexpected token` / `Missing closing ')'`，而错误行看起来完全是 ASCII 的，极难定位）。
-   最省事的做法：**脚本正文一律 ASCII**，对外输出也用英文短语。
-2. **非 ASCII 的路径不要在脚本里写字面量**（如 `策划/验收表.md`）。
-   用**码点拼**，源码仍是 ASCII：
-   ```powershell
-   $planDir  = Join-Path $root ([string]::Concat([char]0x7B56,[char]0x5212))                       # ce hua
-   $specName = ([string]::Concat([char]0x9A8C,[char]0x6536,[char]0x8868)) + '.md'                    # yan shou biao
-   $refName  = ([string]::Concat([char]0x5BF9,[char]0x7167,[char]0x8868)) + '.md'                    # dui zhao biao
-   ```
-3. **`Select-String` 会给注释行也报命中**：要过滤 `//` / `///` / `*` 开头的行，否则规则命中数虚高。
-4. **别用 `Get-Content` 不带 `-Encoding`**（会被宿主当作破坏性操作拦下）：读文本一律用
-   `[System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8)`。
+1. **`.ps1` 必须 ASCII-only，或者存成 UTF-8 带 BOM。** PS 5.1 在没有 BOM 时按 **ANSI/GBK** 解析 —— 中文被解成乱码 ⇒ **直接解析失败**（报 `Unexpected token` / `Missing closing ')'`，而报错行看起来完全是 ASCII，极难定位）。最省事：**脚本正文一律 ASCII**，输出也用英文短语。
+2. **非 ASCII 的路径不要写字面量**（如 `策划/验收表.md`），用**码点拼**（见骨架里的 `([char[]]@(0x7B56,0x5212) -join '')`）。⛔ 坑中坑：用 `[string]::Concat([char]...)` 构造中文串曾失败 ⇒ 变成空串 ⇒ `Contains("")` **恒真** ⇒ 得出"93/93 全命中"的假数据。**结论必须用第二种写法复核**，并先打印 `Length` 自检。
+3. **`Select-String` 会给注释行也报命中**：要过滤 `//` / `///` / `*` 开头的行，否则命中数虚高。
+4. ⛔ **别用 `Get-Content` 不带 `-Encoding`**（会被宿主当作破坏性操作拦下）：读文本一律 `[System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8)`。
 
-## 实测效果（第一次跑就抓到的三类问题）
-
-- `FAIL reference-table`：项目**从没产出过**"原版值 / 我们的值 / 差值"对照表 ⇒ 说明"照抄"这件事根本没发生过。
-- `FAIL evidence-freshness`：**全部截图都比最后一次代码改动旧** ⇒ 验收表里所有"已实测"**当场作废**。
-  **这一类作弊无法用规则防住，但一行 mtime 比较就能抓出来。**
-- `FAIL no-escaped-artifacts`（第 13 条）：一次性产物落到了**工程外**（宿主会话产物目录 / 工作区根）——
-  **工程内扫描永远看不到它**，所以这一类只能靠"**区域清单 + 工程标识**"去认（走法见第 13 条）。
-
-## 必查项（对应 `reference/rules-full.md` 的「收尾机械自检」 八条 + `reference/rules-full.md` 的「判定权与证据契约」 契约）
+## 必查项（对应「收尾机械自检」8 条 + 证据契约）
 
 | # | 查什么 | 判据 |
 |---|---|---|
 | 1 | 散落临时文件（`_dev` / `_assets_src` / `_assets_tmp` 下的 `*.cs`） | 计数 = 0 |
-| 2 | 硬规则命中（`Debug\.Log` / `Resources\.Load` / `PlayerPrefs` / `(?<!Game\.)Input\.` / `GameObject\.Find` / `FindObjectOfType` / `Instantiate\(`） | **每条命中都能在验收表「允许的差异」里找到对应行** |
-| 3 | 验收表自洽（汇总数字 vs 表体行数） | 相等 |
-| 4 | 「允许的差异」每行含"为什么 / 出处 / 何时消除" | 缺任一 ⇒ FAIL |
+| 2 | 硬规则命中（`Debug\.Log` / `Resources\.Load` / `PlayerPrefs` / `(?<!Game\.)Input\.` / `GameObject\.Find` / `FindObjectOfType` / `Instantiate\(`） | 每条命中都能在验收表「允许的差异」里找到对应行 |
+| 3 | 验收表自洽（汇总数字 vs 表体行数）+ 每行标类别 | 表体行数 > 0，且每行含 `数值类` / `表现类` |
+| 4 | 「允许的差异」每行含"是什么 / 为什么 / 出处 / 何时消除" | 缺任一 ⇒ FAIL |
 | 5 | 路径可达（验收表里的 `路径:行`、截图路径） | 全部存在 |
-| 6 | **证据新鲜度**（`reference/rules-full.md` 的「判定权与证据契约」 第 3 条）—— **按因果作废，不许一改就全废** | 每条"已实测"引用的产物 **mtime 晚于**被验证代码/资产；**作废范围 = 这次改动真能影响到的那几行**（同模块 / 同一功能链 / 同一屏），⛔ **不是"工程里任何文件一变就全量作废"**（改一行 UI 文案触发 59 张截图全量重拍，一个字的成本被放大成几十张图） |
-| 6c | **mtime 类红项的"具名裁决"登记处**（`reference/rules-full.md` 的「收尾机械自检」 第 4 条：例外必须有登记处） | 第 6 项与本项（`freeze-before-capture`）这类**按 mtime 机械判**的检查，允许一条**具名裁决**：在 `.ai-tmp/test/dispatch-log.tsv` 写 `# adjudicated: <检查名> -- <理由（≥12 字）>` ⇒ 该检查降为 `HUMAN-ONLY` 并**把理由打印出来**。⛔ 理由为空/短于 12 字 ⇒ 忽略、仍然 FAIL；⛔ 不许拿它当"消红手段"—— 它只负责把"**人已经判过的假阳性**（例：只改了注释的 1 行、而行为联络图不可能因此变化；或分层改造期实现文件持续变动）"登记在案，便于复查 |
-| 6b | **上一条的"范围表"必须被两个地方共用** | 本项里那张 **area/panel → 文件** 映射表（见下方骨架的 `$areaRoots` / `$panelOf`），**同时也是"重采哪些场景"的唯一数据源** | **重采工具只接受范围表算出来的场景**（`reference/rules-full.md` 的「改动回路：批次流水线」 第 6 条）；⛔ 不许出现"闸门按因果判、重采却全量跑" —— 那正是"规则一条、动作另一条"，必然被最省事的写法击败（4 个点状 bug 触发 21 个场景全量重拍） |
+| 6 | **证据新鲜度** —— **按因果作废，不许一改就全废** | 每条"已实测"引用的产物 **mtime 晚于**被验证代码 / 资产；**作废范围 = 这次改动真能影响到的那几行**（同模块 / 同功能链 / 同屏），⛔ 不是"任何文件一变就全量作废"。**实现见下方「第 6 项的实现」** |
+| 6b | **范围表必须被两处共用** | 下方骨架的 `$areaRoots` / `$panelOf` 既是新鲜度判据的输入，**也是"重采哪些场景"的唯一数据源** —— ⛔ 不许"闸门按因果判、重采却全量跑" |
+| 6c | **mtime 类红项的「具名裁决」登记处** | 允许一条具名裁决：在 `.ai-tmp/test/ledger.tsv` 写一行 `kind=adjudicated`（详情 = `<检查名> -- <理由（≥12 字）>`；旧项目 `dispatch-log.tsv` 里的 `# adjudicated:` 行也算）⇒ 该检查降为 `HUMAN-ONLY` 并打印理由。⛔ 理由为空 / 短于 12 字 ⇒ 忽略、仍然 FAIL；⛔ 不许当"消红手段"（它只登记**人已判过的假阳性**，便于复查） |
 | 7 | 一键复检入口存在（本脚本自身） | 存在且能跑 |
-| 8 | **原版对照表存在**（§2：`策划/对照表.md`） | 存在，且每行有"原版值(出处) / 我们的值 / 差值" |
-| 9 | 无交接/进度类文档（`reference/rules-full.md` 的「收尾闸门」 第 8 条） | `docs/交接-*.md` / `NEXT.md` / `docs/进度*.md` 均不存在 |
-| 10 | 引擎自称（`reference/rules-full.md` 的「品牌与署名」）—— **判据是"渲染出来的"，不是"源码里有没有"** | ① 源码/文档里**逐字**是 `clover-engine`；② **首页画面上**那一行是 `by clover-engine`，判据取**运行时 UI 节点树里那个标签的实际文本 + 实际字体**（或对截图做字形比对），⛔ 不是 grep 源码字符串 —— **源码里有 ≠ 画面上有、也 ≠ 画面上是这个大小写**；③ **大小写也算**：像素字体只有大写时会渲染成 `BY CLOVER-ENGINE`，那**不合规**（`reference/rules-full.md` 的「品牌与署名」 只说常量/环境变量可用全大写）；要逐字就要给它一个有小写的字体或字形 |
-| 11 | **检查项的作用域 / 时间窗**（防假阳性） | 只判"**本次任务**产生的痕迹"；历史残留（很久以前的目录 / 文件 / 会话）**不计 FAIL** |
-| 12 | **验收表是否标了类别**（`SKILL.md` 的「取证清单」第 9 条） | 每行都有 `数值类` / `表现类`；`表现类` 的行**能在联络图索引表里查到格号** |
-| 13 | **工程外产物**（`SKILL.md` 的「派活清单」.8：一次性产物只许 `<项目根>/.ai-tmp/test/`） | **工作区根 + 宿主会话产物目录**里，"24h 内新建且名字带本工程标识"的文件数 = 0 |
-| 14 | **采样器自检**（`SKILL.md` 的「取证清单」 第 5 条：跑场景**前**一秒就能查完的东西） | `.ai-tmp/**/*.ps1` 每个文件：**语法 0 错**，且 **非 ASCII 字节 = 0 或带 BOM**（无 BOM + CJK ⇒ PS 5.1 按 ANSI 解析 ⇒ `-match` 静默失效 ⇒ 白等满超时） |
-| 15 | **实现由执行者产出**（`SKILL.md` 的「初始化清单」第 11 条 / `reference/rules-full.md` 的「收尾机械自检」 第 8 条） | 本次时间窗内改动的实现文件，**逐个**能在 `.ai-tmp/test/dispatch-log.tsv` 里找到派活行（文件落在该行声明的范围内 **且** 派活时间 ≤ 文件 mtime）；**对不上 ⇒ 主 agent 自己动手了**。**例外（按 §5 的"小改动"例外）**：主 agent 直接做的小改动用一行 `# direct-fix: <路径> -- <理由>; 用户原话="..."` 留痕即算通过（**⛔ 不许拿它给多文件/改数据格式/新增行为的改动洗白**） |
-| 16 | **进 Play 必须记账（⛔ 不设次数上限）**（`SKILL.md` 的「交付清单」第 7 条） | `.ai-tmp/test/play-log.tsv`：**每进一次 Play 一行**（`ISO时间 / 执行者 / 片名 / 为什么必须进这条链`）。判据：① **第 4 列非空**（写不出理由 ⇒ 说明本可以用离线断言）；② 项目有实机证据但**没有账本** ⇒ FAIL（没记账 = 无从判定"为什么进"）。⛔ **本项不判"行数多不多"** —— 曾经的"行数 ≤ 预算（默认 5）"被读成了**停工的许可证**（验到第 5 次就收手、剩下不验），**已废除**：**没有 `$playBudget`、没有裁决通道、没有"用尽即停"**。**为什么改成这样**：用户的判断是"**约束完，ai 更偷懒了**" —— 次数限额省下的重复劳动，远小于"该验不验、验到一半收手"的代价 |
-| 17 | **采集后冻结**（`SKILL.md` 的「取证清单」 **④**：采集即冻结，之后再改代码 ⇒ 证据作废） | **本批次证据里最早那张的 mtime = T0**，其中"本批次证据" = **最新那张联络图索引 `*.index.tsv` 引用到的 png**（无索引才退回"窗口内新增的 `Screenshots/*.png`"）；**T0 之后不许再有实现文件**（`client/Assets/Scripts/**`、引擎 `Runtime/**`）被改动。⛔ **不许**直接用"6h 窗口内最旧的新 png"当 T0 —— 它会把**历史批次**的图算进来 ⇒ **必然误报 FAIL**。违反 ⇒ FAIL 并列文件。**为什么要有它**：实测"先采证据、后修代码"会让同一批证据反复作废（同一条链被采了 3 遍），而旧版只规定"改后只重采受影响行"、**没有规定"采集必须在实现冻结之后"** |
-| 18 | **证据经济性**（`SKILL.md` 的「取证清单」 T0：⛔ 不许逐行截图、不许逐项进出 Play） | 验收表 `表现类` 行数 ≥ 1 时：① **必须存在联络图索引**（`Screenshots/*.index.tsv`，格号 ↔ 行号）；② **没进任何联络图**的独立 `png` 数 ≤ `max(12, 表现类行数 × 2)`。超出 ⇒ FAIL（逐行截图嫌疑）。⛔ **被 `*.index.tsv` 引用过的 png = 联络图的组成部分**，必须从计数里排除（否则瓦片被重复计数 ⇒ **误报**，实测 65 > 46 而其实只有 32 张散图）。**为什么要有它**：把 T0 从"祈使句"变成**可算的数字** —— 否则"验收表 47 行"永远会被读成"要拍 47 张图" |
-| 19 | **渲染设备不是软件渲染**（`SKILL.md` 的「初始化清单」 闸门 ②；配方 `experience/perf-triage.md`） | 读 `client/Logs/Editor.log` 里 Unity 启动时写的 `[D3D12 Device Filter] Device Name:`（或 `Renderer:`）。**命中 `Microsoft Basic Render Driver` / `Basic Display` / `WARP` ⇒ FAIL** —— 那是纯 CPU 软件光栅化，**此时任何"帧率 / 卡顿"结论都无效**（GPU 255ms/帧、3.5 fps，而业务脚本只占 1.6ms）。日志里没有这一行 ⇒ `HUMAN-ONLY`（改用手工 `SystemInfo.graphicsDeviceName`）。**为什么要有它**：2026-09-20 实测为定位"卡"跑满 6 次 Play，而根因就在第 1 条命令里；本条把"先证伪环境"从祈使句变成**能测红的一行** |
-| 20 | **T0 覆盖矩阵**（`SKILL.md` T0；口径 `patterns/full-coverage-audit.md`） | 五条子判据：① `coverage-rows` = **覆盖关系**（⛔ 不是行数相等，口径 `patterns/full-coverage-audit.md` 的「§7 闸门」第 1 条 `coverage-rows`）：清单里**每个实体**在判定行里 ≥1 行、判定行**每一行**都能对上清单里某个实体（**缺清单 ⇒ FAIL**；⛔ 写成"行数相等"会被凑成假绿 —— 2026-09-22 cs16 实测 3798==3798 PASS 而 350 行实体名漂移）；② `coverage-filled` = 每行都有 `一致`/`不一致` 判定（**零空行**）；③ `coverage-diff` = `不一致` 计数 **= 0**；④ `coverage-dimensions` = **12+3 个维度代号（D1..D12/S1..S3）在清单里各出现 ≥1 次**（缺维度 = 未判）。**为什么要有它**：只要"检查过"不是一个数，工作就会退化成**症状驱动**（用户报一条修一条、没报的全漏），而**漏检没有代价** |
-| 21 | **规模档位已声明**（`SKILL.md` T0；档位表 `patterns/full-coverage-audit.md` §9.5） | `策划/策划案/*.md` 顶部必须写明档位 `S`（1-way）/ `M`（2-way pairwise）/ `L`（3-way + 全状态全边界）；**判一次，只许上调**。**为什么要有它**：一个 3 天 demo 套 AAA 级全量穷举是**过杀**（NIST：2~3-way 已覆盖绝大多数缺陷）；反过来"没声明档位"就等于**默认全量**，会被执行者读成"做不完"从而整体规避 |
-| 22 | **修 bug 的影响域已登记**（`SKILL.md` 的「派活清单」；口径 `patterns/full-coverage-audit.md` §9） | `.ai-tmp/test/impact-radius.tsv` 每行 ≥3 列：`维度 / 因果链 / 受影响行`；文件不存在 ⇒ `HUMAN-ONLY`（在回报里写清是"本次无 bug 修复"还是"没登记"）。**为什么要有它**：修 bug 既**不该全量扫**（成本爆炸），也**不能只修症状**（拆东墙补西墙 —— 为开门把门板从网格摘除，直接变成"该有门却没有门"）；唯一正确口径是**显式写出爆炸半径** |
-| 23 | **证据锚点可解析**（`reference/anti-gaming.md` 三） | 每条判定行带 `anchor:` 指向**机器产物**；① 该文件存在；② 该位置内容**匹配该行期望值**（不是"有内容"就算过）；③ ⛔ 指向 `md` / 回报 / 代码注释 ⇒ FAIL（那等于没有锚点）。**为什么要有它**：闸门判不了"这段叙述是不是编的" —— 实测最贵的一次是连续几十次拿到「图像已省略」的占位文本，仍然逐条写出了画面描述。**产物可以是编的；指向真实运行记录第 N 行的锚点很难编**。<br>⚠️ **口径（实测校准过，⛔ 勿按字面追溯）**：只判**本次任务新增 / 改动的判定行**（**增量口径**，⛔ 不追溯历史行）；**合法锚点两类** —— ① **机器产物位置**（`文件:行` 或字段名，其内容须**匹配该行期望值**）② **原版载体引用**（原版 `.res` / `.cfg` / 原版 `.cpp` / `hud.txt` 等**仓外载体**的 `文件:行`）；⛔ 指向 `md` 叙述 / 回报 / 代码注释**不算**。**为什么要写这个口径**：实测某项目可解析锚点仅 **2 / 136**（验收行 70 + 允许的差异 64），按字面 required 会一次压出 **134 行 FAIL** —— 其中 64 行「允许的差异」本就是"**原版值对照**"性质，**根本不该有运行产物锚点**；字面执行会把一条好规则变成噪音源，进而让人学会忽略整个闸门 |
-| 24 | **闸门版本同步**（`reference/anti-gaming.md` 五；脚本 `scripts/gate-sync.ps1`） | 本项目实现的检查项 **⊇** 模板 `GATE-ITEMS` 要求的清单。**为什么要有它**：模板声明了 22 项，几个项目**分别只落了 18 / 19 项且子集不同**，连名字都漂移了（`play-ledger` vs `play-budget`、`handoff-doc-found` vs `no-handoff-docs`）⇒ **规则写完了、闸门没接上，而且没人发现**。这是"谁来维护闸门"这个问题的唯一机械答案 |
-| 25 | **判据防凑数**（`reference/anti-gaming.md` 二） | 覆盖矩阵的每一行必须能在某个探针输出里**按行 id 命中**；⛔ 只比行数 ⇒ 可被"把两边凑相等"通过。**为什么要有它**：第 20 项判的是**结果**（两个数字相等），而**凑相等比真的逐行检查一遍便宜太多** —— 一旦指标成为目标，它就不再是好指标 |
-| 26 | **取证截图不许进 `client/Assets/`**（`SKILL.md` 的「派活清单」.8 第 6 条） | `client/Assets/Screenshots` **目录存在 ⇒ FAIL**。⛔ **不许按"`client/Assets/**` 下有 png 就 FAIL"判** —— 实测三个项目各有 1 个**正式美术** png，那样判是**假红**。**为什么要有它**：某项目 197 张取证截图落在 `client/Assets/Screenshots/`（6.4 MB），交付前才清理、并回头改了验收表 18 处引用。**已过两次自检**（真实项目基线 PASS + 注入 `Screenshots/` 后 FAIL） |
+| 8 | **原版对照表存在**（`策划/对照表.md`） | 存在，且每行有"原版值(出处) / 我们的值 / 差值" |
+| 9 | 无交接 / 进度类文档 | `docs/交接-*.md` / `NEXT.md` / `docs/进度*.md` 均不存在 |
+| 10 | **引擎自称 —— 判据是"渲染出来的"，不是"源码里有没有"** | ① 源码 / 文档里**逐字**是 `clover-engine`；② **首页画面上**那一行是 `by clover-engine`，判据取**运行时 UI 节点树里那个标签的实际文本 + 实际字体**（或对截图做字形比对），⛔ 不是 grep 源码 —— **源码里有 ≠ 画面上有 ≠ 大小写对**；③ **大小写也算**：只有大写的像素字体会渲染成 `BY CLOVER-ENGINE`，**不合规**。**实现见下方「第 10 项的实现」** |
+| 11 | **检查项的作用域 / 时间窗**（防假阳性） | 只判"**本次任务**产生的痕迹"；历史残留**不计 FAIL** |
+| 12 | **验收表是否标了类别** | 每行都有 `数值类` / `表现类`；`表现类` 的行**能在联络图索引表里查到格号** |
+| 13 | **工程外产物** | **工作区根 + 宿主会话产物目录**里，"24h 内新建且名字带本工程标识"的文件数 = 0。**三条设计约束**：① 标识取自**运行时的工程目录名**（再补一个去前缀短名），⛔ 不写死具体文件名模式（自造名无穷，写死只抓上一次还会假阳性）；② **时间窗（24h）+ 只认 `CreationTime`**（⛔ 不看 `LastWriteTime`，否则"别人改了已有文件"会天天误报）；③ 区域清单**可扩展、填不出就留空**（留空只让检查变窄，不会让"工作区根"那一半失效）。**局限**：只覆盖列进清单的区域，不是"工程外全盘扫描" |
+| 14 | **采样器自检**（跑场景**前**一秒就能查完的东西） | `.ai-tmp/**/*.ps1` 每个文件：**语法 0 错**，且 **非 ASCII 字节 = 0 或带 BOM**（无 BOM + CJK ⇒ PS 5.1 按 ANSI 解析 ⇒ `-match` 静默失效 ⇒ 白等满超时）；**裸表达式喂 `eval` 编译不过** ⇒ 会被当成"引擎没起来"而杀掉好好的 Play 会话 ⇒ 入口形状先验一次（`return X;`）；**超时不是完成判据** —— 完成只认**被测程序自己写的标记**，且按"**新增次数**"判 |
+| 15 | **实现由执行者产出** | 本次时间窗内改动的实现文件**逐个**能在 `.ai-tmp/test/ledger.tsv`（kind=`dispatch`；旧项目仍是 `dispatch-log.tsv` 也算）里找到派活行（文件落在该行声明的范围内 **且** 派活时间 ≤ 文件 mtime）；对不上 ⇒ 主 agent 自己动手了。**例外**：小改动用一行 `# direct-fix: <路径> -- <理由>` 留痕即算通过（⛔ 不许拿它给多文件 / 改数据格式 / 新增行为的改动洗白） |
+| 16 | **进 Play 必须记账（⛔ 不设次数上限）** | `.ai-tmp/test/ledger.tsv` 里 kind=`play` 的行（旧项目 `play-log.tsv` 也算）：**每进一次 Play 一行**（`ISO 时间 / kind / 执行者 / 详情=为什么必须进这条链`）。判据：① **详情列非空**；② 有实机证据但**没有账本** ⇒ FAIL。⛔ **本项不判"行数多不多"** —— 曾经的"行数 ≤ 预算（默认 5）"被读成了**停工的许可证**（验到第 5 次就收手），**已废除** |
+| 17 | **采集后冻结** | **本批次证据里最早那张的 mtime = T0**；"本批次证据" = **最新那张联络图索引 `*.index.tsv` 引用到的 png**（无索引才退回"窗口内新增的 `Screenshots/*.png`"）。**T0 之后不许再有实现文件**（`client/Assets/Scripts/**`、引擎 `Runtime/**`）被改动。⛔ 不许直接用"6h 窗口内最旧的新 png"当 T0（会把历史批次的图算进来 ⇒ 必然误报 FAIL）。违反 ⇒ FAIL 并列文件 |
+| 18 | **证据经济性**（⛔ 不许逐行截图、不许逐项进出 Play） | 验收表 `表现类` 行数 ≥ 1 时：① **必须存在联络图索引**（`Screenshots/*.index.tsv`，格号 ↔ 行号）；② **没进任何联络图**的独立 `png` 数 ≤ `max(12, 表现类行数 × 2)`。超出 ⇒ FAIL。⛔ **被 `*.index.tsv` 引用过的 png = 联络图的组成部分**，必须从计数里排除（否则瓦片被重复计数 ⇒ 误报） |
+| 19 | **渲染设备不是软件渲染**（配方 `experience/perf-triage.md`） | 读 `client/Logs/Editor.log` 里 Unity 启动时写的 `[D3D12 Device Filter] Device Name:`（或 `Renderer:`）。**命中 `Microsoft Basic Render Driver` / `Basic Display` / `WARP` ⇒ FAIL** —— 那是纯 CPU 软件光栅化，**此时任何"帧率 / 卡顿"结论都无效**。日志里没有这一行 ⇒ `HUMAN-ONLY`（改用手工 `SystemInfo.graphicsDeviceName`） |
+| 20 | **T0 覆盖矩阵**（口径 `patterns/full-coverage-audit.md`） | 四 / 五条子判据：① `coverage-rows` = **覆盖关系**（⛔ 不是行数相等）：清单里**每个实体**在判定行里 ≥1 行、判定行**每一行**都能对上清单里某个实体（**缺清单 ⇒ FAIL**；⛔ 写成"行数相等"会被凑成假绿）；② `coverage-filled` = 每行都有 `一致`/`不一致`（**零空行**）；③ `coverage-diff` = `不一致` 计数 **= 0**；④ `coverage-dimensions` = **12+3 个维度代号（D1..D12 / S1..S3）在清单里各出现 ≥1 次** |
+| 21 | **规模档位已声明**（档位表 `patterns/full-coverage-audit.md` §9.5） | 规格文档顶部写明档位 `S`（1-way）/ `M`（2-way pairwise）/ `L`（3-way + 全状态全边界）；**判一次，只许上调**（不声明 = 默认全量 = 会被读成"做不完"从而整体规避） |
+| 22 | **修 bug 的影响域已登记**（口径 `patterns/full-coverage-audit.md` §9） | `.ai-tmp/test/impact-radius.tsv` 每行 ≥3 列：`维度 / 因果链 / 受影响行`；文件不存在 ⇒ `HUMAN-ONLY`（回报里写清是"本次无 bug 修复"还是"没登记"） |
+| 23 | **证据锚点可解析** | 每条判定行带 `anchor:` 指向**机器产物**：① 该文件存在；② 该位置内容**匹配该行期望值**（不是"有内容"就算过）；③ ⛔ 指向 `md` / 回报 / 代码注释 ⇒ FAIL。**口径（⛔ 勿按字面追溯）**：只判**本次任务新增 / 改动的判定行**（增量口径）；**合法锚点两类** —— ① 机器产物位置（`文件:行` 或字段名）② **原版载体引用**（原版 `.res` / `.cfg` / `.cpp` / `hud.txt` 等**仓外载体**的 `文件:行`）。⛔ 指向 `md` / 回报 / 注释**不算** |
+| 24 | **闸门版本同步**（脚本 `scripts/gate-sync.ps1`） | 本项目实现的检查项 **⊇** 模板 `GATE-ITEMS` 要求的清单（项目检查项名从 `Say '<STATUS>' '<name>'` 里提取） |
+| 25 | **判据防凑数** | 覆盖矩阵的每一行必须能在某个探针输出里**按行 id 命中**；⛔ 只比行数 ⇒ 可被"把两边凑相等"通过（指标一旦成为目标，就不再是好指标） |
+| 26 | **取证截图不许进 `client/Assets/`** | `client/Assets/Screenshots` **目录存在 ⇒ FAIL**。⛔ 不许按"`client/Assets/**` 下有 png 就 FAIL"判 —— 实测每个项目都有 1 个**正式美术** png，那样判是**假红**。实现见下方「第 26 项的实现」（已过两次自检：真实项目基线 PASS + 注入 `Screenshots/` 后 FAIL） |
+
+| 27 | **`.ai-tmp` 预算**（治"临时文件只增不减"） | `.ai-tmp/**` ① **文件数 ≤ 300**、② **体积 ≤ 200 MB**；③ ⛔ 目录里不许出现**构建缓存 / 依赖目录**（`gocache` / `gopath` / `gotmp` / `node_modules` / `bin` / `obj`）与**目录级备份**（`*-bak-*`）。任一超限 ⇒ FAIL（报最快的修法：删截图 / 删逐帧 TSV / 把缓存指回系统默认位置） |
+| 28 | **引擎与 skill 未被改**（口径 `patterns/engine-fix.md`） | ① 引擎仓（`clover-client-unity-engine` / `clover-server-engine`，若在本机）`git status --porcelain` **为空**；② 本 skill 的仓库源与宿主副本**未被本次任务修改**（比交付前基线）。有改动 **且** `引擎问题.md` 里没有对应行 ⇒ FAIL |
+| 29 | **引擎问题已登记**（口径 `patterns/engine-fix.md` §2） | `<项目根>/引擎问题.md` **存在**且含三段 `## 引擎缺口` / `## 引擎 bug` / `## skill 问题`（**没遇到问题也要建**，三段各写"本轮无"）。缺文件或缺段 ⇒ FAIL |
+
+### ⛔ 新检查上线前的三条纪律
+
+- **能机械判 ≠ 能直接判**：判据上线前必须**两次自检**（已知正确样本 PASS + 已知错误样本 FAIL），并问一句「**它会误伤哪条规则**」。
+  **反例**：曾打算加"`client/Assets/**/*.cs` 里出现 `原版资源` ⇒ FAIL" —— 实测 51 处命中**全部是注释里的出处标注** ⇒ 会制造 51 个假红，还会逼执行者**删掉出处标注**才能变绿，**正好打死「写不出出处的量不许进工程」这条更重要的规则**。⇒ 判"代码里的路径真的被使用"，⛔ 不判"这个词出现了"（`//` / `///` / `<para>` 必须先过滤）。
+- **作用域纪律**：曾把"不许有某某会话目录"写成"工作区里存在该目录就 FAIL"，把**九天前另一个任务**留下的目录报成本次违规。⇒ **检查必须限定在本次任务的时间窗 / 作用域内** —— **会误报的检查比没有检查更糟**。
+- **第 12 条的意义**：不标类别 ⇒「哪几项必须看图」就说不清 ⇒ 只能二选一：**全截**（N 张图逐张读，贵一个量级）或**全不截**（退回"数字对画面错"）。**类别是"该不该截图"的唯一判据，必须落在表里。**
 
 <!-- GATE-ITEMS-BEGIN -->
 # name | alias | required|planned | one-line what
@@ -106,6 +97,9 @@ evidence-anchor||planned|every verdict row anchors to a machine-produced artifac
 gate-sync||planned|project gate items superset of the template's required list
 coverage-hit||planned|each verdict row hit by a probe output by row id, not by row count
 no-assets-screenshots||required|no forensic screenshot dir under client/Assets
+tmp-budget||required|.ai-tmp file count and size within budget, no build caches or dir backups inside
+no-engine-edits||required|engine repo and skill copies untouched (or recorded in engine issues file)
+engine-issues||required|engine gaps / bugs / skill issues recorded in the engine issues file
 <!-- GATE-ITEMS-END -->
 
 > **这个块是机器可读的**：`scripts/gate-sync.ps1` 拿它跟项目的 `tools/verify.ps1` 对账
@@ -115,8 +109,15 @@ no-assets-screenshots||required|no forensic screenshot dir under client/Assets
 
 ### 第 26 项的实现（可直接抄；已过两次自检）
 
+> 块首注释里带 `[SHIPPED-VERBATIM]` 标记 ⇒ `scripts/gate-sync.ps1` 的 `skeleton-equals-shipped`
+> 会**去注释、屏蔽字符串后逐行比对**模板这一块与项目 `tools/verify.ps1` 里的同名块。**改这一块
+> 必须同步改标签**（标记写在注释里，不参与比对）；没有这个标记的块一律不比对（⛔ 不许把
+> 「所有块都要求逐字相同」写进闸门 —— 项目合法会改路径，那是**假红机器**）。
+>
+> ⚠️ 你要粘的地方（`tools/verify.ps1`）含中文注释：粘进 `.ps1` **必须存成 UTF-8 with BOM**（否则 PS 5.1 按 ANSI 解码 ⇒ 引号被吞、**一行都不执行**，而上一次的日志还在 ⇒ 你会以为跑过了）。复制后先 `Test` 一下 `Tokenize` 的 `errs.Count -eq 0`。
+
 ```powershell
-# 26) no forensic screenshots inside client/Assets (SKILL.md 1.8 item 6).
+# 26) no forensic screenshots inside client/Assets (SKILL.md 1.8 item 6).  [SHIPPED-VERBATIM]
 #     Scope is narrow ON PURPOSE: "any png under client/Assets" would be a FALSE RED -- all
 #     three measured projects carry exactly 1 legitimate art png there. Only the capture
 #     directory is a violation.
@@ -132,65 +133,305 @@ if (Test-Path $shotInAsm) {
 }
 ```
 
-### ⛔ 反面案例：一条"看起来机械可判"的规则，实现出来会摧毁另一条规则
 
-曾打算加一条：**「`client/Assets/**/*.cs` 里出现 `原版资源` ⇒ FAIL」**（本意是 `reference/rules-full.md` 的「原版资源」目录 第 2 条"⛔ 不许让 Unity 工程直接引用 `原版资源/`"）。
-**实测 51 处命中（三个项目 18 / 23 / 10），逐条看过之后：全部是注释里的出处标注**（`/// 出处 原版资源/参考工程/...`）。
+### 第 6 项的实现（可直接抄；替换骨架里的 `$null` guard 版本）
 
-⇒ 那条检查要是上了，会：
-1. **51 个假红**；
-2. 更糟 —— 它会逼执行者**删掉出处标注**才能变绿，**正好摧毁 `reference/rules-full.md` 的「复刻 = 解析 + 搬运」「写不出出处的量不许进工程」的核心机制**。**一条闸门把另一条更重要的规则打死了。**
-
-**教训（写死，别再踩）**：
-
-- **判"代码里的路径真的被使用"，⛔ 不判"这个词出现了"** —— `//` / `///` / `<para>` 必须先过滤（与第 2 项那条「`Select-String` 会连注释一起报命中」是同源警告）。
-- **新检查上线前必须回答：它会跟哪条规则抢同一个位置？** 这里"引用路径"与"标注出处"用的是**同一个字符串形状**，只能靠"是不是注释行"区分 —— 判据必须建立在这个区分上。
-- **实验脚本自己也会踩编码坑**：本次收集数据时用 `[string]::Concat([char]...)` 构造中文匹配串失败 ⇒ 变成空串 ⇒ `Contains("")` **恒真** ⇒ 得出"93/93 全命中"的假数据。**结论必须用第二种写法复核**（`([char[]]@(0x539F,...) -join '')`，先打印 `Length` 自检）。
-
-> **判据一句话**：**能机械判 ≠ 能直接判。判据上线前必须两次自检，并且问一句「它会误伤哪条规则」。**
-
-> **第 12 条的意义**：不标类别 ⇒「哪几项必须看图」就说不清 ⇒ 执行者只能二选一：
-> **全截**（N 张图逐张读，贵一个量级）或**全不截**（退回"数字对画面错"）。
-> **类别是"该不该截图"的唯一判据，所以必须落在表里**，不能靠执行者临场判断。
-> 联络图的做法见 `reference/visual-loop.md` 第八节。
-
-> **第 11 条的代价**（必须写死，否则会重犯）：曾把一条"不许有某某成员会话"的检查写成
-> "**工作区里存在该目录就 FAIL**"，结果把**九天前另一个任务**留下的目录报成本次违规，
-> 差点据此停掉正常流程去"修"一个不存在的问题。
-> 判据一句话：**检查必须限定在本次任务的时间窗 / 作用域内** ——
-> **会误报的检查比没有检查更糟**（它会让人去修不存在的问题，还会让人不再相信闸门）。
-
-> **第 13 条补的是 `reference/rules-full.md` 的「临时测试文件规范」 的盲区（必须写死）**：原来的第 1 条只在**工程内**扫几个固定目录，
-> 于是"**把一次性产物写到工程外**"这条路径**没有任何检查覆盖**。
-> 一次性报告被写进**宿主会话产物目录**（既不在工程里、也不在工作区里），
-> **闸门当时全绿**，是用户肉眼发现的。另外"结果展示 / 产物落盘"这类宿主自带的通道，
-> 也会**主动把人往工程外引** —— 所以这一条不能只靠自觉。
+> 骨架里那个 `if ($null -eq $perRow)` 的 guard 只是**防假绿的临时闸**（`$perRow` 从来没被填过 ⇒
+> 一旦有人删掉 guard，`foreach ($null)` 空转、`stale.Count -eq 0` 成立 ⇒ **打印 PASS**，那是最危险
+> 的一类假绿）。下面这块是**已跑通的完整实现**，整块替换骨架的 6) 段即可。
+> 唯一需要按项目填的是 `$areas` 映射表；块里每个"比不了"的分支都走 `HUMAN-ONLY`，⛔ 没有一条
+> "空结果 ⇒ PASS" 的路。
+> 它输出两个 label：`FAIL evidence-freshness`（某几行的图比自己 area 的依赖旧 ⇒ **只作废那几行**）
+> 与 `FAIL evidence-freshness-map`（有 cited 截图匹配不上任何 area ⇒ 新截图不许悄悄逃过）。
+> **行口径**：只取**判定行**（带 `一致` / `未验` / `未做` / `不适用` 之一）—— 验收表里还挂着「历史 /
+> 已修问题」表，那些行的图**不该重采**（它们记录的是旧 bug），混进来就是假红。本块**只看新鲜度、不看
+> 结论格写了什么**；"表里有没有结论 / 只判结论列" 是另一件事（项目侧的交付文档检查器管），两边别互相
+> 替对方下判。
 >
-> 三条设计约束（照抄，别改）：
+> ⚠️ 注意 `不一致` 行：`Contains("一致")` 会**把它一并纳入**（`不一致` 含子串 `一致`）—— 这是**有意**的：它同样是被判过的行，其引用图也不许旧。已登记、**不需要重采**的差异走「允许的差异」段（见 §6 交付清单），⛔ 不要写成判定表里的 `不一致` 行 —— 否则与 freshness 判据互相打架、必然假红。
 >
-> ① **标识取自运行时的工程目录名**（再补一个"去掉通用前缀的短名"），
->    ⛔ **不写死某个具体文件名的模式** —— 自造名是无穷的，写死只抓得到上一次，下次换个名字照样漏，
->    还会假阳性（与 `reference/rules-full.md` 的「收尾机械自检」 第 2 条"引擎自称"同一个道理）；
-> ② **时间窗**（24h）+ **只认"新建"**（`CreationTime`，**不看** `LastWriteTime`）——
->    否则"别人改了工作区根/宿主目录里已有的文件"会天天误报（第 11 条的教训）；
-> ③ **区域清单可扩展**：宿主目录名各宿主不同，**填不出来就留空** ——
->    **留空只让检查变窄，绝不会让"工作区根"那一半失效**。
->
-> **局限写在明处**：这条只能覆盖**列进清单的区域**，不是"工程外全盘扫描"；
-> 真正的兜底是 **`reference/rules-full.md` 的「必然性规则不许只写在 skill 里」 第 3 条**（把高风险动作做成**专用、类型化的入口**，让 harness 有钩子可拦）。
+> ⚠️ 你要粘的地方（`tools/verify.ps1`）含中文注释：粘进 `.ps1` **必须存成 UTF-8 with BOM**（否则 PS 5.1 按 ANSI 解码 ⇒ 引号被吞、**一行都不执行**，而上一次的日志还在 ⇒ 你会以为跑过了）。复制后先 `Test` 一下 `Tokenize` 的 `errs.Count -eq 0`。
 
-> **第 14 条治的是"每次都要白等满超时"**（驱动脚本的错误率接近 100%，**每一轮跑场景都是从等超时开始的**）。
-> 病根不在"跑得慢"，而在**跑之前那一秒没查**：
+```powershell
+# 6) evidence freshness -- judged BY CAUSE, from ONE explicit area map
+#    (SKILL.md mechanical self-check item 6 + this file's items 6 / 6b).
+#    * invalidation scope = the ROWS the change can really influence (same module / same feature
+#      chain / same screen) -- NOT "any file in the project changed => throw the whole batch away";
+#    * the map is ALSO the only data source for the RE-SHOOT scope (item 6b): the `s` field is what
+#      `verify.ps1 -Reshoot` prints and what the re-shoot driver accepts. If the gate judged by cause
+#      while the re-shoot ran everything, one edit would still cost a whole re-shoot batch.
+#    Why (measured): using the newest .cs / level file of the WHOLE project as the baseline of every
+#    shot turned a single level-data edit into "re-shoot ALL cited shots", including rows no level
+#    file can touch. One edit cost a whole batch.
+#
+#    --- PARAMETERS: the ONLY project-specific part is the $areas map below ---
+#      n = area name (printed with every finding; the name the report refers to)
+#      d = files or DIRECTORIES this area's screens depend on, RELATIVE TO $root (a directory = its
+#          whole tree). The baseline of a shot = newest file among its OWN area's `d`.
+#      p = regex over the CITED screenshot FILE NAMES. A cited shot must match EXACTLY ONE area;
+#          an unmapped cited shot is a FAIL, so a brand-new screenshot can never silently escape.
+#      s = probe scene(s) that produce those shots, comma-separated => the re-shoot scope.
+#    One area per screen / per contact sheet. An aggregate sheet that draws frames from several areas
+#    belongs to an area whose `d` is the UNION of their `d` and whose `s` is the UNION of their
+#    scenes: a sheet is only as fresh as the biggest input it draws.
+#    ACCEPTANCE TEST (two-sample rule, reference/anti-gaming.md section 5): run this on a known-good
+#    tree (must PASS) AND on a tree where ONE visual row's cited png is aged past its own area's
+#    newest dependency (must FAIL, naming that png + its area). scripts/gate-selftest.ps1 performs
+#    both runs; never ship this block on a single green run.
+#
+#    Self-contained on purpose (so it can replace the skeleton's guard block anywhere): the four
+#    shared names below are re-derived here -- delete these four lines if the skeleton already
+#    defines them (skeleton order: $shotDir is defined later, inside item 17).
+$shotDir  = Join-Path $root '.ai-tmp\screenshots'
+$rowIdRe  = '^\s*\|\s*\d+(?:\s*-\s*\d+)?\s*\|'
+$cNumeric = ([char[]]@(0x6570,0x503C,0x7C7B) -join '')
+$cVisual  = ([char[]]@(0x8868,0x73B0,0x7C7B) -join '')
+
+# (a) cited-shot universe = pngs cited by a VERDICT row that carries the VISUAL class.
+#     "verdict row" is used here in the same sense as everywhere else in this file: the row carries a
+#     verdict word. NOTE that scope filter is NOT cosmetic -- an acceptance table also carries historical
+#     / "problems already fixed" tables, and their rows cite pngs that must NOT be re-shot (they record
+#     an old bug). Let them into the universe and the freshness check goes red on pictures nobody is
+#     allowed to re-shoot (measured in the project this shape came from).
+#     A NUMERIC row's illustrative png is NOT judged either: its evidence is a runtime log line /
+#     assertion (SKILL.md evidence-class rule, item 3) and failing it would be a false positive --
+#     measured: 39/63 rows went red that way while nothing was stale. A row carrying BOTH classes is
+#     treated as VISUAL (the stricter side). Scope note for whoever reconciles this with a separate
+#     deliverable-doc checker: this block judges FRESHNESS only -- it never looks at what the verdict
+#     cell says, and "not yet verified / not done / not applicable" rows are deliberately included
+#     (badged rows still carry evidence that can go stale).
+$cVerdict = @(
+  ([char[]]@(0x4E00,0x81F4) -join ''),          # "yi zhi"      = consistent
+  ([char[]]@(0x672A,0x9A8C) -join ''),          # "wei yan"     = not yet verified
+  ([char[]]@(0x672A,0x505A) -join ''),          # "wei zuo"     = not done
+  ([char[]]@(0x4E0D,0x9002,0x7528) -join '')    # "bu shi yong" = registered not-applicable
+)
+$specTxt = if (Test-Path $spec) { [System.IO.File]::ReadAllText($spec, [System.Text.Encoding]::UTF8) } else { '' }
+$visPngs = @{}; $numPngs = @{}; $visRows = 0
+foreach ($ln in ($specTxt -split "`n")) {
+  if ($ln -notmatch $rowIdRe) { continue }
+  $isVerdict = $false
+  foreach ($v in $cVerdict) { if ($ln.Contains($v)) { $isVerdict = $true; break } }
+  if (-not $isVerdict) { continue }
+  $isVis = $ln.Contains($cVisual)
+  if ($isVis) { $visRows++ }
+  $dst = if ($isVis) { $visPngs } else { $numPngs }
+  foreach ($m in [regex]::Matches($ln, '([A-Za-z0-9_\-]+\.png)')) { $dst[$m.Groups[1].Value] = 1 }
+}
+
+# (b) the area map -- replace this PLACEHOLDER map with the project's own rows.
+#     (placeholders that match nothing are deliberate: until they are filled in, every cited shot is
+#      reported as unmapped, which is loud and correct -- it can never look green.)
+$areas = @(
+  @{ n = 'ui-<panel>';   d = @('client\Assets\Scripts\UI\<Panel>.cs', 'client\Assets\Scripts\UI\UIBuilder.cs', 'client\Assets\Resources\Fonts'); p = '^<panel>-[a-z0-9\-]*\.png$'; s = '<scene>' },
+  @{ n = 'level-<name>'; d = @('client\Assets\Resources\Levels\<Level>.txt', 'client\Assets\Scripts\Module\Gameplay\GameplayModule.cs');                p = '^<name>-[a-z0-9\-]+\.png$';  s = '<scene>,<scene2>' }
+)
+function Newest-AreaFile([string[]]$paths) {
+  $files = @()
+  foreach ($p in $paths) {
+    $full = Join-Path $root $p
+    if (-not (Test-Path $full)) { continue }
+    $item = Get-Item $full
+    if ($item.PSIsContainer) { $files += @(Get-ChildItem $full -Recurse -File -ErrorAction SilentlyContinue) }
+    else { $files += $item }
+  }
+  $files = @($files | Where-Object { $_.Name -notlike '*.meta' -and $_.Name -notlike '*.import' })
+  return ($files | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+}
+function Get-AreaOf([string]$name) { foreach ($a in $areas) { if ($name -match $a.p) { return $a } } return $null }
+
+$stale = @(); $unmapped = @(); $sceneSet = @{}
+$cited = @()
+if (Test-Path $shotDir) {
+  $cited = @(Get-ChildItem $shotDir -Filter *.png -File -ErrorAction SilentlyContinue |
+             Where-Object { $visPngs.ContainsKey($_.Name) })
+}
+# every branch that cannot compare MUST NOT print PASS -- an empty result is not a pass:
+if ($visRows -eq 0) {
+  $human++; Say 'HUMAN-ONLY' 'evidence-freshness' 'no visual-class row in the acceptance table -- nothing to compare (add the class; do not read this line as green)'
+} elseif ($cited.Count -eq 0) {
+  $human++; Say 'HUMAN-ONLY' 'evidence-freshness' ('no cited visual shot found on disk (' + @($visPngs.Keys).Count + ' cited) -- see screenshot-refs; an empty comparison must never PASS')
+} elseif ($areas.Count -eq 0) {
+  $human++; Say 'HUMAN-ONLY' 'evidence-freshness' 'the area map ($areas) is empty -- per-row freshness cannot be computed at all; fill it in'
+} else {
+  foreach ($f in $cited) {
+    $a = Get-AreaOf $f.Name
+    if ($null -eq $a) { $unmapped += $f.Name; continue }
+    $base = Newest-AreaFile $a.d
+    if (-not $base) { $unmapped += ($f.Name + ' (area ' + $a.n + ': none of its dependencies exists)'); continue }
+    if ($f.LastWriteTime -lt $base.LastWriteTime) {
+      $stale += ('{0} < {1} (area={2} scene={3})' -f $f.Name, $base.Name, $a.n, $a.s)
+      foreach ($sc in ($a.s -split ',')) { if ($sc.Trim().Length -gt 0) { $sceneSet[$sc.Trim()] = 1 } }
+    }
+  }
+  $sceneList = (@($sceneSet.Keys) | Sort-Object) -join ','
+  # optional: the re-shoot driver reads its scene list from HERE and nowhere else (item 6b).
+  # to enable, add  param([switch]$Reshoot)  to the top of this gate.
+  if ($Reshoot) {
+    Write-Output ('stale cited shots: ' + $stale.Count + '; areas to re-shoot (scene=...):')
+    $stale | ForEach-Object { Write-Output ('            ' + $_) }
+    Write-Output ('RESHOOT_SCENES=' + $sceneList)
+    exit 0
+  }
+  if ($unmapped.Count -gt 0) {
+    $fail++; Say 'FAIL' 'evidence-freshness-map' ('' + $unmapped.Count + ' cited screenshot(s) match no area in the map -> add one row per screen/sheet (an unmapped shot must never silently escape)')
+    $unmapped | ForEach-Object { Write-Output ('            ' + $_) }
+  }
+  if ($stale.Count -eq 0 -and $unmapped.Count -eq 0) {
+    $msg = 'visual rows = ' + $visRows + ', ' + $cited.Count + ' cited png all newer than their OWN area newest dependency'
+    $msg = $msg + '; ' + @($numPngs.Keys).Count + ' numeric-row png NOT judged (their evidence is a log line / assertion)'
+    Say 'PASS' 'evidence-freshness' $msg
+  } elseif ($stale.Count -gt 0) {
+    $fail++; Say 'FAIL' 'evidence-freshness' ('' + $stale.Count + '/' + $cited.Count + ' cited screenshots of VISUAL rows are older than a file in their OWN area -> re-shoot exactly these (scene=...): ' + $sceneList)
+    $stale | Select-Object -First 40 | ForEach-Object { Write-Output ('            ' + $_) }
+  }
+}
+```
+
+### 第 10 项的实现（可直接抄；判据是"渲染出来的"）
+
+> `GATE-ITEMS` 把 `engine-credit` 标成 **required**，但正文长期只有一句判据、**没有实现**（骨架里到
+> `# 22)` 就结束了）。下面这块补上。
+> 关键：**判据取运行时 UI 节点树 + 活屏像素**，⛔ 不 grep 源码 —— 源码里有 ≠ 画面上有 ≠ 大小写对。
+> 报告由**探针场景测量产出**（人不能手写），本块逐字段、大小写敏感地断言，并要求 **每一屏各自成立**
+> （"某个面板上有这行字"不算满足规则）；`tamper != none` 直接判红 ⇒ 反向自检跑的那份报告不能冒充交付证据。
+> 它输出两个 label：`FAIL engine-credit`（渲染出来的那行字不满足规则）与
+> `FAIL engine-credit-freshness`（报告比该 area 的依赖旧 ⇒ 得重跑探针场景）。
 >
-> - **无 BOM 的 `.ps1` 里写中文当匹配串** ⇒ PS 5.1 按 **ANSI** 解析 ⇒ 脚本照跑、`-match` 永远不成立
->   ⇒ 完成标记读不到 ⇒ **只能等满超时**（"马里奥站着不动"）。匹配串**一律码点拼**，别赌编码；
-> - **裸表达式喂给 `eval`**（如 `CloverEngine.Game.IsRunning`）**编译不过**，被当成"引擎没起来"
->   ⇒ 驱动会把**好好的 Play 会话杀掉**再重进（越修越慢）。入口形状要**先验一次**（`return X;`）；
-> - **超时不是完成判据**：完成只认**被测程序自己写的标记**，并按"**新增次数**"判（旧标记会骗过它）。
->
-> 判据一句话：**凡是要等分钟级的东西，先在秒级把它验一遍。**
+> ⚠️ 你要粘的地方（`tools/verify.ps1`）含中文注释：粘进 `.ps1` **必须存成 UTF-8 with BOM**（否则 PS 5.1 按 ANSI 解码 ⇒ 引号被吞、**一行都不执行**，而上一次的日志还在 ⇒ 你会以为跑过了）。复制后先 `Test` 一下 `Tokenize` 的 `errs.Count -eq 0`。
+
+```powershell
+# 10) engine self-name credit -- the judge is what was RENDERED, never the source text (SKILL.md 1.6).
+#     Why this shape: the naive check grepped the SOURCE for 'by clover-engine' and stayed green
+#     through BOTH defects a user reported -- (a) the title screen (the screen the player lands on)
+#     had no credit line at all; (b) the source text was right, but the pixel font maps a-z onto the
+#     UPPERCASE glyph shapes, so the screen showed 'BY CLOVER-ENGINE'.
+#     How: a probe scene writes ONE machine-produced report describing the RUNNING game -- the runtime
+#     UI node tree (label text / font / active / visible / anchors), the font's real glyph boxes, and
+#     the INK PROFILE of the live screen's bottom strip. This block asserts every field for EVERY
+#     scope: "a line that is merely present somewhere" does not count, and neither does a label that
+#     sits on an inactive/other panel.
+#     REQUIRED REPORT SCHEMA (the probe writes these lines; one block per scope):
+#       credit|<scope>|panel=<PanelClass>|label=<LabelObjectName>|found=true|open=true|active=true|visible=true|exact=true|text="<the line>"
+#       credit|<scope>|font=<FontAssetName>
+#       credit|<scope>|fontMetrics lowercaseShaped=true|...
+#       credit|<scope>|anchor min=(x,y) max=(x,y)
+#       credit|<scope>|pixels ink=<n> topRatio=<r> shortRuns=<n> hMax=<n> bandBottomGapPx=<n> screenCenterOffsetPx=<n> crop=<file.png>
+#       (header line) tamper=none|<tag>
+#     --- PARAMETERS (project-specific) ---
+#       $credit          : the required string, EXACTLY, case-sensitive (name the ENGINE)
+#       $creditFont      : the font actually used for that line (the lowercase-capable one)
+#       $creditScopes    : scope -> the panel class that OWNS that screen + the label object name
+#       $creditArea      : the item-6 area-map row whose `d` is what can change this line
+#       $creditMinShortRuns : how many of the line's glyph runs must be >= 3px shorter than the
+#                          tallest run. DERIVE IT FROM THE FONT FILE, not from our own render: walk
+#                          the candidate fonts at the project's pixel size and compare per-glyph run
+#                          heights -- the 8x8 pixel font really in use gave 10/15 short runs, the
+#                          all-uppercase NES font gave 1/15, so 6 separates the two BY CONSTRUCTION.
+#     Reverse self-check (do not skip): the probe must ALSO ship two tamper entries (text forced
+#     uppercase / line hidden) that each write a report whose header says tamper=<tag>; this block
+#     rejects tamper != none, so "make the probe say PASS" is itself caught.
+#     Freshness: the report is runtime evidence -- it must be newer than $creditArea's newest
+#     dependency, and it must NOT be compared against the project-wide newest file (a level-data or
+#     gameplay edit cannot change the credit line; doing exactly that produced a false FAIL).
+#     Requires the item-6 block above ($areas + Newest-AreaFile). Without item 6, drop the last part.
+$credit        = 'by clover-engine'
+$creditFont    = '<FontAssetName>'
+$creditArea    = 'ui-<panel>'
+$creditMinShortRuns = 6
+$creditScopes  = @(
+  @{ scope = 'home'; panel = '<HomePanel>'; label = '<LabelObjectName>' },   # the screen the player lands on
+  @{ scope = 'boot'; panel = '<BootPanel>'; label = '<LabelObjectName>' }
+)
+$repPath = Join-Path $shotDir 'credit-render.txt'
+$report  = if (Test-Path $repPath) { [System.IO.File]::ReadAllText($repPath, [System.Text.Encoding]::UTF8) } else { '' }
+
+function Credit-Line([string]$txt, [string]$scope, [string]$key) {
+  foreach ($ln in ($txt -split "`n")) {
+    if ($ln.TrimEnd("`r").StartsWith("credit|$scope|") -and $ln.Contains($key)) { return $ln.TrimEnd("`r") }
+  }
+  return ''
+}
+function Credit-Grab([string]$line, [string]$pattern) { $m = [regex]::Match($line, $pattern); if ($m.Success) { return $m.Groups[1].Value } return '' }
+function Credit-Num([string]$line, [string]$pattern, [double]$default) { $m = [regex]::Match($line, $pattern); if ($m.Success) { return [double]$m.Groups[1].Value } return $default }
+
+if ($report -eq '') {
+  $fail++; Say 'FAIL' 'engine-credit' ('no runtime render report at ' + $repPath + ' -- it must be WRITTEN BY MEASUREMENT from the running game, never by hand')
+} else {
+  $bad = @()
+  $tamper = Credit-Grab $report 'tamper=([a-z]+)'
+  if ($tamper -ne 'none') { $bad += ("report header says tamper='" + $tamper + "' -- that is a reverse-self-check run, not a delivery measurement") }
+  foreach ($sc in $creditScopes) {
+    $scope = $sc.scope
+    $head = Credit-Line $report $scope 'panel='
+    $txtL = Credit-Line $report $scope 'text='
+    $fntL = Credit-Line $report $scope 'font='
+    $metL = Credit-Line $report $scope 'fontMetrics'
+    $pxL  = Credit-Line $report $scope 'pixels'
+    $ancL = Credit-Line $report $scope 'anchor'
+    if ($head -eq '' -or $txtL -eq '' -or $fntL -eq '' -or $metL -eq '' -or $pxL -eq '') {
+      $bad += ($scope + ': report has no complete measurement block (see the schema in the block header)'); continue
+    }
+    foreach ($k in 'open=true', 'found=true', 'active=true', 'visible=true', 'exact=true') {
+      if (-not $head.Contains($k)) { $bad += ($scope + ": '" + $k + "' not satisfied -> " + $head) }
+    }
+    # the measured label must be the one ON THE PANEL THAT OWNS THAT SCREEN:
+    if (-not $head.Contains('panel=' + $sc.panel)) { $bad += ($scope + ': the measured label is not on panel=' + $sc.panel + ' -> ' + $head) }
+    if (-not $head.Contains('label=' + $sc.label)) { $bad += ($scope + ': the measured label is not ' + $sc.label + ' -> ' + $head) }
+    # the text must be the required string EXACTLY (case-sensitive: 'BY clover-engine' must fail)
+    $got = Credit-Grab $txtL 'text="([^"]*)"'
+    if (-not ($got -ceq $credit)) { $bad += ($scope + ": rendered text is '" + $got + "', required exactly '" + $credit + "' (case-sensitive)") }
+    # the font must be the one that HAS lowercase glyph shapes
+    $fname = Credit-Grab $fntL 'font=([^ ]+)'
+    if (-not ($fname -ceq $creditFont)) { $bad += ($scope + ": label font is '" + $fname + "', required '" + $creditFont + "'") }
+    $lower = Credit-Grab $metL 'lowercaseShaped=([a-z]+)'
+    if ($lower -ne 'true') { $bad += ($scope + ": font glyph boxes say lowercaseShaped=" + $lower + " (a-z must differ from A-Z and 'y' must descend) -> " + $metL) }
+    # pixels of the live screen's strip: a real lowercase line has x-height glyphs, so the top rows of
+    # the ink band carry far less ink than the middle rows; all-uppercase shapes make every row
+    # equally dense (ratio ~0.9), true lowercase is ~0.2 -- require < 0.5.
+    $ink   = [int](Credit-Num $pxL 'ink=(\d+)' -1)
+    $ratio = Credit-Num $pxL 'topRatio=([-\d.]+)' -1
+    $gap   = [int](Credit-Num $pxL 'bandBottomGapPx=(-?\d+)' -1)
+    $short = [int](Credit-Num $pxL 'shortRuns=(\d+)' -1)
+    $hmax  = [int](Credit-Num $pxL 'hMax=(\d+)' -1)
+    $off   = [int](Credit-Num $pxL 'screenCenterOffsetPx=(-?\d+)' 9999)
+    if ($ink -lt 20) { $bad += ($scope + ': no/negligible ink on the line own rect (ink=' + $ink + ') => nothing was rendered there -> ' + $pxL) }
+    if ($short -lt $creditMinShortRuns) { $bad += ($scope + ': only ' + $short + ' glyph run(s) are shorter than hMax-3 (hMax=' + $hmax + ', need >= ' + $creditMinShortRuns + ') => the shapes on screen are NOT lowercase -> ' + $pxL) }
+    if ($ratio -lt 0 -or $ratio -ge 0.5) { $bad += ($scope + ': ink band is uniformly dense (topRatio=' + $ratio + ' >= 0.5) => the glyphs are NOT lowercase -> ' + $pxL) }
+    if ($gap -lt 0 -or $gap -gt 64) { $bad += ($scope + ': credit line sits ' + $gap + ' px above the bottom edge (must be at the bottom, <= 64) -> ' + $pxL) }
+    if ($off -eq 9999) { $bad += ($scope + ': no screen-centre offset was measured -> ' + $pxL) }
+    elseif ([Math]::Abs($off) -gt 4) { $bad += ($scope + ': credit line is off-centre by ' + $off + ' px (must be bottom-CENTRE) -> ' + $pxL) }
+    $crop = Credit-Grab $pxL 'crop=([^ ]+)'
+    if ($crop -eq '' -or $crop -eq 'none') { $bad += ($scope + ': the measured strip was not saved as an image -> ' + $pxL) }
+    elseif (-not (Test-Path (Join-Path $shotDir $crop))) { $bad += ($scope + ": evidence crop '" + $crop + "' is missing from the screenshot dir -> " + $pxL) }
+  }
+  if ($bad.Count -eq 0) {
+    Say 'PASS' 'engine-credit' ('rendered on EVERY scope (' + ((@($creditScopes | ForEach-Object { $_.scope })) -join '+') + '): text ' + $credit + ' exact (case-sensitive), font ' + $creditFont + ', lowercase glyphs in the pixels, bottom-centre')
+  } else {
+    $fail++; Say 'FAIL' 'engine-credit' ('' + $bad.Count + ' assertion(s) failed on the RENDERED credit line')
+    $bad | ForEach-Object { Write-Output ('            ' + $_) }
+  }
+  # freshness: the report is runtime evidence -- judge it against the credit AREA (item 6), not the project
+  if ((Test-Path $repPath) -and $areas.Count -gt 0) {
+    $ca = $null; foreach ($a in $areas) { if ($a.n -eq $creditArea) { $ca = $a } }
+    if ($null -eq $ca) {
+      $fail++; Say 'FAIL' 'engine-credit-freshness' ('the area map has no row named ' + $creditArea + ' -> the report cannot be judged for freshness')
+    } else {
+      $newest = Newest-AreaFile $ca.d
+      $rep = Get-Item $repPath
+      if ($newest -and ($rep.LastWriteTime -lt $newest.LastWriteTime)) {
+        $fail++; Say 'FAIL' 'engine-credit-freshness' ('report ' + $rep.LastWriteTime + ' is OLDER than ' + $newest.Name + ' ' + $newest.LastWriteTime + ' -> re-run the credit probe scene (area ' + $creditArea + ')')
+      } else {
+        Say 'PASS' 'engine-credit-freshness' 'the render report is newer than the credit area newest dependency'
+      }
+    }
+  }
+}
+```
 
 ## 骨架（复制后按项目改路径）
+
+> ⚠️ 你要粘的地方（`tools/verify.ps1`）含中文注释：粘进 `.ps1` **必须存成 UTF-8 with BOM**（否则 PS 5.1 按 ANSI 解码 ⇒ 引号被吞、**一行都不执行**，而上一次的日志还在 ⇒ 你会以为跑过了）。复制后先 `Test` 一下 `Tokenize` 的 `errs.Count -eq 0`。
 
 ```powershell
 $ErrorActionPreference = 'Stop'
@@ -269,6 +510,8 @@ if (Test-Path $spec) {
 #       所以这段必须**先判空**再比：否则 `foreach ($null)` 空转、`$stale.Count -eq 0` 成立
 #       ⇒ **打印 PASS**（明明是"检查没生效"，却报"逐行比对通过"，是最危险的一类假绿）。
 #       写项目实现时：把 ①②③ 补齐后删掉这个 guard；没补齐就让它停在 HUMAN-ONLY。
+#   ✅ 可直接抄的完整实现（含 area 映射表的形状 + `evidence-freshness-map` + 重采场景唯一数据源）
+#      见本文件「第 6 项的实现（可直接抄；替换本 guard 块）」一节 —— 整块替换下面这段 guard 即可。
 #   ⛔ 另外：本骨架里没有定义 `Sub`（旧版最后一行写 `$stale | ForEach-Object { Sub $_ }`，
 #      一有 stale 就抛 "Sub is not recognized" —— 已改为 Write-Output）。
 $stale = @(); $compared = 0; $noImpl = 0; $noShot = 0
@@ -372,7 +615,9 @@ else { $fail++; Say 'FAIL' 'sampler-selfcheck' ($badPs -join '; ') }
 #         与 `# direct-fix: <路径>`（§5 的"小改动"例外：单文件、≤20 行、不新增行为/不改格式，
 #         用户明说的点状缺陷 —— 主 agent 直接做，写一行理由即可，**不要求派活行**）。
 #         ⛔ 这两种都是"把写入变可见"，不是洗白通道：多文件 / 改数据格式 / 新增行为一律回去派活。
-$logPath = Join-Path $root '.ai-tmp/test/dispatch-log.tsv'
+$logPath  = Join-Path $root '.ai-tmp/test/ledger.tsv'       # 新名：5 列 = 时间 / kind / 主体 / 对象 / 详情
+$isLedger = Test-Path $logPath
+if (-not $isLedger) { $logPath = Join-Path $root '.ai-tmp/test/dispatch-log.tsv' }   # 旧名兼容（4 列，无 kind）
 # ⛔ **不要用 `**` 当递归**：PowerShell 的 -Path 只认 `*` / `?`（**单层**），
 #    `'client/Assets/Scripts/**/*.cs'` 实际等价于 `'Scripts/*/*.cs'`
 #    ⇒ **孙目录及更深的实现文件全部漏对账**（本项因此形同虚设）。
@@ -426,12 +671,19 @@ else {
 # 16) play-ledger -- SKILL 2 / 0.1: every editor_play must be on the ledger WITH A REASON.
 #     NO count budget: a session cap was read as a licence to stop early (SKILL 0.1).
 #     Keep going until the acceptance table is full; "count reached" is never a reason to stop.
-$playLog    = Join-Path $root '.ai-tmp\test\play-log.tsv'
+$playLog    = Join-Path $root '.ai-tmp\test\ledger.tsv'      # kind=play 的行
+$isLedger2  = Test-Path $playLog
+if (-not $isLedger2) { $playLog = Join-Path $root '.ai-tmp\test\play-log.tsv' }   # 旧名兼容
 $playRows   = @()
 if (Test-Path $playLog) {
   foreach ($line in @([System.IO.File]::ReadAllLines($playLog, [Text.Encoding]::UTF8))) {
     if ($line -match '^\s*#' -or $line.Trim().Length -eq 0) { continue }
     $c = $line -split "`t"
+    if ($isLedger2) {
+      if ($c.Count -lt 5 -or $c[1] -ne 'play') { continue }
+      $playRows += [pscustomobject]@{ At = $c[0]; Task = [string]$c[3]; Why = [string]$c[4] }
+      continue
+    }
     $why = if ($c.Count -ge 4) { [string]$c[3] } else { '' }
     $playRows += [pscustomobject]@{ At = $c[0]; Task = $(if ($c.Count -ge 3) { [string]$c[2] } else { '' }); Why = $why }
   }

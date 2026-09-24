@@ -1,9 +1,6 @@
 # 范式：C2S + 回包 Handler
 
-> **本文件所有 API 均逐条取自 `clover-server-engine` 源码**（`pkg/app/app.go`、
-> `pkg/transport/event/eventcore.go`、`internal/app/core.go`），照抄即可编译。
-> **旧稿、文档、以及"我记得是这样"若与本文件冲突，一律以本文件为准。**
-> 模块路径统一用 `{module}` 占位，生成时替换为实际 module 名（如 `clover-cq`）。
+> **本文件所有 API 均逐条取自 `clover-server-engine` 源码**（`pkg/app/app.go`、`pkg/transport/event/eventcore.go`、`internal/app/core.go`），照抄即可编译。**旧稿、文档、以及"我记得是这样"若与本文件冲突，一律以本文件为准。** 模块路径统一用 `{module}` 占位。
 
 ## 1. 定义消息号
 
@@ -16,7 +13,6 @@ const (
 	MsgXxx = 10001 // C2S
 	// ⚠️ **回包不占消息号**：回包帧的 msgID 恒为 0 由引擎填充（客户端按 requestID 配对），
 	//    所以这里**不要**给 Reply 定义消息号常量，只定义回包**结构体**即可。
-	//    详见 reference/conventions.md 与 scaffold/new-project.md。
 )
 
 // 请求体
@@ -84,9 +80,7 @@ func (l *gameLogic) onXxx(c event.Ctx) error {
 | 回包 | `g.Reply(c, v)` |
 | 原始字节回包 | `c.MarkReplied(body []byte)` |
 
-`Ctx` **只有**纯数据访问器，取用即可：`c.Account()` / `c.PlayerID()` / `c.RequestID()` /
-`c.Line()` / `c.ConnID()` / `c.BindMsg(&req)` / `c.Payload()` / `c.TargetID()` /
-`c.SetPlayerID(pid)` / `c.SetConnValue(k,v)` / `c.ConnValue(k)`。
+`Ctx` **只有**纯数据访问器，取用即可：`c.Account()` / `c.PlayerID()` / `c.RequestID()` / `c.Line()` / `c.ConnID()` / `c.BindMsg(&req)` / `c.Payload()` / `c.TargetID()` / `c.SetPlayerID(pid)` / `c.SetConnValue(k,v)` / `c.ConnValue(k)`。
 
 ### 3.2 回包 / 弹窗 / 推送 / 事件（全部在 `Game` 上，`Ctx` 上没有）
 
@@ -114,15 +108,12 @@ err := l.g.SendEventToPlayer(c, playerID, "PlayerCreated", payload)
 err := l.g.LoadStruct(c, datadef.MySchema, c.PlayerID(), &v)
 ```
 
-> 签名速查（以 `clover-server-engine` 源码为准）：
-> - 对象版：`pkg/app/app.go` 的 `Game` 上 —— `PushToPlayer(playerID, msgID uint32, v any, opts ...proto.DeliveryMode)`   
->   、`PushToScene(...)`、`PushToAll(...)`；**第三个参数是结构体/任意对象，内部做 JSON 序列化**。
-> - 原始字节版：`PushToPlayerRaw(...) / PushToSceneRaw(...) / PushToAllRaw(...)`，body 为 `[]byte`。
-> - `PushToPlayerJSON` / `PushToSceneJSON` / `PushToAllJSON` 定义在 `internal/app/core.go` 的 `Core` 上，  
->   由 `Game` 嵌入提升，因此也能直接 `g.PushToPlayerJSON(...)`（与上面的 `PushToPlayer` 等价）。
->⚠️ **别把 `PushToPlayer` 当原始字节用**：`PushToPlayer(p, id, []byte{...})` 会把 `[]byte` 
-> 当对象做 JSON 编码（变成 base64 字符串），而不是发原始字节。
->`SendEventToPlayer` 定义在 `pkg/app/app.go` 的 `Game` 上，**要传 `c`**——两者别混。
+> 签名速查（以源码为准）：
+> - 对象版：`pkg/app/app.go` 的 `Game` 上 —— `PushToPlayer(playerID, msgID uint32, v any, opts ...proto.DeliveryMode)`、`PushToScene(...)`、`PushToAll(...)`；**第三个参数是结构体 / 任意对象，内部做 JSON 序列化**。
+> - 原始字节版：`PushToPlayerRaw(...)` / `PushToSceneRaw(...)` / `PushToAllRaw(...)`，body 为 `[]byte`。
+> - `PushToPlayerJSON` 等定义在 `internal/app/core.go` 的 `Core` 上，由 `Game` 嵌入提升，因此也能直接 `g.PushToPlayerJSON(...)`（与 `PushToPlayer` 等价）。
+> ⚠️ **别把 `PushToPlayer` 当原始字节用**：`PushToPlayer(p, id, []byte{...})` 会把 `[]byte` 当对象做 JSON 编码（变成 base64 字符串），而不是发原始字节。
+> `SendEventToPlayer` 定义在 `pkg/app/app.go` 的 `Game` 上，**要传 `c`** —— 两者别混。
 
 ### 3.3 错误与抑制回包
 

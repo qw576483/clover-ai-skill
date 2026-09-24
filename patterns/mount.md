@@ -1,10 +1,8 @@
 # 范式：Mount 挂载（四角色统一入口）
 
-> API 取自 [`clover-server-engine/pkg/app/app.go`](https://github.com/qw576483/clover-server-engine/blob/main/pkg/app/app.go)。模块路径用 `{module}` 占位，
-> 生成时替换为实际 module 名（如 `clover-cq`）。
+> API 取自 [`clover-server-engine/pkg/app/app.go`](https://github.com/qw576483/clover-server-engine/blob/main/pkg/app/app.go)。模块路径用 `{module}` 占位。
 
-业务通过 `app.Mount(role, fn)` 挂载，在 `init()` 中注册。**四个角色只有一个入口**，
-`role` 决定 `fn` 的参数类型。
+业务通过 `app.Mount(role, fn)` 挂载，在 `init()` 中注册。**四个角色只有一个入口**，`role` 决定 `fn` 的参数类型。
 
 ```go
 package logic
@@ -46,8 +44,7 @@ import _ "{module}/game/logic"
 | `app.RoleLog` | `func(*app.LogGame)` | game 转发（`g.Call(app.RoleLog, ...)`） |
 | `app.RoleAuth` | `func(*app.AuthGame)` | game 转发 + 账号服自身 HTTP `/auth/*` |
 
-**客户端只直连网关**（以及账号服的 HTTP 登录接口）。master / log 的业务消息一律由 game 转发，
-两边消息号配对：
+**客户端只直连网关**（以及账号服的 HTTP 登录接口）。master / log 的业务消息一律由 game 转发，两边消息号配对：
 
 ```go
 // 目标角色（挂在 master / log / auth 服上）
@@ -64,25 +61,14 @@ if err := g.Call(app.RoleLog, 3000201, &req, &resp); err != nil {
 g.Reply(c, resp)
 ```
 
-**写错角色/签名不会静默**：`Mount` 在 `init` 期校验 `fn` 类型，不匹配直接 panic 
-（进程启动就暴露，不会出现「挂错角色、消息永远到不了」）。
+**写错角色 / 签名不会静默**：`Mount` 在 `init` 期校验 `fn` 类型，不匹配直接 panic（进程启动就暴露）。
 
 ## 要点
 
 - `app.Mount` 是业务**唯一**挂载点；`app.Run(configPath)` 启动对应进程时按注册顺序统一执行。
-- 四个宿主的 `OnMsg` 签名**一致**：`func(c event.Ctx) error`
-  （非 game 角色是「headless Core + 自己的传输层」，与 game 共用同一套派发内核）。
-- `Game.OnMsg(msgID uint32, h event.Handler, priority ...int)` 可绑定多个 handler（按优先级降序）；
-  非 game 宿主 `MasterGame/LogGame/AuthGame.OnMsg(msgID uint32, h event.Handler)` **没有 priority 参数**（`internal/app/facade.go:640/704/759`；game 侧带 priority 的那个在同文件 `internal/app/facade.go:453`）。
+- 四个宿主的 `OnMsg` 签名**一致**：`func(c event.Ctx) error`（非 game 角色是「headless Core + 自己的传输层」，与 game 共用同一套派发内核）。
+- `Game.OnMsg(msgID uint32, h event.Handler, priority ...int)` 可绑定多个 handler（按优先级降序）；非 game 宿主 `MasterGame/LogGame/AuthGame.OnMsg(msgID uint32, h event.Handler)` **没有 priority 参数**（`internal/app/facade.go:640/704/759`；game 侧带 priority 的那个在同文件 `:453`）。
 - 四个角色的 `OnMsg` 传 `msgID <= proto.InternalMsgMax` 都会 **panic**（引擎保留段）。
 - 需要宿主引用时，用包级 `G.g`（或 logic 结构体的 `l.g`），**不要在 handler 里现取**。
-- 跨服事件在 **Game** 上，不在 Ctx 上：
-  ```go
-  l.g.SendEventToPlayer(c, playerID, "PlayerCreated", payload) // ★ g 上，要传 c
-  ```
-- 定时器、跨服事件模板见 `patterns/timer.md` / `patterns/crossnode.md`。
-
-## 相关
-
-- Handler 写法与 API 铁律：`patterns/handler.md`
-- 新工程从零搭建：`scaffold/new-project.md`
+- 跨服事件在 **Game** 上，不在 Ctx 上：`l.g.SendEventToPlayer(c, playerID, "PlayerCreated", payload)`（★ `g` 上，要传 `c`）。
+- 定时器、跨服事件模板见 `patterns/timer.md` / `patterns/crossnode.md`；Handler 写法见 `patterns/handler.md`。

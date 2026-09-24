@@ -1,21 +1,11 @@
 # 范式：跨服事件投递
 
-> API 取自 [`clover-server-engine/pkg/app/app.go`](https://github.com/qw576483/clover-server-engine/blob/main/pkg/app/app.go)。**事件发送在 `Game` 上，不在 `Ctx` 上。**
-> 模块路径用 `{module}` 占位，生成时替换为实际 module 名。
+> API 取自 [`clover-server-engine/pkg/app/app.go`](https://github.com/qw576483/clover-server-engine/blob/main/pkg/app/app.go)。**事件发送在 `Game` 上，不在 `Ctx` 上。** 模块路径用 `{module}` 占位。
+> 底层走 `CrossNodeEventBus`：本地短路 + 远程经 Master + NATS。
 
-跨服事件底层走 `CrossNodeEventBus`：本地短路 + 远程经 Master + NATS。
-
-## 1. 投递事件
+## 1. 投递 / 订阅
 
 ```go
-package logic
-
-import (
-	"{module}/game/def"
-	"github.com/qw576483/clover-server-engine/pkg/app"
-	"github.com/qw576483/clover-server-engine/pkg/transport/event"
-)
-
 type gameLogic struct{ g *app.Game }
 
 var G = &gameLogic{}
@@ -41,11 +31,7 @@ func (l *gameLogic) onMsgXxx(c event.Ctx) error {
 	}
 	return nil
 }
-```
 
-## 2. 订阅事件
-
-```go
 // 跨服事件到达后触发（本地 emit 与跨节点送达走同一入口）
 func (l *gameLogic) onPlayerCrossNodeSync(c event.Ctx) error {
 	var p MyPayload
@@ -57,7 +43,7 @@ func (l *gameLogic) onPlayerCrossNodeSync(c event.Ctx) error {
 }
 ```
 
-## 3. API 要点
+## 2. API 要点
 
 | 用途 | 正确写法 |
 |---|---|
@@ -68,8 +54,7 @@ func (l *gameLogic) onPlayerCrossNodeSync(c event.Ctx) error {
 
 > 「空间 / 房间广播」没有专门 API：用 `g.SendEventToAll`，或业务层自行维护成员列表逐个投递。
 
-## 4. 相关
+## 3. 相关
 
 - 查玩家在哪个节点（跨服好友在线状态 / 邀请 / 观战寻址）：`patterns/player-lookup.md`
-- Handler 与回包：`patterns/handler.md`
-- 挂载：`patterns/mount.md`
+- Handler 与回包：`patterns/handler.md`；挂载：`patterns/mount.md`

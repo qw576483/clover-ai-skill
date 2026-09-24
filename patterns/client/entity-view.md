@@ -1,6 +1,6 @@
 # Entity-View 绑定模板
 
-## 模板 1：基础 Entity-View
+## 模板 1：基础 Entity-View（属性绑定 + 精确注销）
 
 ```csharp
 using CloverEngine;
@@ -14,7 +14,7 @@ public class PlayerView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _levelText;
     [SerializeField] private Slider _hpBar;
 
-    // 实体号来自服务端 uint64 ⇒ 一律 ulong（见文末「实体号类型」说明）
+    // 实体号来自服务端 uint64 ⇒ 一律 ulong（见文末「实体号类型」）
     private ulong _entityId;
     private float _hp;
     private float _maxHp;
@@ -36,21 +36,13 @@ public class PlayerView : MonoBehaviour
 
     private void OnPropertyChange(string attrName, object value)
     {
-        // 更新 UI 显示：属性新值就是回调参数（EntityInfo 上没有 Attrs 字段）
+        // 属性新值就是回调参数（EntityInfo 上没有 Attrs 字段）
         switch (attrName)
         {
-            case "Name":
-                _nameText.text = (string)value;
-                break;
-            case "Level":
-                _levelText.text = $"Lv.{value}";
-                break;
-            case "Hp":
-                _hp = System.Convert.ToSingle(value);
-                break;
-            case "MaxHp":
-                _maxHp = System.Convert.ToSingle(value);
-                break;
+            case "Name":  _nameText.text = (string)value;      break;
+            case "Level": _levelText.text = $"Lv.{value}";     break;
+            case "Hp":    _hp = System.Convert.ToSingle(value);    break;
+            case "MaxHp": _maxHp = System.Convert.ToSingle(value); break;
         }
 
         if (attrName == "Hp" || attrName == "MaxHp")
@@ -67,12 +59,11 @@ public class PlayerView : MonoBehaviour
 }
 ```
 
-## 模板 2：WorldSync 实体同步
+> **初始显示（等首个属性同步回调到达后刷新）**：引擎**没有**同步读属性的入口，`EntityInfo` 上也没有 `Attrs` 字段 —— 值只能从 `OnEntityProperty` 回调缓存里取。
+
+## 模板 2：WorldSync 实体同步（位置插值）
 
 ```csharp
-using CloverEngine;
-using UnityEngine;
-
 public class SyncEntityView : MonoBehaviour
 {
     private ulong _entityId;
@@ -86,7 +77,6 @@ public class SyncEntityView : MonoBehaviour
         _targetPosition = transform.position;
         _targetRotation = transform.rotation;
 
-        // 通过 IWorldSync 监听位置同步
         Game.Sync.OnEntityMove((id, x, y, z) =>
         {
             if (id == _entityId)
@@ -101,19 +91,14 @@ public class SyncEntityView : MonoBehaviour
                 _targetPosition = next;
             }
         });
-        
-        // 通过 IWorldSync 监听属性同步
+
         Game.Sync.OnEntityProperty((id, attrName, value) =>
         {
-            if (id == _entityId)
-                OnPropertySync(attrName, value);
+            if (id == _entityId) OnPropertySync(attrName, value);
         });
     }
 
-    private void OnPropertySync(string attrName, object value)
-    {
-        // 处理属性同步
-    }
+    private void OnPropertySync(string attrName, object value) { /* 处理属性同步 */ }
 
     void Update()
     {
@@ -126,10 +111,7 @@ public class SyncEntityView : MonoBehaviour
 
 ## 模板 3：Entity 创建和销毁
 
-> **优先走引擎的异步 View 工厂**（官方入口 `CloverPresentation.EntityView`，契约 `IEntityViewFactory`）：
-> 它立即返回可用的视图根节点（占位体已就位）、异步加载模型，并处理**加载完成时实体已不存在**的竞态、
-> 按目标身高**归一化并贴地**、可选接动画；实体的 `Destroy` / `DestroyGroup` / `ClearAll`
-> 会同步释放工厂侧记录（动画播放器 + 模型资源引用）。
+> **优先走引擎的异步 View 工厂**（官方入口 `CloverPresentation.EntityView`，契约 `IEntityViewFactory`）：它立即返回可用的视图根节点（占位体已就位）、异步加载模型，并处理**加载完成时实体已不存在**的竞态、按目标身高**归一化并贴地**、可选接动画；实体的 `Destroy` / `DestroyGroup` / `ClearAll` 会同步释放工厂侧记录（动画播放器 + 模型资源引用）。
 >
 > ```csharp
 > // ⛔ 引擎这三处的形参都是 long（Create(long,int,string) / BindView(long,GameObject) /
@@ -141,20 +123,13 @@ public class SyncEntityView : MonoBehaviour
 > Game.Entity.BindView((long)entityId, view);   // 登记视图；其销毁由 Entity 侧统一负责
 > ```
 >
-> 以下示例是**纯手工路径**（自建 GameObject + 自己的 View 组件），仅在不需要异步模型加载时使用：
+> 下面是**纯手工路径**（自建 GameObject + 自己的 View 组件），仅在不需要异步模型加载时使用：
 
 ```csharp
-using CloverEngine;
-using UnityEngine;
-
 public class EntityManager : MonoBehaviour
 {
-    [SerializeField] private GameObject _playerPrefab;
-    [SerializeField] private GameObject _monsterPrefab;
-
     public void SpawnPlayer(ulong entityId, Vector3 position)
     {
-        // 创建实体（typeID 为业务自定义的实体类型编号）
         // ⚠️ 世界同步给的实体号是 ulong，而 IEntityManager 当前仍是 long
         //    ⇒ 跨这两者必须显式转换（见文末「实体号类型」）
         Game.Entity.Create((long)entityId, PLAYER_TYPE_ID);
@@ -166,53 +141,24 @@ public class EntityManager : MonoBehaviour
         view.Bind(entityId);
     }
 
-    public void SpawnMonster(ulong entityId, Vector3 position)
-    {
-        Game.Entity.Create((long)entityId, MONSTER_TYPE_ID);
-        var viewGo = new GameObject("Monster");
-        Game.Entity.BindView((long)entityId, viewGo);
-        var view = viewGo.AddComponent<MonsterView>();
-        view.Bind(entityId);
-    }
-
-    public void RemoveEntity(ulong entityId)
-    {
-        Game.Entity.Destroy((long)entityId);
-    }
+    public void RemoveEntity(ulong entityId) => Game.Entity.Destroy((long)entityId);
 }
 ```
 
 ## 模板 4：AOI 视野管理
 
 ```csharp
-using CloverEngine;
-using UnityEngine;
-using System.Collections.Generic;
-
 public class AOIManager : MonoBehaviour
 {
     void Start()
     {
-        // 通过 IWorldSync 监听实体进入场景
-        Game.Sync.OnEntityEnter((entityId, attrs) =>
-        {
-            SpawnEntity(entityId, attrs);
-        });
+        Game.Sync.OnEntityEnter((entityId, attrs) => SpawnEntity(entityId, attrs));
+        Game.Sync.OnEntityLeave((entityId) => RemoveEntity(entityId));
 
-        // 通过 IWorldSync 监听实体离开场景
-        Game.Sync.OnEntityLeave((entityId) =>
-        {
-            RemoveEntity(entityId);
-        });
-
-        // 通过 IWorldSync 监听实体移动。
         // 注意：这里拿到的是服务端下发的**离散目标坐标**（约 10Hz），只适合做逻辑判定；
         // 直接拿它驱动 Transform 会抖 —— 表现层请在 Update 里用
         // Game.Sync.TryGetPosition(entityId, out x, out y, out z) 读**插值后**的位置。
-        Game.Sync.OnEntityMove((entityId, x, y, z) =>
-        {
-            SetEntityTarget(entityId, new Vector3(x, y, z));
-        });
+        Game.Sync.OnEntityMove((entityId, x, y, z) => SetEntityTarget(entityId, new Vector3(x, y, z)));
     }
 
     private void SpawnEntity(ulong entityId, Dictionary<string, object> attrs)
@@ -221,27 +167,17 @@ public class AOIManager : MonoBehaviour
         var type = attrs.ContainsKey("type") ? attrs["type"]?.ToString() : "default";
         switch (type)
         {
-            case "player":
-                SpawnPlayer(entityId);
-                break;
-            case "monster":
-                SpawnMonster(entityId);
-                break;
+            case "player":  SpawnPlayer(entityId);  break;
+            case "monster": SpawnMonster(entityId); break;
         }
     }
 
-    private void RemoveEntity(ulong entityId)
-    {
-        Game.Entity.Destroy((long)entityId);
-    }
+    private void RemoveEntity(ulong entityId) => Game.Entity.Destroy((long)entityId);
 
     private void UpdateEntityPosition(ulong entityId, Vector3 position)
     {
         var view = Game.Entity.GetView((long)entityId);
-        if (view != null)
-        {
-            view.transform.position = position;
-        }
+        if (view != null) view.transform.position = position;
     }
 }
 ```
@@ -250,13 +186,10 @@ public class AOIManager : MonoBehaviour
 
 服务端对象号是 `uint64`，因此**世界同步一路都是 `ulong`**：
 
-- `IWorldSync`：`TryGetPosition(ulong)`、`OnEntityEnter/Leave/Move/Property(Action<ulong …>)`、
-  以及配对的 `Off*`（`Runtime/Core/Contracts.cs:495,535-571`）；
+- `IWorldSync`：`TryGetPosition(ulong)`、`OnEntityEnter/Leave/Move/Property(Action<ulong …>)`、以及配对的 `Off*`（`Runtime/Core/Contracts.cs:495,535-571`）；
 - `ICloverScene`：`SceneID` / `RegisterMapping(ulong)` / `ResolveUnityScene(ulong)`。
 
-⚠️ **但 `IEntityManager` / `EntityInfo.ObjectID` / `IEntityViewFactory` 目前仍是 `long`**
-（`Runtime/Core/EntityPool.cs:27,60,81,87,256`）—— 这是**引擎侧尚未统一的残留**，
-不是让你"再包一层 long"。所以跨这两者时要**显式转换**：
+⚠️ **但 `IEntityManager` / `EntityInfo.ObjectID` / `IEntityViewFactory` 目前仍是 `long`**（`Runtime/Core/EntityPool.cs:27,60,81,87,256`）—— 这是**引擎侧尚未统一的残留**，不是让你"再包一层 long"。跨这两者时要**显式转换**：
 
 ```csharp
 Game.Sync.OnEntityEnter((ulong id, Dictionary<string, object> attrs) =>
@@ -267,18 +200,11 @@ Game.Sync.OnEntityEnter((ulong id, Dictionary<string, object> attrs) =>
 });
 ```
 
-**别把世界同步回调的参数声明成 `long`**：那会让 `id == _entityId` 这类比较直接编译不过
-（`ulong` 与 `long` 之间无隐式转换），或者更糟 —— 用 `(long)id` 转换后在 `id` 高位为 1 时得到负数，
-表现为"实体找不到 / 视图不显示"而**不报错**。
+**别把世界同步回调的参数声明成 `long`**：那会让 `id == _entityId` 这类比较直接编译不过（`ulong` 与 `long` 之间无隐式转换），或者更糟 —— 用 `(long)id` 转换后在 `id` 高位为 1 时得到负数，表现为"实体找不到 / 视图不显示"而**不报错**。
 
-## 模板 5：实体属性绑定
+## 模板 5：实体属性绑定（血条）
 
 ```csharp
-using CloverEngine;
-using UnityEngine;
-using TMPro;
-using UnityEngine.UI;
-
 public class HealthBarView : MonoBehaviour
 {
     [SerializeField] private Slider _hpBar;
@@ -292,7 +218,7 @@ public class HealthBarView : MonoBehaviour
     {
         _entityId = entityId;
 
-        // 通过 IWorldSync 监听血量变化（属性新值由回调给出；EntityInfo 上没有 Attrs 字段）
+        // 属性新值由回调给出（EntityInfo 上没有 Attrs 字段）
         Game.Sync.OnEntityProperty((id, attrName, value) =>
         {
             if (id != _entityId) return;
@@ -301,14 +227,10 @@ public class HealthBarView : MonoBehaviour
             else return;
             UpdateHpDisplay();
         });
-
-        // 初始显示：等首个属性同步回调到达后刷新（引擎没有同步读属性的入口）
     }
 
     private void UpdateHpDisplay()
     {
-        // 血量值取自 OnEntityProperty 回调缓存（EntityInfo 上没有 Attrs 字段）
-
         _hpBar.value = _maxHp > 0f ? _hp / _maxHp : 0f;
         _hpText.text = $"{_hp:F0}/{_maxHp:F0}";
     }

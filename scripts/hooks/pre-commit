@@ -3,7 +3,7 @@
 #
 # "An instruction is a request, a gate is a guarantee."
 # Until this hook exists, every self-check in this repo depends on somebody REMEMBERING to run
-# it. Measured 2026-09-21: three defects shipped and no gate fired -- a dangling section
+# it. Three defects shipped and no gate fired -- a dangling section
 # pointer, a self-contradicting constant, and a false-red rule. Two of the three are now
 # mechanical; this hook is what makes them run without being asked.
 #

@@ -12,7 +12,7 @@
 #   3 no-relaxed-phrasing the rule layer must never be relaxed by "project wins over global" wording
 #   4 copies-synced       host install copy == repo source copy (name + size)
 #                         + refuses to compare a copy against ITSELF (that always passes)
-#   5 archive-pending     the transitional full-rules archive must eventually be digested away
+#   5 case-digest         the case/criteria digest must exist and be linked from the entry file
 #
 # ASCII-only on purpose (PowerShell 5.1 parses non-ASCII .ps1 without BOM as ANSI).
 
@@ -102,7 +102,7 @@ else {
 # -- 4) the two copies must be identical ----------------------------------------------
 #    Guard first: this check is $root vs $RepoRoot, and $root is derived from this script's own
 #    location -- so running it FROM the repo with -RepoRoot <same repo> compares a copy with
-#    itself and passes no matter how stale the install copy is (measured 2026-09-22: the host
+#    itself and passes no matter how stale the install copy is (the host
 #    copy was 44 files behind and it still said PASS). Refuse that usage instead of green-on-nothing.
 #    Normalize BOTH paths first: a trailing separator (or any spelling variance) used to make
 #    every relative name lose its first character, so one trailing "\" printed a wall of bogus
@@ -113,8 +113,15 @@ if ($RepoRoot -ne '') { if (Test-Path $RepoRoot) { $repoFull = ([System.IO.Path]
 if ($RepoRoot -ne '' -and $repoFull -ne '' -and $repoFull -eq $rootFull) {
     $fail++; Say 'FAIL' 'copies-synced' ('-RepoRoot is THIS copy (' + $rootFull + ') -- run it from the OTHER copy: -File <host>\scripts\skill-health.ps1 -RepoRoot <repo>')
 } elseif ($RepoRoot -ne '' -and $repoFull -ne '') {
-    $a = @(Get-ChildItem $rootFull -Recurse -File | ForEach-Object { $_.FullName.Substring($rootFull.Length + 1) })
-    $b = @(Get-ChildItem $repoFull -Recurse -File | ForEach-Object { $_.FullName.Substring($repoFull.Length + 1) })
+    # ⛔ 排除"不该比"的东西，否则这条检查**永远红**、等于没有：
+    #    `-Recurse -File` 会把 VCS 元数据一并列出来。两份副本**各自**都是 git 工作树，
+    #    但对象库/索引/日志天然不同 ⇒ 只报 `ONLY-HOST .git\objects\..` 这种 490 条噪音，
+    #    真实的漂移被淹没。而 `_user_meta.json` 是**安装侧**才有的元数据（仓库里没有也不该有）。
+    #    背景同 §「闸门自身也要被闸」：一条**不可能通过**的检查 = 会被无视 = 真漂移照样漏。
+    #    ⛔ 不要顺手把所有点开头的目录都排掉 —— 只排这两个已知的。
+    $skipRe = '^(\.git\\|_user_meta\.json$)'
+    $a = @(Get-ChildItem $rootFull -Recurse -File | ForEach-Object { $_.FullName.Substring($rootFull.Length + 1) } | Where-Object { $_ -notmatch $skipRe })
+    $b = @(Get-ChildItem $repoFull -Recurse -File | ForEach-Object { $_.FullName.Substring($repoFull.Length + 1) } | Where-Object { $_ -notmatch $skipRe })
     $d = @()
     foreach ($f in $a) {
         if ($b -notcontains $f) { $d += ('ONLY-HOST ' + $f) }
@@ -127,17 +134,18 @@ if ($RepoRoot -ne '' -and $repoFull -ne '' -and $repoFull -eq $rootFull) {
     Say 'SKIP' 'copies-synced' 'pass -RepoRoot <repo-copy> to compare the two copies'
 }
 
-# -- 5) the normative FULL rules must exist and be linked from the entry file ---------
-#    Layering is the point: the entry file is a SHORT summary, the full version keeps every
-#    sentence. Losing the full version = losing semantics (that is a FAIL, not a warning).
+# -- 5) the case/criteria digest must exist and be linked from the entry file ---------
+#    Layering is the point: the entry file is a SHORT summary; the digest keeps the
+#    criteria, the minimal cases and the cost notes. Losing the digest = losing semantics
+#    (that is a FAIL, not a warning).
 $full = Join-Path $root 'reference\rules-full.md'
 if (-not (Test-Path $full)) {
-    $fail++; Say 'FAIL' 'full-rules' 'reference/rules-full.md missing -- keep a normative full version; the entry file is the summary only'
+    $fail++; Say 'FAIL' 'case-digest' 'reference/rules-full.md missing -- keep the case/criteria digest; the entry file is the summary only'
 } elseif (-not ([System.IO.File]::ReadAllText($skill, [System.Text.Encoding]::UTF8)).Contains('reference/rules-full.md')) {
-    $fail++; Say 'FAIL' 'full-rules' 'reference/rules-full.md exists but SKILL.md does not link it (dangling knowledge)'
+    $fail++; Say 'FAIL' 'case-digest' 'reference/rules-full.md exists but SKILL.md does not link it (dangling knowledge)'
 } else {
     $fLines = @([System.IO.File]::ReadAllLines($full, [System.Text.Encoding]::UTF8)).Count
-    Say 'PASS' 'full-rules' ('full version kept: ' + $fLines + ' lines, linked from SKILL.md')
+    Say 'PASS' 'case-digest' ('digest kept: ' + $fLines + ' lines, linked from SKILL.md')
 }
 
 Write-Output ''

@@ -27,7 +27,7 @@ type PlayerProfileData struct {
 }
 ```
 
-## 2. 强类型多行表 RecordSchema（背包/邮件/任务）
+## 2. 强类型多行表 RecordSchema（背包 / 邮件 / 任务）
 
 ```go
 import (
@@ -75,6 +75,6 @@ func (l *gameLogic) onMsgXxx(c event.Ctx) error {
 
 - 三元键 `Key{Owner, ID, Type}`：`Owner` ∈ `OwnerAccount/OwnerPlayer/OwnerServer/OwnerObject/OwnerMeta`。
 - 可见性 `data.Visibility`：`ClientVisible` / `ClientSelfOnly` / `ServerOnly`。
-- SQL 表名不带 `e_` 前缀：`player` / `orders`（非 `e_orders`，`order` 是保留字已改名 `orders`）。
+- SQL 表名不带 `e_` 前缀：`player` / `orders`（`order` 是保留字已改名 `orders`）。
 - `Load*` 首次调用自动注册 schema；`RegisterTypeBySchema` 在 `init()` 显式注册亦可。
-- 引擎数据结构用 `E` 前缀（`EAccount`/`EPlayer`/`EOrder`/`EChannel`）。
+- `g.Data()` 直写（如定时器回调里）**不经过 handler 的 commit 通道** ⇒ 不会自动做字段级增量广播，要同步给客户端用 `g.PushToPlayer(...)` 显式推。

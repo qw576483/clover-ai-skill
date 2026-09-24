@@ -1,13 +1,17 @@
-# skill-lint.ps1 -- reference-integrity + consistency lint for the skill package.
+﻿# skill-lint.ps1 -- reference-integrity + consistency lint for the skill package.
 #
-# Why this exists (measured 2026-09-21, all found by a HUMAN, not by any gate):
+# Why this exists (all found by a HUMAN, not by any gate):
 #   (a) SECTION-level dangling pointers: SKILL.md said "details -> rules-full.md section 0.1"
 #       while rules-full.md had no such section. skill-health.ps1 said PASS -- it only checks
 #       FILE-level reachability, never section-level.
 #   (b) SELF-CONTRADICTING CONSTANT: maxTurns was written as 450 in one section and 250 in
 #       another; the commit that changed it updated only one of the two places.
 #   (c) A judgement rule that produced false reds on real data -- not caught at all.
-# This script closes (a) and (b). (c) has no mechanical answer; it is covered by the
+#   (d) LABEL drift: a check label with non-ASCII characters dies in the ANSI trap when the block is
+#       copied into a BOM-less .ps1, and a label the prose cites but no code block emits sends the
+#       reader looking for output that does not exist (both measured). Checked as label-ascii /
+#       label-cited, zero false reds (see the section comment).
+# This script closes (a), (b) and (d). (c) has no mechanical answer; it is covered by the
 # two-sample rule in reference/anti-gaming.md section 5 and must be done by whoever writes
 # the check.
 #
@@ -136,6 +140,57 @@ foreach ($c in $consts) {
         $desc = @()
         foreach ($k in $vals.Keys) { $desc += ($c.n + '=' + $k + ' in ' + ($vals[$k] -join ' + ')) }
         Say 'FAIL' ('const-' + $c.n) ('self-contradicting values: ' + ($desc -join ' | '))
+    }
+}
+
+# -- 4) check labels: code labels ASCII, and a cited label must be emitted ------------
+#    Why this exists (both cases found by a HUMAN, not by any gate):
+#      (a) a check LABEL is the join key between three artifacts -- the template skeleton, the
+#          shipped gate, and the prose that says "this item reports FAIL <label>". A label carrying
+#          non-ASCII characters cannot survive the ANSI trap: copied into a BOM-less .ps1, PS 5.1
+#          decodes the file as ANSI, the label becomes mojibake, and the item silently stops matching.
+#      (b) a label the prose cites but no code block ever emits sends the reader looking for output
+#          that does not exist (measured: the effects section cited a label the skeleton never had).
+#    Zero false reds: only the `Say '<STATUS>' '<label>'` form is read as a LABEL, and a cited label
+#    is accepted when it appears in ANY ```powershell block of the template OR in the machine-readable
+#    GATE-ITEMS block (that block is where the not-yet-implemented items are named).
+$tplPath = Join-Path $Root 'reference\verify-template.md'
+if (-not (Test-Path $tplPath)) {
+    Say 'SKIP' 'label-ascii' 'reference/verify-template.md not found -- nothing to lint'
+} else {
+    $tpl2 = Read-Utf8 $tplPath
+    $codeLabels = @()
+    foreach ($fm in [regex]::Matches($tpl2, '(?s)```powershell(.*?)```')) {
+        foreach ($mm in [regex]::Matches($fm.Groups[1].Value, "Say\s+'[A-Za-z\-]+'\s+'([^']+)'")) { $codeLabels += $mm.Groups[1].Value }
+    }
+    $codeLabels = @($codeLabels | Sort-Object -Unique)
+    $badLabels = @($codeLabels | Where-Object { $_ -match '[^\x00-\x7F]' })
+    # count floor: a regex that silently stops matching must never read as green
+    if ($codeLabels.Count -lt 8) {
+        $fail++
+        Say 'FAIL' 'label-ascii' ('' + $codeLabels.Count + ' label(s) extracted -- fewer than 8 means the extraction broke, not that the labels are fine')
+    } elseif ($badLabels.Count -gt 0) {
+        $fail++
+        Say 'FAIL' 'label-ascii' ('non-ASCII label(s): ' + ($badLabels -join ', ') + ' -- a BOM-less copy of the block turns these into mojibake and the item never matches')
+    } else {
+        Say 'PASS' 'label-ascii' ('' + $codeLabels.Count + ' label(s), all ASCII')
+    }
+
+    $gateNames = @()
+    $gm = [regex]::Match($tpl2, '(?s)<!--\s*GATE-ITEMS-BEGIN\s*-->(.*?)<!--\s*GATE-ITEMS-END\s*-->')
+    foreach ($ln in ($gm.Groups[1].Value -split "`n")) {
+        $x = $ln.Trim()
+        if ($x.Length -eq 0 -or $x.StartsWith('#')) { continue }
+        $gateNames += ($x -split '\|')[0].Trim()
+    }
+    $universe = @($codeLabels + $gateNames | Sort-Object -Unique)
+    $cited = @([regex]::Matches($tpl2, '`(?:FAIL|PASS|HUMAN-ONLY) ([A-Za-z0-9\-\.]+)`') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+    $citeMiss = @($cited | Where-Object { $universe -notcontains $_ })
+    if ($citeMiss.Count -eq 0) {
+        Say 'PASS' 'label-cited' ('' + $cited.Count + ' cited label(s) all exist in a code block or in GATE-ITEMS')
+    } else {
+        $fail++
+        Say 'FAIL' 'label-cited' ('cited by the prose but never emitted: ' + ($citeMiss -join ', ') + ' -- the reader is sent looking for output that does not exist')
     }
 }
 

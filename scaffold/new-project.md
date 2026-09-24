@@ -1,56 +1,49 @@
 # 新项目脚手架模板（从零建 `clover-{name}`）
 
-> **本文件是"无中生有"建工程的唯一依据**（自包含，不依赖任何现有 demo 工程）。
-> 所有字段名均已逐条比对 `clover-server-engine` 源码确认，可直接复制使用。
->占位符约定：`{name}`=项目名（如 `cq`）、`{module}`=Go module 名（如 `clover-cq`）、
-> `<ENGINE_PATH>`=`clover-server-engine` 的本地绝对路径。生成时替换。
+> **本文件是"无中生有"建工程的唯一依据**（自包含，不依赖任何现有 demo 工程）。所有字段名均已逐条比对 `clover-server-engine` 源码确认，可直接复制。
+> 占位符：`{name}`=项目名（如 `cq`）、`{module}`=Go module 名（如 `clover-cq`）、`<ENGINE_PATH>`=`clover-server-engine` 本地绝对路径。生成时替换。
 
 ## 0. 目标结构
 
 ```
 clover-{name}/
 ├── tools/
-│   ├── ai-skill/                   # ★ 项目级 skill（本项目特有约定；模板 = scaffold/project-skill.md）
-│   │   └── SKILL.md                #   建项目时必须生成；动本项目代码前必须先读它
-│   ├── verify.ps1                  # ★ 开工四件套①：交付闸门（模板 = 全局 skill 的 reference/verify-template.md）
-│   └── env-check.ps1               # ★ 环境闸门：开工前 + 每次"卡/掉帧"投诉先跑（模板 = 全局 skill 的 scripts/env-check.ps1）
-├── server/                        # ★【仅"形态=联机"时才有】单机项目整个不生成（见 patterns/game-demo.md `reference/rules-full.md` 的「收尾闸门」）
-│   ├── configs/all/server.yaml     # 引擎配置（字段见 §2.3）
-│   ├── game/
-│   │   ├── datadef/                # 数据 schema
-│   │   ├── def/                    # 消息号 msg.go / reply.go / push.go
-│   │   └── logic/                  # handler（init 挂载）
-│   ├── main.go
-│   ├── go.mod
-│   └── go.sum
+│   ├── ai-skill/                   # ★ 项目级 skill（模板 = scaffold/project-skill.md）；动本项目代码前必须先读
+│   ├── verify.ps1                  # ★ 四件套①：交付闸门（模板 = reference/verify-template.md）
+│   └── env-check.ps1               # ★ 环境闸门：开工前 + 每次"卡/掉帧"投诉先跑（模板 = scripts/env-check.ps1）
+├── server/                        # ★【仅"形态=联机"时才有】单机项目整个不生成
+│   ├── configs/all/server.yaml     # 引擎配置（字段见 §1.3）
+│   ├── game/{datadef,def,logic}/   # schema / 消息号(msg.go+reply.go+push.go) / handler(init 挂载)
+│   ├── main.go  go.mod  go.sum
 ├── client/                         # ★ 由 unity-cli 创建，不要手写目录树
-│   └── （Unity 工程：Packages/ Assets/ ProjectSettings/）
-└── 策划/                            # 策划产物（配表与策划案分开，别混）
+├── 引擎问题.md                     # ★ 三段：引擎缺口 / 引擎 bug / skill 问题（建项目时建，发现即追加一行）
+└── 策划/
     ├── 数值文档/                    # ★ 配表：源表 *.txt（AI 写）+ -pack 出的 *.xlsx
     ├── 策划案/                      # 玩法 / 数值 / 需求转写的策划文档（*.md）
-    ├── 验收表.md                    # ★ 交付闸门（§2：A 的系统清单逐行；开工时建）
-    ├── 对照表.md                    # ★ `reference/rules-full.md` 的「复刻 = 解析 + 搬运」 的执行形态：元素 | 原版值(出处) | 我们的值 | 差值
-    └── 基线图/                      # ★ 开工四件套③：参考物那一侧的截图 + 场景清单（写外观代码前必须有）
+    ├── 验收表.md                    # ★ 交付闸门：A 的系统清单逐行；开工时建
+    ├── 对照表.md                    # ★ 元素 | 原版值(出处) | 我们的值 | 差值
+    └── 基线图/                      # ★ 四件套③：参考物那一侧的截图 + 场景清单（写外观代码前必须有）
 ```
 
-**禁止**：手写 `client/Assets/Scripts/...` 目录树来"假装"是 Unity 工程（缺 `.meta`/`ProjectSettings`/`Packages` 就不是 Unity 工程，Unity 打不开）。
+⛔ **禁止**手写 `client/Assets/Scripts/...` 目录树来"假装"是 Unity 工程（缺 `.meta`/`ProjectSettings`/`Packages` 就不是 Unity 工程）。
 
-### 0.0 开工四件套（来自全局 skill `reference/rules-full.md` 的「1:1 的四个部件」 —— **缺哪个，就不许进哪个阶段**）
+### 0.0 开工四件套（**缺哪个，就不许进哪个阶段**）
 
 | 件 | 何时就位 | 怎么来 |
 |---|---|---|
-| **⓪ `tools/env-check.ps1` 环境闸门** | **建项目时**（且**每次要判"卡/掉帧"前**都先跑） | 从全局 skill 的 `scripts/env-check.ps1` 复制。**exit 1**（物理卡 `Code 22/10/43`，或 Unity 落到 `Microsoft Basic Render Driver` 软光栅）⇒ **停，先修机器**；⛔ 该机器上一切"卡 / 帧率"结论**无效** |
-| ① `tools/verify.ps1` 闸门 | **建项目时** | 从全局 skill 的 `reference/verify-template.md` 复制，按项目改路径 |
-| ② 强制层（让闸门在"必经点"自动跑） | **建项目时** | 优先**通用层**：git `pre-commit`/`pre-push` 或 CI 跑 `tools/verify.ps1`（**与宿主无关**）；有钩子的宿主再加钩子 —— 适配表见 `reference/deterministic-gates.md` 第五节 |
-| ③ `策划/基线图/` + 场景清单 | **写第一行外观/UI 代码之前** | 采集参考物那一侧：固定分辨率 / 冻结动画 / 固定相机位姿（流程见 `reference/visual-loop.md`） |
-| ④ diff 闭环器 | **写第一行外观/UI 代码之前** | 通用引擎；换引擎只换"采集器"（同上） |
+| **⓪ `tools/env-check.ps1` 环境闸门** | **建项目时**（且每次判"卡/掉帧"前都跑） | 从 `scripts/env-check.ps1` 复制。**exit 1**（物理卡 `Code 22/10/43`，或 Unity 落到 `Microsoft Basic Render Driver` 软光栅）⇒ **停，先修机器**；⛔ 该机器上一切"卡 / 帧率"结论**无效** |
+| ① `tools/verify.ps1` 闸门 | **建项目时** | 从 `reference/verify-template.md` 复制，按项目改路径 |
+| ② 强制层（让闸门在"必经点"自动跑） | **建项目时** | 优先**通用层**：git `pre-commit`/`pre-push` 或 CI 跑 `tools/verify.ps1`（与宿主无关）；有钩子的宿主再加钩子（`reference/deterministic-gates.md` 第五节） |
+| ③ `策划/基线图/` + 场景清单 | **写第一行外观/UI 代码之前** | 采集参考物那一侧：固定分辨率 / 冻结动画 / 固定相机位姿（`reference/visual-loop.md`） |
+| ④ diff 闭环器 | **写第一行外观/UI 代码之前** | 通用引擎；换引擎只换"采集器" |
 
 ⛔ ①② 缺 ⇒ **不许写任何代码**；③④ 缺 ⇒ **只许做逻辑/数据，不许碰外观/UI**。
 
+**`<项目根>/引擎问题.md` 建项目时就建**（三段各写"本轮无"即可）。⛔ 发现**引擎缺口 / 引擎 bug / skill 说不清** ⇒ **追加一行**，然后**用绕法把活做完**（⛔ 不许改引擎源码、⛔ 不许改 skill）—— 格式与闸门见 `patterns/engine-fix.md`。顺手把 `.ai-tmp` 预算写进项目级 `constraints.md`（≤300 文件 / ≤200 MB，构建缓存不进 `.ai-tmp`）。
+
 ### 0.1 项目级 skill：`<项目根>/tools/ai-skill/`（★ 建项目时**必须**生成）
 
-在项目根创建 **`tools/ai-skill/` 目录**，按 **`scaffold/project-skill.md`** 的结构生成 **4 本必填分册**
-（`SKILL.md` / `conventions.md` / `registry.md` / `constraints.md`），删掉占位内容、按项目实情填：
+在项目根创建 `tools/ai-skill/`，按 **`scaffold/project-skill.md`** 生成 **4 本必填分册**（删占位内容、按项目实情填）：
 
 ```text
 <项目根>/tools/ai-skill/
@@ -62,28 +55,87 @@ clover-{name}/
 └── examples/           # ☆ 可照抄的实现范例（复杂项目才拆）
 ```
 
-**是复合 skill，不是单文件**（与全局 `clover-engine` skill 同构）。四本必填分册的完整模板、以及"复杂项目怎么继续拆"的判据，见 **`scaffold/project-skill.md` §0-§5**。
-
-它是**项目级 skill**，与全局 `clover-engine` skill 分工：
+**是复合 skill，不是单文件**（与全局 `clover-engine` 同构）。四本必填分册的完整模板与"复杂项目怎么继续拆"的判据见 **`scaffold/project-skill.md` §0-§5**。
 
 | | 全局 `clover-engine` skill | 本项目 `tools/ai-skill/` |
 |---|---|---|
 | 范围 | 所有 Clover 项目通用（引擎 API / 范式 / 通用约定） | **只有本项目** |
 | 内容 | `patterns/**`、`reference/**`、`scaffold/**` | 本项目的消息号表、handler 表、面板表、配表、约束、范例 |
-| 优先级 | **规则层（`SKILL.md` 的规则层）不可被覆盖**；其余通用写法可被项目取代 | 只在「全局 skill 没写 / 明说可自选」的地方优先（技术选型、命名、目录细分、消息号分段） |
+| 优先级 | **规则层不可被覆盖**；其余通用写法可被项目取代 | 只在「全局 skill 没写 / 明说可自选」的地方优先（技术选型、命名、目录细分、消息号分段） |
 
 **规则**：
-- ⛔ **项目级 skill 只能"加严"，不许"放宽"全局 skill 的规则层** ——
-  凡全局标了 `§0~§7` / `⛔` / **硬规则** / **硬闸门** 的，项目约定一律不得冲突；
-  冲突时：**照全局规则层做 → 把冲突的项目文档改掉 → 真觉得规则不合理就回报用户改 skill**。
-  ⛔ **不许**用「以本项目为准」把硬规则放过（形态：项目级 skill 把 `reference/rules-full.md` 的「临时测试文件规范」 禁止的 `client/_dev/`
-  写成了"本项目探针位置"，子 agent 照章执行 ⇒ 该目录堆了**上百个文件**）。完整层级见 `SKILL.md` 的「通用约束」第 4 条。
-- 只记**本项目特有**的东西；通用规则**不许**抄进来（抄了必然两边漂移）。
-- 每次新增**对外可见**的设施（消息号 / handler / 面板 / 管理器 / 通用函数 / 配表），**回来补一行** ——
-  这份文件的价值全在"保持更新"上，过期比没有更糟。
+- ⛔ **项目级 skill 只能"加严"，不许"放宽"全局规则层** —— 凡全局标了 `§0~§7` / `⛔` / 硬规则 / 硬闸门 的，项目约定一律不得冲突；冲突时：**照全局做 → 把冲突的项目文档改掉 → 真觉得规则不合理就回报用户改 skill**。⛔ **不许**用「以本项目为准」把硬规则放过。
+- **只记本项目特有的东西**；通用规则⛔ **不许**抄进来（抄了必然两边漂移）。
+- 每次新增**对外可见**的设施（消息号 / handler / 面板 / 管理器 / 通用函数 / 配表），**回来补一行** —— 这份文件的价值全在"保持更新"，**过期比没有更糟**。
 - 后续任何 AI（或人）**动本项目代码前，先读 `tools/ai-skill/SKILL.md`**。
 
 > 复杂项目还要另建 `docs/步骤文档.md` 与 `docs/agents/agent-NN-*.md`，见 `patterns/multi-agent.md`。
+
+### 0.2 交付用 `README.md`（五节骨架，**顺序固定**）
+
+README 是**交付物的一部分**（别人 clone 下来第一眼看到的东西），不是"顺手写的说明"。
+**五节、顺序不许改**：
+
+| 节 | 写什么 | 判据 |
+|---|---|---|
+| 1. **实机画面** | 本工程的**实机截图**（标题屏 + 首场景；有多段就每段一张） | 图能显示（路径可达）；⛔ **不许是参考物截图冒充**（参考物那侧放 `策划/基线图/`） |
+| 2. **怎么玩** | 用什么版本打开哪个目录、怎么进 Play、按什么键开始、外部依赖（如 Git 在 PATH） | 每一步都是**可执行动作**，⛔ 不许写"运行即可"这类空话 |
+| 3. **工程结构** | 顶层目录表（`client/` `策划/` `tools/` `docs/`…），每行一句"这里放什么" | 表里的目录**真实存在**；⛔ 不列不存在的目录 |
+| 4. **声明** | **仅供技术交流与学习 / 禁止商用** + 指到 `LICENSE`（第三方素材声明见 `scaffold/license-third-party-declaration.md`） | 与 `LICENSE` **口径一致**（不许一严一松） |
+| 5. **相关仓库** | 引擎 / 文档 / 工具仓的**名称 + 一句话 + 链接** | 每个链接**可达** |
+
+骨架：
+
+```markdown
+# {name}
+
+用 [Clover 客户端引擎](<引擎仓链接>) 复刻《{A}》的工程。
+
+## 实机画面
+
+![标题屏](策划/实机图/game-title.png)
+![首场景](策划/实机图/game-first-stage.png)
+
+> 以上是本工程的**实机帧**。入口 = `tools/probes/probe.cs` 的 `Probe.<Entry>`；
+> 发布脚本 = `tools/probes/<发布脚本>`；成品图随仓库保存在 `策划/实机图/`。
+
+## 怎么玩
+
+1. Unity **6000.x** 打开 `client/`；
+2. 进 Play 即可（<怎么开始>）；
+3. <外部依赖，如引擎包由 UPM 自动拉取、需本机已装 Git 且在 `PATH` 里>。
+
+## 工程结构
+
+| 路径 | 内容 |
+|---|---|
+| `client/` | Unity 工程（本体；`Library/` `Temp/` `Logs/` 等生成物不入库） |
+| `策划/` | 参考规格、对照表、验收表、原版基线图、**实机图** |
+| `tools/` | `verify.ps1`（一次跑全部判据）、`probes/`（探针与量法脚本） |
+| `docs/` | 任务书 |
+
+## 声明
+
+本项目**仅供技术交流与学习**，禁止用于任何商业用途（详见 [`LICENSE`](LICENSE)）。
+
+## 相关仓库
+
+| 仓库 | 说明 |
+|---|---|
+| <引擎仓> | 客户端引擎（本工程的运行底座） |
+| <文档仓> | 框架文档 |
+| <工具仓> | 打表工具、AI 交付 skill |
+```
+
+#### ⛔ 硬要求：README 的实机图**不许指向 `.ai-tmp`**
+
+- `.ai-tmp/` 是 **gitignored 的一次性产物区**，clone 下来**根本没有这个目录** ⇒
+  指向它的图片链接在仓库里是**悬空**（README 一打开就是破图），而"**证据路径可达**"是本 skill 的硬闸门。
+- 正确链路：**探针产出**（`tools/probes/probe.cs` 的 `Probe.<Entry>`，落 `.ai-tmp/screenshots/`，带机位日志）
+  → **发布脚本**（`tools/probes/<发布脚本>.ps1`）把**选定**的那几张复制到仓库目录（如 `策划/实机图/`）
+  → README 只引用**仓库目录**里的路径。
+- 判据：`README.md` 里每个 `![](...)` 路径 `Test-Path` **全部可达**，且**无一条命中 `.ai-tmp`**
+  （`Select-String -Path README.md -Pattern '\.ai-tmp'` **零命中**）。
 
 ---
 
@@ -316,8 +368,7 @@ func (l *gameLogic) onXxx(c event.Ctx) error {
 
 ### 2.0 动手前：先确认 360 已关闭（硬闸门，不过就别建）
 
-**360（及同类国产杀软）会拦截 Unity 的安装目录与辅助进程。** 症状：
-`Unity.Licensing.Client` 进程存在但通道永远拒绝连接（其内部在崩），编辑器于是无限重连：
+**360（及同类国产杀软）会拦截 Unity 的安装目录与辅助进程。** 症状：`Unity.Licensing.Client` 进程存在但通道永远拒绝连接（其内部在崩），编辑器于是无限重连：
 
 ```
 [Licensing::IpcConnector] Connection to channel LicenseClient-XXX refused
@@ -325,50 +376,29 @@ func (l *gameLogic) onXxx(c event.Ctx) error {
 Another instance of Unity.Licensing.Client is already running.
 ```
 
-**每轮重连烧 60 秒且会一直循环** —— 主观感受就是"创建工程跑一小时没动静"。
-**这不是慢，是根本起不来；360 开着时工程创建不出来。**
+**每轮重连烧 60 秒且会一直循环** —— 主观感受就是"创建工程跑一小时没动静"。**这不是慢，是根本起不来。**
 
-做法：
-1. **开工前先问用户**：「360 关了吗？」
-2. 用户说没关 → **别创建工程**，让他先关，关完再来。
-3. **不确定 = 按没关处理**，先问，不许赌。
-4. 已经卡住了才发现 → 别硬等，回到第 1 步去问（`reference/unity-cli.md` §9 的排查会指向同一个原因）。
+做法：① **开工前先问用户**「360 关了吗？」；② 用户说没关 → **别创建工程**，让他先关；③ **不确定 = 按没关处理**，⛔ 不许赌；④ 已经卡住了才发现 → 别硬等，回到第 1 步去问。
 
 ### 2.1 创建 Unity 工程（唯一正确入口）
 
 ```bash
-# 1) 自检 CLI（没有就自动装，见 reference/unity-cli.md）
 unity --version
 unity editors list --format json     # 确认有 Unity 6 (6000.x)
-
-# 2) 创建工程（先查真实模板 id，不要猜）
-unity templates list --editor 6000.0.47f1 --format json
-unity projects create "client" \
-  --path "clover-{项目名}" \
-  --editor-version 6000.0.47f1 \
-  --template com.unity.template.3d
+unity templates list --editor 6000.0.47f1 --format json      # 先查真实模板 id，不要猜
+unity projects create "client" --path "clover-{项目名}" \
+  --editor-version 6000.0.47f1 --template com.unity.template.3d
 # ⇒ 工程根 = clover-{项目名}/client/（目录名固定 "client"，Hub 显示名也是 client）
 ```
 
-> `clover-client-unity-engine` 的 `package.json` 声明 **`unity: 6000.0`**（包本身就要求 Unity 6），
-> 且 AI 自动化操作强制走 Unity 6 ⇒ 创建工程即选 6000.x。
+> `clover-client-unity-engine` 的 `package.json` 声明 **`unity: 6000.0`**（包本身就要求 Unity 6），且 AI 自动化操作强制走 Unity 6 ⇒ 创建工程即选 6000.x。
 
 ### 2.1.1 建完必须让用户「看得到」工程（硬约束）
 
-> ⚠️ **本节与 §2.1.2 是「收尾动作」，必须放在本文档所有"写文件"步骤全部做完之后** ——
-> 也就是 §2.2（manifest，**含 P-0 的 `com.unity.pipeline`**）+ §2.3（asmdef）+ §2.3.5（Def）
-> + §2.4（config）+ 你自己写的全部代码**都落地了**，
-> **才让用户去「添加项目到 Hub + 打开编辑器」**。
->
-> **为什么**：用户打开编辑器是一次**昂贵且不可打断**的操作（首次导入素材+编译动辄几分钟）。
-> 你在交给用户之后再补一个包/改一次 manifest，用户就得**再重启一次**。
-> 用户为此重启了三次。
+> ⚠️ **本节与 §2.1.2 是「收尾动作」，必须放在本文档所有"写文件"步骤全部做完之后** —— §2.2（manifest，**含 P-0 的 `com.unity.pipeline`**）+ §2.3（asmdef）+ §2.3.5（Def）+ §2.4（config）+ 你自己写的全部代码**都落地了**，**才让用户去「添加项目到 Hub + 打开编辑器」**。
+> **为什么**：用户打开编辑器是一次**昂贵且不可打断**的操作（首次导入素材 + 编译动辄几分钟）；之后再补一个包 / 改一次 manifest，用户就得**再重启一次**。
 
-`unity projects create "client" --path <项目根>` 建出来的是 `<项目根>/client`，
-而 **Hub 列表显示的标题 = 最后一级目录名 = `client`**；用户机器上常有好几个同名 `client` 
-（`clover-cq/client`、`Atlantic/Project/client`…），用户**根本认不出**哪个是新的。
-
-建完立刻：
+`unity projects create "client" --path <项目根>` 建出来的是 `<项目根>/client`，而 **Hub 列表显示的标题 = 最后一级目录名 = `client`**；用户机器上常有好几个同名 `client`，**根本认不出**哪个是新的。建完立刻：
 
 ```bash
 unity projects add "<项目根>/client"     # 登记进 Hub（create 不保证已登记）
@@ -376,67 +406,33 @@ unity projects pin "<项目根>/client"     # 置顶到 Favorites
 unity projects list --format json        # 复核 isFavorite=true
 ```
 
-交付说明必须给出「Hub 里的名字 + 绝对路径 + 一条 `unity open "<绝对路径>/client"`」。
-**"建在磁盘上"不等于交付，用户看不见就是没交付。**
-
-> 给用户的**具体点击步骤**（添加 → 从磁盘添加项目 → 选中 `client` 文件夹本身）见 §2.1.2 的话术块。
-> 两节要一起给：这一节解决"看得见"，§2.1.2 解决"由用户打开"，缺一个用户都卡住。
+交付说明必须给出「Hub 里的名字 + 绝对路径 + 一条 `unity open "<绝对路径>/client"`」。**"建在磁盘上"不等于交付，用户看不见就是没交付。**
 
 ### 2.1.2 建完**交给用户打开**；用户不开就不继续（★★★ 硬闸门）
 
-**这一条是为了保护"后面只有一条能走的路"不被自己堵死。**
-
-唯一正确的节奏：
-
 ```
 ① AI：创建 client/ + 写好全部代码 + 写好工程生成器（Editor 脚本）
-        ↓
-② AI：★【在让用户「添加项目到 Hub、打开编辑器」之前】先把 com.unity.pipeline 写进 manifest
-        （见 §2.2 的 P-0；不做这步 = 用户白开一次、还得再重启）
-        ↓
-③ AI：才让用户去「添加项目到 Hub + 打开编辑器」，并给出「可直接照做的 Hub 步骤」（见下）
-        ↓
+② AI：★【在让用户「添加项目到 Hub、打开编辑器」之前】先把 com.unity.pipeline 写进 manifest（§2.2 的 P-0）
+③ AI：才让用户去「添加项目到 Hub + 打开编辑器」，并给出「可直接照做的 Hub 步骤」
 ④ 用户：打开（这一步只能用户做，AI 做不了）—— 首次启动即带 Pipeline 服务
-        ↓
 ⑤ AI：驱动那个**活着的编辑器**（unity status / unity command / editor_play）
-       —— 编译、跑工程生成器、进 Play、截图自审
 ```
 
-**② 必须给出的具体步骤话术**（**不许只说"请打开工程"** —— 用户不知道点哪，
-更不知道要选 `client` 而不是它的上一级）：
+**必须给出的具体步骤话术**（⛔ **不许只说"请打开工程"**）：
 
 > 请把这个工程加到 Unity Hub 并打开（首次导入素材会慢几分钟，属正常）：
 > 1. 打开 **Unity Hub** → 左侧「**项目 / Projects**」页
-> 2. 点右上角「**添加 / Add**」→「**从磁盘添加项目… / Add project from disk**」
-> 3. 文件夹选择框里定位到 **`<项目根绝对路径>`**，**选中里面的 `client` 文件夹本身**
->    ——⚠️ **选 `client`，不是它的上一级**（`client` 才是 Unity 工程根：含 `Assets/`、`Packages/`、`ProjectSettings/`）
-> 4. 点「**选择文件夹 / Select Folder**」
-> 5. 点列表里的 `client` 打开 → 等导入 + 编译完
-> 6. **打开后回我一声**，我继续
+> 2. 点右上角「**添加 / Add**」→「**从磁盘添加项目…**」
+> 3. 定位到 **`<项目根绝对路径>`**，**选中里面的 `client` 文件夹本身** ——⚠️ **选 `client`，不是它的上一级**（`client` 才是 Unity 工程根：含 `Assets/`、`Packages/`、`ProjectSettings/`）
+> 4. 点「选择文件夹」→ 点列表里的 `client` 打开 → 等导入 + 编译完
+> 5. **打开后回我一声**，我继续
 >
 > 路径（可直接复制）：`<项目根绝对路径>/client`
+> 第 2~4 步也可用命令行代劳：`unity projects add` + `unity projects pin`；**第 5 步（真的打开）只能用户做**。
 
-> 第 2~4 步也可用命令行代劳：`unity projects add "<项目根>/client"` + `unity projects pin "<项目根>/client"`。
-> **第 5 步（真的打开）只能用户做**，且必须等用户确认后再继续。
+**硬性禁止**：❌ 创建完工程后自己跑 `unity run` / `unity test` / `Unity.exe -batchmode` 去"顺便"编译验证（首导几百上千张素材 + 全量脚本编译会把一次往返拖到十几分钟，且授权 / 杀软任一环节出问题就是 §2.0 那种静默卡死）；❌ 用户没打开编辑器时"先跳过实测，把代码交了"；❌ **用户不开编辑器还继续往下做** —— 正确动作是**停下**说清"我需要你打开 `client/` 文件夹"，然后不继续；❌ 用"我自己批处理一下也行"绕过 ③。
 
-**硬性禁止**：
-
-- ❌ **创建完工程后自己跑 `unity run` / `unity test` / `Unity.exe -batchmode` 去"顺便"编译验证。**
-  首次导入几百上千张素材 + 全量脚本编译会把**一次往返拖到十几分钟**；且授权/杀软任一环节
-  出问题就是 2.0 那种**静默卡死**，时间全烧在等它返回上。
-- ❌ 用户没打开编辑器时"先跳过实测，把代码交了"。
-- ❌ **用户不开编辑器还继续往下做。** 正确动作是**停下**，明确说清"我需要你打开 `client/` 文件夹"，
-  然后**不继续**。
-- ❌ 用"我自己批处理一下也行"绕过 ③。
-
-**为什么必须这样**：批处理模式还有个硬限制 —— `-executeMethod` **执行完立刻退出，进不了播放模式**，
-所以"跑一遍看画面"在批处理下**根本做不了**；而用户开着编辑器时 `unity run` 又会直接报
-「项目已在运行中的编辑器中打开」。**活编辑器是唯一能实测的路径，且只能由用户开启。**
-
-> **没有例外。** 即使用户说「你就自己跑，别烦我」，也**不做** ——
-> 把原因讲清楚：批处理下 `-executeMethod` 执行完立刻退出、**进不了播放模式**，
-> 自己跑既慢又验不了画面。
-> **用户不打开编辑器 = 停在这里，不许继续往下做。**
+**为什么**：批处理下 `-executeMethod` **执行完立刻退出、进不了播放模式**，所以"跑一遍看画面"根本做不了；而用户开着编辑器时 `unity run` 又会报「项目已在运行中的编辑器中打开」。**活编辑器是唯一能实测的路径，且只能由用户开启。没有例外** —— 即使用户说「你自己跑别烦我」也不做。**用户不打开编辑器 = 停在这里。**
 
 ### 2.2 接入 Clover 引擎包
 
@@ -702,29 +698,16 @@ public class GameMain : MonoBehaviour
 
 ## 3. 初始化检查清单（建完逐条核对）
 
-- [ ] **`.gitignore` 按 Unity 模板写好**（⚠️ 别等提交时才发现；建项目就写）：
-      `client/{Library,Temp,obj,Logs,Build,Builds,UserSettings,setting}/`、`*.csproj`、`*.sln`、**`*.slnx`**、
-      `.vsconfig`、`.vs/`、`.idea/`、`.ai-tmp/`、`原版资源/`。
-      某项目第一次准备提交时 `client/Library` 已经 **1769 MB / 26821 文件** ——
-      忽略规则少一行，仓库就多一个 GB 级缓存（且**忽略只挡提交、不会让磁盘变小**）。
-      判据：`git --git-dir=<tmp> --work-tree=<项目> status --porcelain -uall` 里
-      `Library/` / `Logs/` / `Temp/` / `.ai-tmp/` / `原版资源/` 的**计数全为 0**。
-      ⚠️ 这条**只能验"项目自己的 `.gitignore` 够不够"**（临时 git 目录的 work-tree = 项目根，
-      **看不见工作区级 `.gitignore`**）。**必须再补一次真实仓库判定**，否则会假绿：
-
+- [ ] **`.gitignore` 按 Unity 模板写好**（建项目就写）：`client/{Library,Temp,obj,Logs,Build,Builds,UserSettings,setting}/`、`*.csproj`、`*.sln`、**`*.slnx`**、`.vsconfig`、`.vs/`、`.idea/`、`.ai-tmp/`、`原版资源/`。
+      ⚠️ **忽略只挡提交、不会让磁盘变小**（实测 `client/Library` 已 **1769 MB / 26821 文件**）。
+      判据：`git --git-dir=<tmp> --work-tree=<项目> status --porcelain -uall` 里 `Library/` / `Logs/` / `Temp/` / `.ai-tmp/` / `原版资源/` 的**计数全为 0**。
+      ⚠️ 这条**只能验"项目自己的 `.gitignore` 够不够"**（临时 git 目录看不见工作区级 `.gitignore`）⇒ **必须再补一次真实仓库判定**，否则会假绿：
       ```powershell
-      # ① 项目是否被上层 .gitignore 整目录吞掉（git add 报 "paths are ignored"）
-      git -C <工作区根> check-ignore -v -- <项目根相对路径>
-      # ② 真实仓库里"会被提交的文件数 / 危险项计数"（pathspec 限定本工程，别用 -A）
-      git -C <工作区根> add -n -- <项目根相对路径> | Measure-Object | Select-Object -ExpandProperty Count
+      git -C <工作区根> check-ignore -v -- <项目根相对路径>           # ① 是否被上层 .gitignore 整目录吞掉
+      git -C <工作区根> add -n -- <项目根相对路径> | Measure-Object   # ② 真实仓库里会被提交的文件数
       git -C <工作区根> status --porcelain -uall -- <项目根相对路径>
       ```
-
-      临时目录判据给出"危险项全 0、
-      24788 条待提交"，看着完美；真实 `git add` 却直接
-      `The following paths are ignored by one of your .gitignore files: <该工程目录名>`
-      —— 工作区级 `.gitignore` 早有 `/<该工程目录名>/`（**有意排除**：该工程 8.7 GB）。
-      ⇒ **"不建仓也能验"的说法要收紧：项目内忽略规则可以离线验，`是否真的入得了仓`必须问真实仓库。**
+      ⇒ **"不建仓也能验"的说法要收紧**：项目内忽略规则可以离线验，**`是否真的入得了仓`必须问真实仓库**。
 - [ ] **`.gitattributes` 存在**：二进制类型（`*.png/*.wav/*.unity/*.prefab`）+ 需要随交付给原版素材时 `*.zip filter=lfs`（`reference/asset-sources.md` §8.2）。
 
 ```
@@ -747,22 +730,25 @@ public class GameMain : MonoBehaviour
 □ 引用了外部资源 → client/资源欠缺清单.md 已生成
 □ 业务消息号已集中在 client/Assets/Scripts/Def/MsgDef.cs（脚本里无散落消息号字面量）
 □ 客户端 Def 与服务端 game/def 消息号逐条对齐
-□ <项目根>/tools/ai-skill/ 已生成（SKILL.md 按 scaffold/project-skill.md 填好：消息号 / handler / 面板 / 配表 / 约束）
-□ **项目级 skill 没有放宽全局规则层**（grep `以本项目为准|优先于全局`，逐条判"加严"；见 SKILL.md 的「通用约束」第 4 条）
+□ <项目根>/tools/ai-skill/ 已生成（按 scaffold/project-skill.md 填好：消息号 / handler / 面板 / 配表 / 约束）
+□ **项目级 skill 没有放宽全局规则层**（grep `以本项目为准|优先于全局`，逐条判"加严"）
 □ 策划/数值文档/ 与 策划/策划案/ 两个目录已建（配表与策划案不混放）
-□ **交付前跑完 SKILL.md 的「交付清单」（已做成 `tools/verify.ps1`）**（能脚本化就做成 `tools/verify.ps1`，照 `reference/verify-template.md`），并把原始输出贴进回报
-□ `策划/验收表.md` **每行带「类别」列**（`数值类` / `表现类`）；`表现类` 的行能在**联络图索引表**里查到格号（`SKILL.md` 的「取证清单」第 9 条）
-□ 交付前的证据**只采一次**（一张或数张**联络图**，见 `reference/visual-loop.md` 第八节）；⛔ 没有逐项截图、没有逐张让 AI 读图
+□ 交付前跑完 `tools/verify.ps1`（照 `reference/verify-template.md`），并把原始输出贴进回报
+□ `策划/验收表.md` **每行带「类别」列**（`数值类` / `表现类`）；`表现类` 的行能在**联络图索引表**里查到格号
+□ 交付前的证据**只采一次**（一张或数张**联络图**）；⛔ 没有逐项截图、没有逐张让 AI 读图
 □ `策划/验收表.md` 带「允许的差异」+「机械自检记录」两节；**汇总数字 = 表体统计**
 □ 项目里**不存在**交接/进度类文档（`docs/交接-*.md` / `NEXT.md` / `docs/进度*.md`）
 □ 一次性产物只在 `<项目根>/.ai-tmp/`（⛔ 无 `client/_dev/`、无项目根散落脚本），已写进 `.gitignore`
+□ 交付用 `README.md` **五节齐**（实机画面 / 怎么玩 / 工程结构 / 声明 / 相关仓库），见 §0.2
+□ README 的**实机图不指向 `.ai-tmp`**（grep `.ai-tmp` **零命中**），且每张图都是**探针产出 + 发布脚本落到仓库目录**
+□ 交付用 `LICENSE` = MIT **+ 第三方素材声明**（按 `scaffold/license-third-party-declaration.md`，⛔ 不是只有 MIT 那一份）
 ```
 
 ## 4. 编译与运行
 
 ```bash
 cd server && go mod tidy && go build -o {name}.exe .     # 服务端
-# 客户端构建（异步）—— 命令形态见 reference/unity-cli.md §4：`unity build run --target StandaloneWindows64 --output <路径>`
+# 客户端构建（异步）—— `unity build run --target StandaloneWindows64 --output <路径>`（见 reference/unity-cli.md §4）
 ```
 
 起服前先确认本地依赖（etcd/nats/redis/mysql）已就绪，排障见 `reference/server-env.md`。

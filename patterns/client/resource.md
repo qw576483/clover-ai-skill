@@ -1,17 +1,10 @@
 # 资源加载模板
 
-> ⛔ **前置**：`Game.Res` 由 **`CloverRes.Init(root)`** 挂接 —— **不调则 `Game.Res` 为 null**，
-> 下面所有 `Game.Res.*` 都是 **NullReferenceException**（不是"静默加载失败"）。
-> 启动顺序见 `reference/engine-mental-model.md` §1。
+> ⛔ **前置**：`Game.Res` 由 **`CloverRes.Init(root)`** 挂接 —— **不调则 `Game.Res` 为 null**，下面所有 `Game.Res.*` 都是 **NullReferenceException**（不是"静默加载失败"）。启动顺序见 `reference/engine-mental-model.md` §1。
 
-> `IResourceManager` 的**加载/释放** API：`LoadAsset<T>(path, cb)`、
-> `LoadAsset<T>(path, progress, cb)`、**`LoadAll<T>(path)`（同步、阻塞主线程）**、
-> **`Exists(path)`（同步探测）**、`Release(path)`、`UnloadAll()`、`Preload(paths, onDone, progress)`、
-> `TryGet<T>(path)`（**同步**取已驻留资源；不触发加载、不阻塞、纯读——要"立刻拿到"就先 `Preload` 再 `TryGet`）。
-> **热更**另有：`CheckUpdate` / `DownloadUpdate` / `ClearDownloaded` / `CancelUpdate` / `Version` / `UpdateState`
-> （见模板 6）。**异步**加载全部是**回调式**（不是 await）。
-> ⛔ `LoadAll<T>` 是**同步阻塞主线程**的：只用于小表 / 必须立刻拿到且体积可控的资源，大资源仍走回调式。
-> **没有** `LoadAsync` / `LoadSync` / `Unload` / `UnloadUnused` / `LoadSceneAsync` 这些**名字**（别去找）。
+**加载 / 释放 API**：`LoadAsset<T>(path, cb)`、`LoadAsset<T>(path, progress, cb)`、**`LoadAll<T>(path)`（同步、阻塞主线程）**、**`Exists(path)`（同步探测）**、`Release(path)`、`UnloadAll()`、`Preload(paths, onDone, progress)`、`TryGet<T>(path)`（**同步**取已驻留资源；不触发加载、不阻塞 —— 要"立刻拿到"就先 `Preload` 再 `TryGet`）。**热更**：`CheckUpdate` / `DownloadUpdate` / `ClearDownloaded` / `CancelUpdate` / `Version` / `UpdateState`（见模板 6）。**异步加载全部是回调式**（不是 await）。
+> ⛔ `LoadAll<T>` **同步阻塞主线程**：只用于小表 / 必须立刻拿到且体积可控的资源，大资源仍走回调式。
+> **没有** `LoadAsync` / `LoadSync` / `Unload` / `UnloadUnused` / `LoadSceneAsync` 这些**名字**。
 
 ## 模板 1：加载资源（回调式）
 
@@ -47,10 +40,6 @@ public class ResourceLoader : MonoBehaviour
 ## 模板 2：带进度加载 / 批量预加载
 
 ```csharp
-using System.Collections.Generic;
-using CloverEngine;
-using UnityEngine;
-
 public class PreloadManager : MonoBehaviour
 {
     public void LoadWithProgress()
@@ -75,9 +64,6 @@ public class PreloadManager : MonoBehaviour
 ## 模板 3：加载配置表
 
 ```csharp
-using CloverEngine;
-using UnityEngine;
-
 public class ConfigLoader : MonoBehaviour
 {
     public void LoadItemConfig()
@@ -106,17 +92,11 @@ public class ConfigLoader : MonoBehaviour
 ## 模板 4：资源释放
 
 ```csharp
-using CloverEngine;
-using UnityEngine;
+// 减少某个资源的引用计数（只降计数、不立即卸载；缓存淘汰由内存水位 + LRU 决定）；参数须与加载时一致
+public void ReleaseOne(string path) => Game.Res.Release(path);
 
-public class ResourceUnloadManager : MonoBehaviour
-{
-    // 减少某个资源的引用计数（只降计数、不立即卸载；缓存淘汰由内存水位 + LRU 决定）；参数须与加载时一致
-    public void ReleaseOne(string path) => Game.Res.Release(path);
-
-    // 一次性卸载全部缓存资源（切场景 / 回登录时用）
-    public void ReleaseAll() => Game.Res.UnloadAll();
-}
+// 一次性卸载全部缓存资源（切场景 / 回登录时用）
+public void ReleaseAll() => Game.Res.UnloadAll();
 ```
 
 > **没有** `UnloadUnused()`（按未使用程度自动回收）这个能力；需要精细控制就用 `Release` 的引用计数。
@@ -124,28 +104,18 @@ public class ResourceUnloadManager : MonoBehaviour
 ## 模板 5：场景加载带进度（用 `Game.Scene`，不是 `Game.Res`）
 
 ```csharp
-using CloverEngine;
-using UnityEngine;
-using UnityEngine.UI;
-
-public class LoadingManager : MonoBehaviour
+public void LoadScene(string sceneName)
 {
-    [SerializeField] private Slider _progressBar;
-    [SerializeField] private TextMeshProUGUI _progressText;
+    _progressBar.value = 0f;
 
-    public void LoadScene(string sceneName)
-    {
-        _progressBar.value = 0f;
-
-        // 参数 1 = 进度(0~1)，参数 2 = 完成回调
-        Game.Scene.Load(sceneName,
-            progress =>
-            {
-                _progressBar.value = progress;
-                _progressText.text = $"{progress * 100:F0}%";
-            },
-            () => _progressText.text = "100%");
-    }
+    // 参数 1 = 进度(0~1)，参数 2 = 完成回调
+    Game.Scene.Load(sceneName,
+        progress =>
+        {
+            _progressBar.value = progress;
+            _progressText.text = $"{progress * 100:F0}%";
+        },
+        () => _progressText.text = "100%");
 }
 ```
 
@@ -156,10 +126,6 @@ public class LoadingManager : MonoBehaviour
 引擎**已内置**热更链路（AssetBundle 后端 + 清单比对 + 断点续传下载）。三步：
 
 ```csharp
-using System.Collections.Generic;
-using CloverEngine;
-using UnityEngine;
-
 public class HotUpdateFlow : MonoBehaviour
 {
     // ① 启动前先把资源模块挂起来（Game.Launch 之后）
@@ -199,15 +165,11 @@ public class HotUpdateFlow : MonoBehaviour
 }
 ```
 
-**约定与边界**（写业务前务必知道）：
+**约定与边界**：
 
-- **配置热更**同一条链路：配表这类裸文件也进清单（`raw: true`），下载后落在
-  `Game.Res.ContentDir` 下，把 `CloverData.InitDataTable(dir)` 指向它就完成了配表热更。
-- **不做运行中热切换**：正在被使用的资源在脚下被替换会引出难查的空引用。
-  首次安装（本地还没有任何内容）会在下载完成后自动从 Resources 兜底切到 AssetBundle；  
-  版本升级一律下次启动生效。
-- **只下载不落地清单**：下载全部校验通过后引擎才写本地 `manifest.json` 与版本号，
-  所以中途失败不会留下「以为已经更新了」的坏状态。
+- **配置热更**同一条链路：配表这类裸文件也进清单（`raw: true`），下载后落在 `Game.Res.ContentDir` 下，把 `CloverData.InitDataTable(dir)` 指向它就完成了配表热更。
+- **不做运行中热切换**：正在被使用的资源在脚下被替换会引出难查的空引用。首次安装会在下载完成后自动从 Resources 兜底切到 AssetBundle；版本升级一律下次启动生效。
+- **只下载不落地清单**：下载全部校验通过后引擎才写本地 `manifest.json` 与版本号，所以中途失败不会留下「以为已经更新了」的坏状态。
 - **断点续传**：半成品是 `*.part`，`Range` 请求；服务端不支持 Range 时自动整包重下。
 - **失败重试**由引擎按 `ResourceModuleConfig.MaxRetries` 自动进行，业务不用自己写重试。
 - 硬修复（怀疑本地包损坏）：`Game.Res.ClearDownloaded()` 后重新走一遍检查与下载。
@@ -218,10 +180,7 @@ public class HotUpdateFlow : MonoBehaviour
 
 **固定路径：`client/资源欠缺清单.md`**（client 工程根目录，全工程唯一，不许放别处、不许只写在聊天里）。
 
-**什么时候写**：只要这次实现**引用了**外部资源（Sprite/图片、音效 BGM、动画 Clip、模型、字体、
-美术预制体…），收尾就必须新建或更新它。**占位资源同样要登记**（当前占位 = 纯色块 / 空实现 / 内置几何体）。
-纯逻辑、零外部资源的功能不用建。
-
+**什么时候写**：只要这次实现**引用了**外部资源（Sprite/图片、音效 BGM、动画 Clip、模型、字体、美术预制体…），收尾就必须新建或更新它。**占位资源同样要登记**（当前占位 = 纯色块 / 空实现 / 内置几何体）。纯逻辑、零外部资源的功能不用建。
 **更新规则**：文件已存在时**追加/更新行**，不要覆盖别人已替换完成的条目；替换完成的把状态改 ✅。
 
 **文档模板**（新建时照抄，每行都要能"照着做"：给目标路径 + 尺寸 + 影响的代码位置）：
@@ -242,8 +201,7 @@ public class HotUpdateFlow : MonoBehaviour
 | 5 | 联服验证 | 环境 | - | 未验证（本地无服务器环境） | 装好 windows-env 后跑一遍 | 见 `reference/server-env.md` | 全流程 | ⬜ 待验证 |
 
 ## 说明
-1. **尺寸要求**：uGUI 会拉伸占位图，但真实美术请按上表尺寸给，避免比例失调/清晰度不一致；
-   Sliced/Tiled UI、游戏内 Sprite、图标头像等对尺寸敏感。
+1. **尺寸要求**：uGUI 会拉伸占位图，但真实美术请按上表尺寸给，避免比例失调/清晰度不一致；Sliced/Tiled UI、游戏内 Sprite、图标头像等对尺寸敏感。
 2. **推荐替换顺序**：先主视觉（卡面/角色）→ 再音效 → 动画 → 背景。
 3. **替换不碰逻辑**：所有引用收敛在资源常量表，换文件或改一行即可，不用重写 handler。
 4. **状态图例**：⬜ 待替换 · ✅ 已完成 · ⏸ 暂不需要。

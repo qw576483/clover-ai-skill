@@ -1,10 +1,6 @@
 # 资源引用闸门模板（`tools/check-assets.ps1`）
 
-> **为什么有这个文件**：`SKILL.md` 的「写码清单」 / `asset-sources.md` §8.1 / `game-delivery.md` §9.5 第 2 条 /
-> `reference/rules-full.md` 的「原版资源」目录第 7 条 **四处点名**"闸门 `tools/check-assets.ps1`"，但此前**一处都没给骨架** ——
-> 结果是每个项目都得自己现编，而现编出来的那一版（只做"文件名在源码里 `-notmatch`"）
-> **必然把帧序列资源判成未引用**（代价见 `asset-sources.md` §8.1）。
-> 本文件补上骨架，并把判据升级成"**五种引用形态覆盖**"。
+> **为什么有这个文件**：`SKILL.md` 的「写码清单」/ `asset-sources.md` §8.1 / `game-delivery.md` §9.5 / `reference/rules-full.md` 的「原版资源」目录第 7 条 **四处点名**"闸门 `tools/check-assets.ps1`"，但此前**一处都没给骨架** —— 结果是每个项目自己现编，而现编出来的那一版（只做"文件名在源码里 `-notmatch`"）**必然把帧序列资源判成未引用**。本文件补上骨架，并把判据升级成"**五种引用形态覆盖**"。
 
 ## 怎么用
 
@@ -23,8 +19,7 @@
 | ④ | 目录级加载 | `LoadAll<` / `Resources.LoadAll` 出现 **且该文件所在目录本身在源码里被具名** ⇒ 放行（单独一个全局标志不许放行整棵树） |
 | ⑤ | 生成物登记 | 目录里有 `manifest.json` **且该文件不是帧序列文件**（`_<数字>` 结尾）⇒ 放行；帧序列文件一律回 ③ 对账 |
 
-**默认是"保留"**：任何一步解析不出来（读不到文件、编码异常）⇒ 该文件记为 **UNKNOWN**（不计入未覆盖）并打印出来。
-⛔ 不许把"解析失败"当成"未引用" —— 会误删活资源（`SKILL.md` 的「交付清单」 第 2 条：会误报的检查比没有更糟）。
+**默认是"保留"**：任何一步解析不出来（读不到文件、编码异常）⇒ 该文件记为 **UNKNOWN**（不计入未覆盖）并打印出来。⛔ 不许把"解析失败"当成"未引用" —— 会误删活资源（会误报的检查比没有更糟）。
 
 ## 骨架
 
@@ -105,7 +100,6 @@ foreach ($f in $files) {
           #   "layer#4(S1,wc=1ht): not drawn for bare hands (original behaviour); file exists"
           # -> NOT frame indices. Never use it as a frame filter: an [int] cast throws, and those
           #    files are still REQUIRED (the same unit draws them under other weapon classes).
-          #    Verified on a demo project (2026-09-20) after a wrong first guess.
         }
       } catch { $manState = 'unreadable' }
     }
@@ -148,8 +142,6 @@ exit 0
 
 ## 报告怎么读（⛔ 别直接当删除清单）
 
-- `uncovered` 大、且集中在**大目录**（Monsters / Chars / UI）⇒ 十有八九是形态 ②③④ 没被识别：
-  **先去 `Core/ResPaths.cs` 找目录常量与 `FrameCount*`**，而不是删文件。
-- `uncovered-MB` 才是"删了能省多少"的真实上限 —— 文件数看着吓人、体积常常很小
-  （10529 个 ≈ 29.5 MB，因为都是几十 KB 的帧图）。
+- `uncovered` 大、且集中在**大目录**（Monsters / Chars / UI）⇒ 十有八九是形态 ②③④ 没被识别：**先去 `Core/ResPaths.cs` 找目录常量与 `FrameCount*`**，而不是删文件。
+- `uncovered-MB` 才是"删了能省多少"的真实上限 —— 文件数看着吓人、体积常常很小（实测 10529 个文件 ≈ 29.5 MB，因为都是几十 KB 的帧图）。
 - `unknown > 0` ⇒ 先把解析异常修掉再看结论（解析失败不算未引用）。

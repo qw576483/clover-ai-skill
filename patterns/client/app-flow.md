@@ -1,8 +1,7 @@
 # 启动与流程编排（App Flow）：启动 → 菜单 → 创角 → 进图 → 暂停 → 回菜单
 
-> **这是「完整成品」的第一段，也是最容易整段缺失的一段。**
-> **世界上没有一个完整游戏是"打开就直接站在游戏场景里"的** —— 缺了启动与菜单链路，玩家第一眼就判定是半成品。
-> 本范式给出「**状态机（`Game.Fsm`）+ 面板（`Game.UI`）+ 场景（`Game.Scene`）**」的编排写法；API 均以 `clover-client-unity-engine/Runtime/**` 为准。
+> **这是「完整成品」的第一段，也是最容易整段缺失的一段**：世界上没有一个完整游戏是"打开就直接站在游戏场景里"。
+> 本范式给出「状态机（`Game.Fsm`）+ 面板（`Game.UI`）+ 场景（`Game.Scene`）」的编排写法；API 均以 `clover-client-unity-engine/Runtime/**` 为准。
 
 ---
 
@@ -17,16 +16,14 @@
 | 5 | **读条要真读条**：走 `Game.Scene.Load(name, onProgress, onDone)`，进度真的在跳（不是黑屏、不是瞬间硬切、不是假进度条） |
 | 6 | **游戏内流程要做**：暂停菜单（继续 / 设置 / 回主菜单 / 退出）；结算界面；**回主菜单后能再进一次**（第二次进入无残留状态） |
 | 7 | **回菜单必须清场**：面板 / 实体 / 对象池 / 事件订阅 / 定时器 / 网络订阅全部收干净（见 §5），否则第二次进游戏是脏的 |
-| 8 | **UI 场景与游戏场景分离**：主菜单/创角在**纯 UI 场景**里，进图时才加载游戏场景；**禁止**把主菜单塞进游戏场景 |
-| 9 | 每条非预期分支都要打日志（`Game.Logger.Info/Warn/Error(tag, msg)`，见 `SKILL.md`「错误处理与日志」） |
+| 8 | **UI 场景与游戏场景分离**：主菜单 / 创角在**纯 UI 场景**里，进图时才加载游戏场景；**禁止**把主菜单塞进游戏场景 |
+| 9 | 每条非预期分支都要打日志（`Game.Logger.Info/Warn/Error(tag, msg)`） |
 
-> 参考游戏有**更细的站点**（如"选阵营 / 买枪 / 关卡选择 / 难度选择 / 存档槽 / 成就"）时，**按原版加站点**，不要只做上面 6 个就交差 —— 站点清单以 `patterns/game-demo.md` §0.0c 的**原版系统清单**为准。
+> 参考游戏有**更细的站点**（选阵营 / 买枪 / 关卡选择 / 难度 / 存档槽 / 成就）时，**按原版加站点**，不要只做上面几个就交差 —— 站点清单以 `patterns/game-demo.md` §0.0c 的**原版系统清单**为准。
 
 ---
 
 ## 1. 流程骨架（先定这张表，再写代码）
-
-站点顺序（单机与联机只差"登录/注册"这一段）：
 
 ```text
 Boot(启动画面) → MainMenu(主菜单) → [Login/Register(联机)]
@@ -36,13 +33,13 @@ Boot(启动画面) → MainMenu(主菜单) → [Login/Register(联机)]
                                                       └─ Result(结算)   → MainMenu / 再来一局
 ```
 
-要落到"状态机 + 面板 + 场景"三元组：
+落到"状态机 + 面板 + 场景"三元组：
 
 | 站点 | 状态机状态 | 面板（`Resources/UI/{类名}`） | Unity 场景 | 必做内容 |
 |---|---|---|---|---|
 | 启动画面 | `Boot` | `BootPanel` | `Boot` | Logo / 版权字 / 首次进入的"点击开始"；初始化（配置、热更、登录前置） |
 | 主菜单 | `MainMenu` | `MainMenuPanel` | `Menu` | 开始（新游戏）/ 继续（有存档时）/ 设置 / 退出；联机时：登录 / 注册入口 |
-| 设置 | `MainMenu`（子面板） | `SettingsPanel` | `Menu` | **真能改**：音量（`Game.Sound`）、画质（`Game.Quality`）、分辨率/全屏；改完能存（`Game.Setting`） |
+| 设置 | `MainMenu`（子面板） | `SettingsPanel` | `Menu` | **真能改**：音量（`Game.Sound`）、画质（`Game.Quality`）、分辨率 / 全屏；改完能存（`Game.Setting`） |
 | 登录 / 注册 | `Login` | `LoginPanel` / `RegisterPanel` | `Menu` | 账号服换 token → `EMsg.Login` → `SetupSession`；失败要有提示与重试 |
 | 选角 | `CharSelect` | `CharSelectPanel` | `Menu` | 列出已有角色、选中、进入、删除（有二次确认弹窗） |
 | 创角 | `CharCreate` | `CharCreatePanel` | `Menu` | 名字 / 外观 / 职业 / 属性预览 → 提交 → 服务端回包 → 进选角或直接进图 |
@@ -51,7 +48,7 @@ Boot(启动画面) → MainMenu(主菜单) → [Login/Register(联机)]
 | 暂停 | `Pause` | `PausePanel` | `Stage01` | 继续 / 设置 / 回主菜单（二次确认）/ 退出 |
 | 结算 | `Stage`（子面板） | `ResultPanel` | `Stage01` | 胜负 / 数值 / 再来一局 / 回主菜单 |
 
-> **`Game.Scene` ≠ `Game.CloverScene`**：前者是 Unity 关卡（本文件讲的），后者是**服务端场景投影**（`EMsg.PushSceneInfo`）。两者不同义，别混用。
+> **`Game.Scene` ≠ `Game.CloverScene`**：前者是 Unity 关卡（本文件讲的），后者是**服务端场景投影**（`EMsg.PushSceneInfo`）。
 
 ---
 
@@ -68,8 +65,8 @@ client/Assets/Scripts/
 
 - **状态切谁的**：`Game.Fsm` 只标记"我在哪个站点"，**面板与场景的开关写在 Flow 模块里**（`RegisterState` 的 `onEnter/onExit`）；
 - **UI 不许 `using Module`**：面板只 `Game.Event.Emit(Events.Xxx)` / `Game.UI.Close<T>()`，Flow 订阅后驱动；
-- **网络调用只允许出现在 `Module/Flow`（登录/建角）与 `App`**，其它模块一律走门面；
-- **事件名必须来自 `Core/Events.cs`**，禁止裸字符串（`reference/architecture.md` 自检 ⑤）。
+- **网络调用只允许出现在 `Module/Flow`（登录 / 建角）与 `App`**，其它模块一律走门面；
+- **事件名必须来自 `Core/Events.cs`**，禁止裸字符串。
 
 ---
 
@@ -131,7 +128,7 @@ namespace {Name}.Module.Flow
         public void Enter()
         {
             RegisterStates();
-            Game.Event.Emit(Events.StartNewGame);   // 或改成先停在主菜单，等玩家点"开始"
+            Game.Event.Emit(Events.StartNewGame);   // 或先停在主菜单，等玩家点"开始"
             Game.Fsm.Force("Boot");
             Game.Fsm.Trigger("BootDone");           // → MainMenu
         }
@@ -140,9 +137,9 @@ namespace {Name}.Module.Flow
         {
             // 站点：引擎在 Launch 时已预注册 Launching/CheckingUpdate/Logging/MainCity/Battle/Disconnected，
             // 运行时不自动驱动，业务可同名覆盖或另起状态名。这里用业务自己的站点名，避免与引擎语义打架。
-            // ⛔ Game.Fsm **全局唯一**（详见 `patterns/client/fsm.md` 文首）：这 8 个流程状态与
-            //    其它模块的状态**共用同一张状态表和一个 Current**。业务**只在这一处注册流程状态**，
-            //    ⛔ 不许再让角色 / UI / 动画模块往同一个 `Game.Fsm` 里塞自己的状态（会互相跑掉 OnExit/OnEnter）。
+            // ⛔ Game.Fsm **全局唯一**（见 patterns/client/fsm.md 文首）：这些流程状态与其它模块
+            //    共用同一张状态表和一个 Current。业务**只在这一处注册流程状态**，
+            //    ⛔ 不许再让角色 / UI / 动画模块往同一个 Game.Fsm 里塞状态（会互相跑掉 OnExit/OnEnter）。
             Game.Fsm.RegisterState("Boot",     onEnter: () => ShowBoot(),     onExit: () => Game.UI.Close<BootPanel>());
             Game.Fsm.RegisterState("MainMenu", onEnter: () => ShowMainMenu(), onExit: () => Game.UI.Close<MainMenuPanel>());
             Game.Fsm.RegisterState("Login",    onEnter: () => Game.UI.Open<LoginPanel>());
@@ -174,7 +171,7 @@ namespace {Name}.Module.Flow
 
         private void ShowMainMenu()
         {
-            // 主菜单是纯 UI 场景：从舞台退回时要把游戏场景卸掉（见 LeaveStage）
+            // 主菜单是纯 UI 场景：从舞台退回时要先把游戏场景卸掉（见 LeaveStage）
             EnsureMenuScene(() => Game.UI.Open<MainMenuPanel>());
         }
 
@@ -211,7 +208,7 @@ namespace {Name}.Module.Flow
             });
         }
 
-        /// <summary>离开舞台：把游戏侧的东西全部收干净，否则第二次进图是脏的（见 §5 清场清单）。</summary>
+        /// <summary>离开舞台：把游戏侧的东西全部收干净，否则第二次进图是脏的（见 §5）。</summary>
         private void LeaveStage()
         {
             Game.UI.CloseAll();
@@ -289,7 +286,7 @@ namespace {Name}.App
 
             // 6) 网络生命周期：断了要回登录/主菜单，而不是停在游戏里假装没事
             //    Net.OnKicked 为无参发布 → 处理器必须零参
-            // ⛔ 事件名取引擎常量，⛔ 不许裸字符串（本文件 §2 的规则 + 交付前 grep 自检会抓这一处）
+            // ⛔ 事件名取引擎常量，⛔ 不许裸字符串（交付前 grep 自检会抓这一处）
             Game.Event.On(CloverEvents.Net.OnKicked, () =>
             {
                 Game.Logger.Warn("App", "被踢出，回主菜单");
@@ -405,7 +402,7 @@ namespace {Name}.UI
 }
 ```
 
-> 消息号/协议**只能**来自 `Def/MsgDef.cs` 与 `Def/ProtoDef.cs`（`patterns/client/network.md` 模板 0），**禁止**在这里写裸字面量。
+> 消息号 / 协议**只能**来自 `Def/MsgDef.cs` 与 `Def/ProtoDef.cs`（`patterns/client/network.md` 模板 0），**禁止**在这里写裸字面量。
 
 ### 模板 6：读条面板（`Game.Scene.Load` 的进度直接驱动）
 
@@ -451,7 +448,7 @@ namespace {Name}.UI
 | `Stage01` | 游戏场景（首关卡） | 首次进图才加载；卸载后回 `Menu` |
 
 - **一个场景能放多少面板**：同一套"菜单类站点"共用一个 UI 场景（`Menu`），靠 `Game.UI.Open/Close` 切面板 —— **不要每个面板一个 Unity 场景**，否则切界面要等读条，很假；
-- 场景必须**在 Build Settings 里**（`unity command` 或 Editor 脚本加），漏了在打包/Play 时直接加载失败；
+- 场景必须**在 Build Settings 里**（`unity command` 或 Editor 脚本加），漏了在打包 / Play 时直接加载失败；
 - 场景名与 `Game.Scene.Load(name)` 的字符串要对齐（**收敛成一个常量类**，禁止散落字符串）。
 
 ---
@@ -465,7 +462,7 @@ namespace {Name}.UI
 | 对象池 | `Game.Pool.ClearAll()`（或 `ClearGroup(group)`） |
 | 定时器 | `Game.Timer.StopScope("stage")`（舞台内的定时器统一打 scope） |
 | 世界同步订阅 | `Game.Sync.Clear()` |
-| 流程/网络事件 | `Game.Event.Off(Events.X, method)`（**同一方法引用**） |
+| 流程 / 网络事件 | `Game.Event.Off(Events.X, method)`（**同一方法引用**） |
 | 消息监听 | `Game.OffMsg(msgID, handler)`（或 `Game.OffMsg(msgID)` 清该消息号） |
 | 音效 / BGM | `Game.Sound.StopBGM()` / `Game.Sound.StopAll()` |
 
@@ -505,15 +502,14 @@ grep 命令见 `reference/architecture.md` §4（②③④⑤ 允许为 0 命中
 | 切界面卡黑屏 | 每个界面都切 Unity 场景 | 菜单类站点共用一个 UI 场景，只切面板 |
 | 读条条永不动 | `Image.Type=Filled` 但 sprite 为空 | 给足 sprite，或改用 `RectTransform` 宽度；交付前**看图** |
 | 暂停后角色还在被打 | 联机对战**不能真暂停**（原版也是） | 单人关卡才做真暂停（服务端暂停消息）；对战只做"菜单覆盖 + 可选投降" |
-| 断线后停在游戏里 | 没监听网络生命周期 | 监听 `Net.OnDisconnected/OnResumed/OnKicked`，被踢 → 回主菜单/登录 |
+| 断线后停在游戏里 | 没监听网络生命周期 | 监听 `Net.OnDisconnected/OnResumed/OnKicked`，被踢 → 回主菜单 / 登录 |
 
 ---
 
 ## 8. 与其他文档的关系
 
-- **首场景内容**（操作/相机/动画/战斗/UI/音效）→ `patterns/game-demo.md`、`reference/rules-full.md` 的「两件绝不打折的事」；
-- **原版系统清单**（菜单/创角/技能/背包/NPC…逐个做完）→ `patterns/game-demo.md` §0.0c；
-- **感官验收**（**按类别取证**：`表现类` 的所有点**采一次联络图**、脚本按格判定、**AI 只读那张汇总图一次**；
-  `数值类` 只留日志行）→ `reference/design-review.md` §3 与 `reference/visual-loop.md` 第八节；
+- **首场景内容**（操作 / 相机 / 动画 / 战斗 / UI / 音效）→ `patterns/game-demo.md`、`reference/rules-full.md` 的「两件绝不打折的事」；
+- **原版系统清单**（菜单 / 创角 / 技能 / 背包 / NPC…逐个做完）→ `patterns/game-demo.md` §0.0c；
+- **感官验收**（`表现类` 采一次联络图、脚本按格判定、**AI 只读那张汇总图一次**；`数值类` 只留日志行）→ `reference/design-review.md` §3 与 `reference/visual-loop.md` 第八节；
 - **分层与自检**（UI 不引 Module、App ≤ 200 行）→ `reference/architecture.md`；
 - **复杂项目拆多 agent**（菜单链路与首场景可并行）→ `patterns/multi-agent.md`。

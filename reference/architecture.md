@@ -15,7 +15,7 @@ client/Assets/Scripts/
 │   ├── Events.cs           # ★ 事件名常量集中一处（禁止业务里写裸字符串）
 │   └── ...
 ├── Module/                 # ★ 业务系统，一个系统一个目录（互不直接引用）
-│   ├── Flow/               # ★ 流程编排：启动/主菜单/创角/选角/读条进图/暂停/回菜单（App Flow，见 patterns/client/app-flow.md）
+│   ├── Flow/               # ★ 流程编排：启动/主菜单/创角/选角/读条进图/暂停/回菜单（patterns/client/app-flow.md）
 │   ├── Net/                # 网络门面：收发包、消息路由、重连/重登状态机
 │   ├── Map/                # 本地碰撞解算（MapModule；数据与空间事实来自引擎 Game.Map）
 │   ├── Player/             # 主角控制（PlayerMotor）
@@ -39,7 +39,7 @@ App ──▶ Module ──▶ Core ──▶ Def
 - `Module/A` **不许** 引用 `Module/B` 的具体类；要协作就 **① 事件总线**（`Game.Event`）或 **② App 注入的接口**；
 - `Core`/`Def` **不许** 反向引用任何 Module；
 - `UI` **不许** `using` 任何 `Module.*`（只发/收事件 + `Game.UI.Open<T>(param)` 带参）；
-- **网络调用只允许出现在 `Module/Net` 与 `App`**（装配期），其它模块一律调 `Net` 门面方法（便于统计/重放/校验/改协议）；
+- **网络调用只允许出现在 `Module/Net` 与 `App`**（装配期），其它模块一律调 `Net` 门面方法（便于统计 / 重放 / 校验 / 改协议）；
 - **地图碰撞数据只允许 `Module/Map` 读**，其它模块只用它导出的只读 API；
 - `Assets/Editor/` 下的工具只依赖 `Def` + `Core`（不得引用运行期 Module）。
 
@@ -61,25 +61,20 @@ namespace CloverMmo1.Module.Combat
 
 规则：
 
-- **一个模块 = 一个门面接口 + 若干内部类**；MonoBehaviour 全部 `internal`，
-  只在模块目录内 `AddComponent`；
+- **一个模块 = 一个门面接口 + 若干内部类**；MonoBehaviour 全部 `internal`，只在模块目录内 `AddComponent`；
 - 模块之间**不允许**通过 `FindObjectOfType` / `GameObject.Find` / 全局单例互相找；
-- 模块拿到依赖**只能**经构造函数/`Init(...)` 注入（由 `App` 统一装配）；
+- 模块拿到依赖**只能**经构造函数 / `Init(...)` 注入（由 `App` 统一装配）；
 - 事件名必须来自 `Core/Events.cs` 常量，禁止裸字符串（改一处能全局生效）。
 
 ## 3. App（Bootstrap）该多大（硬指标）
 
-`App/Bootstrap.cs` **只做三件事**：`Game.Launch` + 各模块 `Init` + 生命周期转发；**启动后立刻交给 `Module/Flow` 进流程（启动画面 → 主菜单），不许直接进游戏场景**（`patterns/client/app-flow.md`）。
+`App/Bootstrap.cs` **只做三件事**：`Game.Launch` + 各模块 `Init` + 生命周期转发；**启动后立刻交给 `Module/Flow` 进流程（启动画面 → 主菜单），不许直接进游戏场景**。
 
 - 目标：**≤ 200 行**；超过就是"上帝类在长肉"，必须把逻辑挪进对应模块；
-- **禁止**在 App 里出现：业务判断（伤害/胜负/掉落）、逐帧业务循环、资源加载细节、
-  具体的 `Game.Net.Send`（除装配期的登录流程外）；
+- **禁止**在 App 里出现：业务判断（伤害 / 胜负 / 掉落）、逐帧业务循环、资源加载细节、具体的 `Game.Net.Send`（除装配期的登录流程外）；
 - 逐帧更新由各模块自己 `Update`（MonoBehaviour）或 App 转发 `Tick`，**App 不写业务每帧逻辑**。
 
-**反面教材（本项目第一版真实踩过，引以为戒）**：`Bootstrap` 里同时塞了
-登录流程 + 实体视图创建/销毁 + 模型加载与归一化 + 动画装配 + HUD 刷新 +
-热键/探针/刷假人 + 相机装配 —— 结果：任何一处改动都要动同一个文件，
-一次网络异常引发全部功能瘫痪。**这就是"耦合"的代价。**
+**反面教材**：把登录流程 + 实体视图创建销毁 + 模型加载与归一化 + 动画装配 + HUD 刷新 + 热键 / 探针 + 相机装配全塞进 `Bootstrap` ⇒ 任何一处改动都要动同一个文件，一次网络异常引发全部功能瘫痪。**这就是"耦合"的代价。**
 
 ## 4. 自检（交付前必须跑）
 
@@ -107,11 +102,8 @@ grep -rnE '(^|[^.])\bInput\.(GetKey|GetMouse|mousePosition|GetAxis)' client/Asse
 grep -rn --include=*.cs --include=*.ps1 '' client/_dev _assets_src _assets_tmp 2>/dev/null | wc -l
 ```
 
-> ⑥⑦ 与 §1~§5 一样是**交付前必跑**（完整 **8 条**见 `SKILL.md` 的「交付清单」）。
-> 实测教训：⑥⑦**原来没有**，于是「临时文件遍地」「`Resources.Load` 绕过 `Game.Res`」这类违反
-> **不留任何痕迹**，交付时"看起来完全合规"。
-
-> 上面 ②③④⑤ **允许为 0 命中**；有命中就必须在交付说明里给出理由，否则返工。
+> ⑥⑦ 与 §1~§5 一样是**交付前必跑**（完整 **8 条**见 `SKILL.md` 的「交付清单」）。**没有这两条时，「临时文件遍地」「`Resources.Load` 绕过 `Game.Res`」这类违反不留任何痕迹**，交付时"看起来完全合规"。
+> ②③④⑤ **允许为 0 命中**；有命中就必须在交付说明里给出理由，否则返工。
 
 ## 5. 服务端分层（沿用仓库既有约定，不要另发明）
 
@@ -119,10 +111,10 @@ grep -rn --include=*.cs --include=*.ps1 '' client/_dev _assets_src _assets_tmp 2
 server/game/
 ├── def/        消息号 + 请求/回包/推送结构体（真源）
 ├── datadef/    数据 schema
-├── logic/       handler + 业务规则（按系统分文件：world.go / handlers.go / combat.go / bot.go …）
+├── logic/      handler + 业务规则（按系统分文件：world.go / handlers.go / combat.go / bot.go …）
 └── table/      配表访问
 ```
 
-- handler **只做**：取参 → 校验 → 改数据/调引擎 → 回包/广播；**不写**大段算法（挪到同目录的 `xxx_core.go` 或独立包）；
-- 一个系统一个文件组；跨系统协作用事件/接口，不要互相 import 内部函数表；
-- 所有非预期分支必须打日志（见 `SKILL.md` 日志硬约束）。
+- handler **只做**：取参 → 校验 → 改数据 / 调引擎 → 回包 / 广播；**不写**大段算法（挪到同目录的 `xxx_core.go` 或独立包）；
+- 一个系统一个文件组；跨系统协作用事件 / 接口，不要互相 import 内部函数表；
+- 所有非预期分支必须打日志。

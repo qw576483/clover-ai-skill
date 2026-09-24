@@ -6,7 +6,7 @@
 #  Exit 0 = usable, 1 = software rendering / broken GPU (STOP: fix the machine first,
 #  do NOT go looking for performance bugs in the code), 2 = could not decide.
 #
-#  Why this exists (2026-09-20, real incident):
+#  Why this exists (real incident):
 #    A "the game is stuck at 1 fps" report took 6 Play sessions to trace. The machine
 #    had a DISABLED discrete GPU (Code 22) and Unity was falling back to the CPU
 #    software rasterizer (Microsoft Basic Render Driver, ~255ms/frame). The root cause
@@ -88,7 +88,7 @@ if (-not (Test-Path $editorLog)) {
 }
 
 # --- 4) crash storms: the SAME exe dying over and over ------------------------
-#     Why: on 2026-09-21 this machine wrote 8 SaveCheck.exe dumps in 24h (plus a
+#     Why: this machine once wrote 8 SaveCheck.exe dumps in 24h (plus a
 #     Unity.exe dump) while the project was being worked on. "It keeps crashing"
 #     cannot be attributed to the project until the crash source is known -- same
 #     spirit as the software-rendering gate above: prove the machine first.

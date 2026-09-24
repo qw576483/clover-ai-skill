@@ -1,64 +1,32 @@
 # 客户端模块速查表
 
-> 本表的 API 全部以 `clover-client-unity-engine/Runtime/**` 源码为准（`Game` 门面见 `Runtime/Core/Game.cs`）。
+> API 全部以 `clover-client-unity-engine/Runtime/**` 源码为准（`Game` 门面见 `Runtime/Core/Game.cs`）。
+> **表现域模块已在门面上全部可用**（Map / UI / Scene / Atlas / Anim / Sound / Camera / Quality / Entity / Pool），契约在 `Runtime/Core/PresentationContracts.cs`，实现由 `CloverPresentation.Init` **随 `Game.Launch` 自动挂接**，业务无需手动初始化：
 >
-> **表现域模块现已在门面上全部可用**（Map / UI / Scene / Atlas / Anim / Sound / Camera / Quality / Entity / Pool）。
-> 契约定义在 `Runtime/Core/PresentationContracts.cs`（Core），实现在 `Runtime/Presentation/`（internal），
-> 由 `CloverPresentation.Init` 挂接——**随 `Game.Launch` 自动完成，业务无需手动初始化**：
->
-> ```csharp 
+> ```csharp
 > Game.Launch(new GameConfig { ServerAddr = "127.0.0.1:8002" });
 > Game.UI.Open<LoginPanel>();                 // 直接用
 > ```
->需要精细控制（EditMode 测试 / 只想挂一部分）时关闭自动挂载：
-> ```csharp 
+> 需要精细控制（EditMode 测试 / 只挂一部分）时关掉自动挂载：
+> ```csharp
 > CloverPresentation.AutoMount = false;   // 必须在 Launch 之前设置
 > Game.Launch(config);
 > CloverPresentation.Init();              // 手动挂载（幂等）
 > ```
 
-## 模块架构
+## ⛔ "门面上有成员" ≠ "已经初始化"
 
-> ⛔ **下图列的是"门面上有这些成员"（`Game.Xxx` 可用），不等于"已经初始化"**。
-> `Net` / `Sync` / `Schema` / `Alert` / `CloverScene` / `FrameRoom` / `Res` / `Table` / `Localization` / `Input`
-> 都**必须业务显式 Init**，否则静默失效或直接 NRE —— 见本节末尾的对照表。
+`Net` / `Sync` / `Schema` / `Alert` / `CloverScene` / `FrameRoom` / `Res` / `Table` / `Localization` / `Input` 都**必须业务显式 Init**，不调就是**静默失效**（不是编译错，是运行时什么都没发生）：
 
-```
-┌──────────────────────────── 业务游戏代码 ────────────────────────────┐
-│                              Game 门面                               │
-│  （已挂载：Logger Dispatcher Event Timer Fsm Setting DeviceId Net     │
-│             Http Sync Schema Alert CloverScene FrameRoom LanBrowser   │
-│             Table Localization Res Map Entity Pool Input              │
-│             UI Scene Atlas Anim Sound Camera Quality）                 │
-├──────────────┬──────────────┬──────────────┬────────────────────────┤
-│   网络域      │   表现域      │   数据域      │   基础域                │
-│  Net         │  Entity      │  Table       │  Event                 │
-│  Sync        │  Pool        │  Setting     │  Timer                 │
-│  Http        │  Input       │  Localization│  Fsm                   │
-│              │  Scene       │              │  Dispatcher            │
-│              │  UI          │              │  Logger                │
-│              │  Atlas       │              │                        │
-│              │  Anim        │              │                        │
-│              │  Sound       │              │                        │
-│              │  Camera      │              │                        │
-│              │  Quality     │              │                        │
-├──────────────┴──────────────┴──────────────┴────────────────────────┤
-│  Editor 横切：Debugger（面板/GM/网络模拟/统计）                            │
-└─────────────────────────────────────────────────────────────────────┘
-```
+| 模块 | 必须调 | 不调的后果 |
+|---|---|---|
+| `Net` `Sync` `Schema` `Alert` `CloverScene` `FrameRoom` | `CloverNet.Init(addr, udpAddr)` | 完全没网络（静默） |
+| `LanBrowser` | **不用手调** —— 由 `CloverLan` 的 Launch 钩子自动挂（仅原生平台） | 局域网寻服不可用（`Game.LanBrowser` 为 null） |
+| `Res` | `CloverRes.Init(root)` | `Game.Res` 为 **null** ⇒ 第一次调 `Game.Res.*` 就是 **NullReferenceException**（⛔ 不是"静默加载失败"） |
+| `Table` `Localization` | `CloverData.InitDataTable(dir)` / `InitLocalization(dir, lang)` | 没配表 |
+| `Input` | `CloverInput.Init()` | 同时创建 EventSystem + InputModule；**不调 ⇒ UI 点击不响应** |
 
-> ⛔ **图里列的是"门面上可用"，不是"已经初始化好了"。** 其中这几个**必须业务显式 Init**，
-> 不调就是**静默失效**（不是编译错，是运行时什么都没发生）：
->
-> | 模块 | 必须调 | 不调的后果 |
-> |---|---|---|
-> | `Net` `Sync` `Schema` `Alert` `CloverScene` `FrameRoom` | `CloverNet.Init(addr, udpAddr)` | 完全没网络（静默） |
-> | `LanBrowser` | **不用手调** —— 由 `CloverLan` 的 Launch 钩子自动挂（仅原生平台） | 局域网寻服不可用（`Game.LanBrowser` 为 null） |
-> | `Res` | `CloverRes.Init(root)` | `Game.Res` 为 **null** ⇒ 第一次调 `Game.Res.*` 就是 **NullReferenceException**（⛔ 不是"静默加载失败"） |
-> | `Table` `Localization` | `CloverData.InitDataTable(dir)` / `InitLocalization(dir, lang)` | 没配表 |
-> | `Input` | `CloverInput.Init()` | 同时创建 EventSystem + InputModule；**不调 ⇒ UI 点击不响应** |
->
-> 顺序与实测踩坑 → `reference/engine-mental-model.md` §1。
+> 顺序与踩坑 → `reference/engine-mental-model.md` §1。
 
 ## 能力域划分
 
@@ -67,8 +35,8 @@
 | **基础域** | Event, Timer, Fsm, Dispatcher, Logger | 引擎基石，`Game.Launch` 时构造 |
 | **数据域** | Table, Localization | 经 `CloverData.InitDataTable/InitLocalization` 挂载（⛔ **`Setting` 不在这里** —— 它由 `Game.Launch` 直接构造并挂上门面） |
 | **网络域** | Net, Sync, Schema, Alert, CloverScene, FrameRoom, **Http** | 经 `CloverNet.Init` 一次挂载（**含 Http**；`CloverNet.InitHttp` 保留供「只用 HTTP 不连网关」的特例）。Schema 桥接 Sync；FrameRoom 需业务 `Configure()` 注入消息号 |
-| **资源域** | Res | 经 **`CloverRes.Init(root)`** 挂载 —— ⚠️ **不会**随 `CloverPresentation` 自动挂（表现域挂 Map/Entity/Pool/UI/Scene/Atlas/Anim/Sound/Camera/Quality）。**业务必须显式调用**，否则 `Game.Res` 恒为 null：模型/贴图**静默加载失败**（只剩占位几何体），并在加载点抛 `NullReferenceException` 打断业务主流程（见 `patterns/game-demo.md` §4.2） |
-| **表现域** | Map, Scene, UI, Atlas, Anim, Sound, Camera, Quality, Entity, Pool, Input | 契约在 `Runtime/Core/PresentationContracts.cs`，实现由 Presentation 提供；Map/Entity/Pool/UI/Scene/Atlas/Anim/Sound/Camera/Quality 由 `CloverPresentation.Init` 随 `Game.Launch` **自动挂载** |
+| **资源域** | Res | 经 **`CloverRes.Init(root)`** 挂载 —— ⚠️ **不会**随 `CloverPresentation` 自动挂。业务必须显式调用，否则 `Game.Res` 恒为 null：模型 / 贴图**静默加载失败**（只剩占位几何体），并在加载点抛 `NullReferenceException` 打断业务主流程（见 `patterns/game-demo.md` §4.2） |
+| **表现域** | Map, Scene, UI, Atlas, Anim, Sound, Camera, Quality, Entity, Pool, Input | 契约在 `Runtime/Core/PresentationContracts.cs`，实现由 Presentation 提供；除 Input 外均由 `CloverPresentation.Init` 随 `Game.Launch` **自动挂载** |
 
 ## 模块 API 速查
 
@@ -76,10 +44,10 @@
 
 | 模块 | API | 说明 |
 |------|-----|------|
-| **Event** | `Game.Event.On / On<T> / OnPriority(name, priority, handler) / Once / Off / Emit / OffAll`；订阅名支持通配 `*`（恰好一段）/ `**`（一段或多段） | 事件总线。`priority` 大者先执行、**精确订阅先于通配订阅**执行；同一 handler 重复注册被忽略并告警；分发期间 `Off`/`OffAll` 即时生效。**`On` 返回 `void`**，取消用 `Off`，没有 `Dispose` 句柄 |
-| **Timer** | `Game.Timer.After / Every / AfterName / EveryName / AfterUnscaled / EveryUnscaled / Stop / StopNamed / StopScope / StopAll`（`After` / `Every` 另有带 `scope` 的重载） | 定时器：`After` / `Every` 系列返回 `long` id（**不是** IDisposable），`Stop*` 系列返回 `void`。无 `Group`、无 `Cron`、无 `FromSeconds`；`timeScale=0` 里要触发用 `*Unscaled` |
-| **Fsm** | `Game.Fsm.RegisterState / AddTransition / Transition / Trigger / Force / Current / Tick / OnChange / OffChange` | 状态机；`Fsm` 是 `internal`，**禁止 `new Fsm()`**，用 `Game.Fsm` |
-| **Logger** | `Game.Logger.Info / Warn / Error(tag, msg)` | 日志（**必须两个参数** tag+msg）；**永不为 null** —— 未 `Game.Launch` 时指向 `ConsoleLogger`（直接写 Unity Console），所以 `?.` 加不加都能用（见 `patterns/client/config.md`） |
+| **Event** | `Game.Event.On / On<T> / OnPriority(name, priority, handler) / Once / Off / Emit / OffAll`；订阅名支持通配 `*`（恰好一段）/ `**`（一段或多段） | 事件总线。`priority` 大者先执行、**精确订阅先于通配订阅**；同一 handler 重复注册被忽略并告警；分发期间 `Off`/`OffAll` 即时生效。**`On` 返回 `void`**，取消用 `Off`，没有 `Dispose` 句柄 |
+| **Timer** | `Game.Timer.After / Every / AfterName / EveryName / AfterUnscaled / EveryUnscaled / Stop / StopNamed / StopScope / StopAll`（`After`/`Every` 另有带 `scope` 的重载） | `After` / `Every` 系列返回 `long` id（**不是** IDisposable），`Stop*` 系列返回 `void`。无 `Group`、无 `Cron`、无 `FromSeconds`；`timeScale=0` 里要触发用 `*Unscaled` |
+| **Fsm** | `Game.Fsm.RegisterState / AddTransition / Transition / Trigger / Force / Current / Tick / OnChange / OffChange` | `Fsm` 是 `internal`，**禁止 `new Fsm()`**，用 `Game.Fsm` |
+| **Logger** | `Game.Logger.Info / Warn / Error(tag, msg)` | 日志（**必须两个参数** tag+msg）；**永不为 null** —— 未 `Game.Launch` 时指向 `ConsoleLogger`（直接写 Unity Console） |
 
 ### 数据域
 
@@ -93,9 +61,9 @@
 
 | 模块 | API | 说明 |
 |------|-----|------|
-| **Net** | `Game.OnMsg(msgID, handler)` / `Game.OffMsg`（**唯一路由入口**）+ `Game.Net.Connect / Send / SendUnreliable / Call<T> / SetupSession / IsConnected / IsUdpBound / Session / IsQueued / QueueAhead / QueueTotal / IsChannelEncrypted` | 可靠 TCP + 裸 UDP，**不含路由**（INetwork 已剥离 OnMsg/OffMsg）。`OnMsg` 返回 `void`，取消用 `OffMsg`；回包走 `Call<T>` 不注册回调。排队/通道加密由引擎自动处理（事件 `Net.QueuePosition`），业务不接线 |
+| **Net** | `Game.OnMsg(msgID, handler)` / `Game.OffMsg`（**唯一路由入口**）+ `Game.Net.Connect / Send / SendUnreliable / Call<T> / SetupSession / IsConnected / IsUdpBound / Session / IsQueued / QueueAhead / QueueTotal / IsChannelEncrypted` | 可靠 TCP + 裸 UDP，**不含路由**（INetwork 已剥离 OnMsg/OffMsg）。回包走 `Call<T>` 不注册回调。排队 / 通道加密由引擎自动处理（事件 `Net.QueuePosition`），业务不接线 |
 | **Http** | `Game.Http.Get(url, cb)` / `Post(url, body, cb)` | HTTP 请求，**回调式**（无泛型、无 await） |
-| **Sync** | `Game.Sync.OnFullSync(...)` / `OffFullSync(...)` / `OnData(...)` / `OffData(...)` / `OnEntityEnter` / `OnEntityLeave` / `OnEntityMove` / `OnEntityProperty`（每个 `On*` 都有配对的 `Off*`，另可 `Clear()` 一次清空）；`TryGetPosition(id, out x, out y, out z)` 读**插值后**的当前位置 | **数据/实体订阅唯一入口**（增量 + 全量）。**没有 `GetEntity`**。`OnEntityMove` 给的是**服务端原始目标坐标**（离散），驱动表现要用 `TryGetPosition`（见 `patterns/client/entity-view`） |
+| **Sync** | `Game.Sync.OnFullSync(...) / OffFullSync(...) / OnData(...) / OffData(...) / OnEntityEnter / OnEntityLeave / OnEntityMove / OnEntityProperty`（每个 `On*` 都有配对的 `Off*`，另可 `Clear()` 一次清空）；`TryGetPosition(id, out x, out y, out z)` 读**插值后**的当前位置 | **数据 / 实体订阅唯一入口**（增量 + 全量）。**没有 `GetEntity`**。`OnEntityMove` 给的是**服务端原始目标坐标**（离散），驱动表现要用 `TryGetPosition` |
 | **Schema** | `Game.Schema.RegisterSchema(type, schema)` / `GetSchema(type)` | 仅 Schema 声明表（登记字段结构），**不做数据订阅**。**门面名是 `Schema`，不是 `Data`** |
 | **Alert** | `Game.Alert.OnAlert += handler` / `-= handler` | 公告推送（`EMsg.PushAlert`）；同时发 `Net.Alert` 事件 |
 | **CloverScene** | `Game.CloverScene.IsValid / SceneID / InstanceID / Name / UnityScene / AutoLoadUnityScene` / `RegisterMapping(sceneId, unityScene)` / `OnChanged` / `OffChanged` | 服务端场景投影（`EMsg.PushSceneInfo`）。**与 `Game.Scene`（Unity 关卡）不同义** |
@@ -105,18 +73,18 @@
 
 | 模块 | API | 说明 |
 |------|-----|------|
-| **Res** | `Game.Res.LoadAsset<T>(path, cb)` / `LoadAsset<T>(path, progress, cb)` / `Release(path)` / `UnloadAll()` / `Preload(paths, onDone, progress)` / `TryGet<T>(path)`（同步取已驻留资源） | 资源加载。**没有 `LoadAsync`/`LoadSync`/`Unload`/`LoadScene`**；**热更成员是 5 个**：`Version` / `UpdateState` / `CheckUpdate(Action<ResourceUpdateInfo>)` / `DownloadUpdate(...)` / `ClearDownloaded()`（见 `Runtime/Core/Contracts.cs` 与 `patterns/client/resource.md` 模板 6） |
+| **Res** | `Game.Res.LoadAsset<T>(path, cb)` / `LoadAsset<T>(path, progress, cb)` / `Release(path)` / `UnloadAll()` / `Preload(paths, onDone, progress)` / `TryGet<T>(path)`（同步取已驻留资源） | **没有 `LoadAsync`/`LoadSync`/`Unload`/`LoadScene`**；**热更成员是 5 个**：`Version` / `UpdateState` / `CheckUpdate(Action<ResourceUpdateInfo>)` / `DownloadUpdate(...)` / `ClearDownloaded()` |
 
 ### 表现域（已挂载）
 
 | 模块 | API | 说明 |
 |------|-----|------|
 | **Entity** | `Game.Entity.Create(objectID, typeID, group)` / `Get(objectID)` / `GetAll()` / `GetByGroup(group)` / `Destroy(objectID)` / `BindView(objectID, view)` / `GetView(objectID)` / `DestroyGroup(group)` / `ClearAll()` | 实体管理（`Create` 参数**不是** prefab+position）。异步 View 工厂（模型异步加载 + 占位 + 竞态 + 贴地）走 `CloverPresentation.EntityView.CreateView(...)` 后 `BindView` 登记 |
-| **Map** | `Game.Map.Load(bytes, out error)` / `LoadFromResource(path, onDone)` / `WalkableAt(x, z)` / `Clear()`（另有 `Loaded` / `Status` / `Width` / `Depth` 等只读属性） | 逻辑地图（服务端权威地图的**只读投影**，本地碰撞 / 寻路查询用）。**与 `Game.Scene`（Unity 关卡）、`Game.CloverScene`（服务端场景）不同义** |
-| **Pool** | `Game.Pool.Spawn(key, parent, group)` / `Despawn(obj)` / `Preload(key, count, group)` / `Clear(key)` / `ClearGroup(group)` / `ClearAll()` / `GetActiveCount(key)` / `GetInactiveCount(key)`；空闲过期回收 `IdleExpirySeconds`（默认 0 = 关闭）/ `TrimIdle()` | 对象池。回收是 **`Despawn`**，不是 `Recycle`。`IdleExpirySeconds>0` 时闲置超时报废，回收惰性发生在 `Spawn`/`Despawn` 内（不新增 Tick） |
+| **Map** | `Game.Map.Load(bytes, out error)` / `LoadFromResource(path, onDone)` / `WalkableAt(x, z)` / `Clear()`（另有 `Loaded` / `Status` / `Width` / `Depth` 等只读属性） | 逻辑地图（服务端权威地图的**只读投影**，本地碰撞 / 寻路查询用）。**与 `Game.Scene`、`Game.CloverScene` 三者不同义** |
+| **Pool** | `Game.Pool.Spawn(key, parent, group)` / `Despawn(obj)` / `Preload(key, count, group)` / `Clear(key)` / `ClearGroup(group)` / `ClearAll()` / `GetActiveCount(key)` / `GetInactiveCount(key)`；空闲过期回收 `IdleExpirySeconds`（默认 0 = 关闭）/ `TrimIdle()` | 回收是 **`Despawn`**，不是 `Recycle`。`IdleExpirySeconds>0` 时闲置超时报废，回收惰性发生在 `Spawn`/`Despawn` 内（不新增 Tick） |
 | **Input** | `Game.Input.State` / `.Available` / `.BackendName` / `.IsLocked` | 输入（后端无关；需 `CloverInput.Init()` 挂载） |
 | **Scene** | `Game.Scene.Load(name, onProgress, onDone)` / `Unload(name, onDone)` / `CurrentScene` / `OnSceneLoaded` / `OnSceneUnloaded` | 场景管理（异步 + 加载门控 + 场景级回收）。**方法名是 `Load`，不是 `LoadScene`** |
-| **UI** | `Game.UI.Open<T>(param)` / `Close<T>()` / `Close(name)` / `CloseAll()` / `Get<T>()` / `IsOpen<T>()` / `OnPanelOpened` / `OnPanelClosed` | UI 管理。面板实现 `IUIPanel`；预制体放 `Resources/UI/{面板类型名}`。**是 `Open`/`Close`，不是 `Show`/`Hide`** |
+| **UI** | `Game.UI.Open<T>(param)` / `Close<T>()` / `Close(name)` / `CloseAll()` / `Get<T>()` / `IsOpen<T>()` / `OnPanelOpened` / `OnPanelClosed` | 面板实现 `IUIPanel`；预制体放 `Resources/UI/{面板类型名}`。**是 `Open`/`Close`，不是 `Show`/`Hide`** |
 | **Animation** | `Game.Anim.CreateAnimator(go, controller)` / `Destroy(player)` | 动画（基于 Unity Animator；Spine / 龙骨由业务自接 SDK） |
 | **Sound** | `Game.Sound.PlayBGM / StopBGM / PlaySFX / PlaySFXAt / PlayVoice / StopAll / SetVolume / GetVolume / SetMute`（`SoundGroup.BGM/SFX/Voice`） | 声音 |
 | **Camera** | `Game.Camera.Follow(target, smoothTime)` / `Unfollow()` / `Shake(duration, intensity)` / `SetBounds(bounds)` | 相机 |
@@ -125,9 +93,9 @@
 
 ## 门面属性 ↔ 接口 ↔ 模块名
 
-门面用短名（与 `Game.Res`/`Game.Net`/`Game.Sync` 的既有风格一致），下表用于消除"一个东西两个名字"的歧义：
+门面用短名（与 `Game.Res`/`Game.Net`/`Game.Sync` 风格一致），下表用于消除"一个东西两个名字"：
 
-| 门面属性 | 接口 | 模块名（架构文档） |
+| 门面属性 | 接口 | 模块名 |
 |---|---|---|
 | `Game.Net` | `INetwork` | Network |
 | `Game.Sync` | `IWorldSync` | WorldSync |
@@ -141,13 +109,12 @@
 | `Game.Setting` | `ISetting` | Setting |
 | `Game.Pool` | `IObjectPool` | ObjectPool |
 | `Game.Entity` | `IEntityManager` | Entity |
-| `Game.Map` | `IMapData` | Map（逻辑地图投影，**不是** `Game.Scene`） |
+| `Game.Map` | `IMapData` | Map（逻辑地图投影） |
 | `Game.Atlas` | `ISpriteAtlasManager` | SpriteAtlas |
 | `Game.Anim` | `IAnimationManager` | Animation |
 | `Game.UI` / `Game.Scene` / `Game.Sound` / `Game.Camera` / `Game.Quality` | `IUIManager` / `ISceneManager` / `ISoundManager` / `ICameraManager` / `IQualityManager` | UI / Scene / Sound / Camera / Quality |
 
-> **接收消息只有一个入口**：`Game.OnMsg(msgID, handler)`，与服务端 `g.OnMsg` 同名。
-> `INetwork` **不含** OnMsg/OffMsg（路由独立为 `IRouter`，只经 `Game` 门面暴露），因此没有 `Game.Net.OnMsg` 第二入口，也没有 `OnPush` / `OnReceive` 之类的近似 API。
+> **接收消息只有一个入口**：`Game.OnMsg(msgID, handler)`，与服务端 `g.OnMsg` 同名。`INetwork` **不含** OnMsg/OffMsg（路由独立为 `IRouter`，只经 `Game` 门面暴露）⇒ 没有 `Game.Net.OnMsg` 第二入口，也没有 `OnPush` / `OnReceive` 之类的近似 API。
 > **回包不注册回调**：`await Game.Net.Call<T>(msgID, req)` 按 requestID 自动配对。
 
 ## 常用 API 速查
@@ -176,10 +143,8 @@ Game.Schema.RegisterSchema("player", new ObjectSchema().String("name", 0).Int("l
 // 服务端场景投影（与 Game.Scene 不同义）
 Game.CloverScene.OnChanged(s => Debug.Log($"scene={s.SceneID} instance={s.InstanceID}"));
 
-// 可靠发送
+// 可靠 / 非可靠发送
 Game.Net.Send(EMsg.Xxx, msg);
-
-// 非可靠发送
 Game.Net.SendUnreliable(EMsg.Xxx, msg);
 
 // 请求-回包（回包类型为 ELoginReply 这类 E 前缀类型）
@@ -187,9 +152,9 @@ var reply = await Game.Net.Call<ELoginReply>(EMsg.Login, request);
 
 // 登录成功后登记会话（断线恢复的前提）
 // 第二个参数**传 null**（不是 reply.session_key；与官方 Sample 一致）。
-// session_key 是会话通道加密密钥（AES 通道密钥），当恢复凭证上交会被判 token mismatch 踢掉；
+// session_key 是会话通道加密密钥（AES），当恢复凭证上交会被判 token mismatch 踢掉；
 // 真正的恢复凭证 session_token 由随后的 PushPlayerFullSync 下发并**非空覆盖**。
-// 传非空值时引擎会打 Warn（NetworkManager.cs:724-727；`SetupSession` 的签名/文档在 :716-719）。
+// 传非空值时引擎会打 Warn（NetworkManager.cs:724-727；SetupSession 签名见 :716-719）。
 Game.Net.SetupSession(account, null, line);
 
 // HTTP 请求：回调式，没有 await/泛型
@@ -197,43 +162,26 @@ Game.Http.Get(url, resp => { if (resp.IsSuccess) { /* resp.Data 为 byte[] */ } 
 Game.Http.Post(url, jsonBody, resp => { /* ... */ });
 ```
 
-### 实体管理
+### 实体 / 对象池 / 资源
 
 ```csharp
-// 创建 / 获取 / 销毁
-var e = Game.Entity.Create(objectID, typeID, group);
-var e2 = Game.Entity.Get(objectID);
-Game.Entity.Destroy(objectID);
+var e = Game.Entity.Create(objectID, typeID, group);   // 创建
+var e2 = Game.Entity.Get(objectID);                    // 获取
+Game.Entity.Destroy(objectID);                         // 销毁
+Game.Entity.BindView(objectID, go);                    // 绑定视图
 
-// 绑定视图
-Game.Entity.BindView(objectID, go);
-```
-
-### 对象池
-
-```csharp
 var go = Game.Pool.Spawn("Bullet", parent, "battle");
 Game.Pool.Despawn(go);      // ★ 不是 Recycle
 Game.Pool.ClearGroup("battle");
-```
 
-### 资源加载
-
-```csharp
 // 异步加载（回调式，不是 await）
-Game.Res.LoadAsset<GameObject>("prefabs/bullet", obj => {
-    if (obj != null) Instantiate(obj);
-});
-
-// 带进度
-Game.Res.LoadAsset<GameObject>("prefabs/big", p => Debug.Log(p), obj => { /* ... */ });
-
-// 释放 / 卸载
+Game.Res.LoadAsset<GameObject>("prefabs/bullet", obj => { if (obj != null) Instantiate(obj); });
+Game.Res.LoadAsset<GameObject>("prefabs/big", p => Debug.Log(p), obj => { /* ... */ });   // 带进度
 Game.Res.Release("prefabs/bullet");
 Game.Res.UnloadAll();
 ```
 
-### UI / 场景 / 声音 / 相机 / 设备（表现域）
+### UI / 场景 / 图集 / 动画 / 声音 / 相机 / 设备
 
 ```csharp
 // —— UI：面板继承 UIPanel（已实现 IUIPanel 全部样板），预制体放 Resources/UI/{类名} ——
@@ -244,7 +192,7 @@ public class LoginPanel : UIPanel
 }
 
 Game.UI.Open<LoginPanel>();        // 打开（同名已开则重新 OnOpen 并置顶）
-Game.UI.Close<LoginPanel>();       // 关闭
+Game.UI.Close<LoginPanel>();
 Game.UI.CloseAll();
 var opened = Game.UI.IsOpen<LoginPanel>();
 var panel = Game.UI.Get<LoginPanel>();
@@ -285,11 +233,9 @@ Game.Quality.OnLevelChanged(lv => Debug.Log($"device level -> {lv}"));
 ```
 
 > UI 点击依赖 `EventSystem`，而它归输入模块管理：请在 `Game.Launch` 后调用 `CloverInput.Init()`。
-> ⛔ 那句"一次性告警"**不在** `CloverPresentation.Init` 里 —— 它由 `Game.UI.Open` 在
-> `EventSystem.current == null` 时打出（`Runtime/Presentation/UI.cs:107-114`）。
-> 所以**别等到开面板才发现**：Init 缺失应当在启动阶段就自查一遍。
+> ⛔ 那句"一次性告警"**不在** `CloverPresentation.Init` 里 —— 它由 `Game.UI.Open` 在 `EventSystem.current == null` 时打出（`Runtime/Presentation/UI.cs:107-114`）。**别等到开面板才发现**：Init 缺失应在启动阶段自查一遍。
 
-### 事件总线
+### 事件总线 / 定时器 / 状态机
 
 ```csharp
 Game.Event.On("MyEvent", () => Debug.Log("fired"));
@@ -297,28 +243,19 @@ Game.Event.On<MyData>("MyEventWithArg", d => Debug.Log(d));
 Game.Event.Once("OnceEvent", () => Debug.Log("once"));
 Game.Event.Emit("MyEvent");
 Game.Event.Off("MyEvent", handler);   // 取消注册；没有 handler.Dispose()
-```
 
-### 定时器
-
-```csharp
 long id = Game.Timer.After(3f, () => Debug.Log("3s"));      // 返回 id
 long id2 = Game.Timer.Every(1f, () => Debug.Log("tick"));   // 返回 id
 Game.Timer.EveryName("heartbeat", 5f, cb);                  // 具名（同名先停旧）
 Game.Timer.Stop(id);
 Game.Timer.StopNamed("heartbeat");
 Game.Timer.StopScope("battle");
-```
 
-### 状态机
-
-```csharp
 // ★ 不要 new Fsm()（internal）；直接用 Game.Fsm
 Game.Fsm.RegisterState("idle",
     onEnter: () => Game.Logger.Info("FSM", "进入空闲"),
     onTick: dt => { },
     onExit: () => Game.Logger.Info("FSM", "退出空闲"));
-
 Game.Fsm.AddTransition("click", "running");
 Game.Fsm.Trigger("click");
 Game.Fsm.Force("running");
