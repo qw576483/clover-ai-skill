@@ -4,7 +4,7 @@
 
 ## 怎么用
 
-1. 复制下面骨架到 **`<项目根>/tools/check-assets.ps1`**（**编码 UTF-8 无 BOM，正文一律 ASCII**）。
+1. 复制下面骨架到 **`<项目根>/tools/check-assets.ps1`**（正文一律 ASCII ⇒ 存 **UTF-8 无 BOM** 即可；一旦里面出现任何非 ASCII 字节，**整个文件必须改存 UTF-8 with BOM** —— 口径见 `reference/verify-template.md` 硬坑 1）。
 2. 存量工程先跑 **`-Warn`**（只报数、退出码 0）：`powershell -NoProfile -ExecutionPolicy Bypass -File tools/check-assets.ps1 -Warn`
 3. 新项目 / 新加素材：**不带 `-Warn`** ⇒ 有未覆盖文件即退出码 1（闸门形态）。
 4. ⛔ **`-Warn` 的报告不是删除清单**。必须逐组人工核过（尤其大目录），确认不是形态 ②③④ 漏配，才谈裁剪。

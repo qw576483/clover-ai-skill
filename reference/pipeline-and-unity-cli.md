@@ -318,7 +318,7 @@ Get-Process -Id <unityPid> | Select-Object CPU, Responding, MainWindowTitle
 | 1 | 变量名**大小写不敏感** —— `$Out` 和 `$out` 是**同一个**变量 | 先 `param([string]$Out)` 声明输出路径，后面又 `$out = New-Object ...` ⇒ **把参数覆盖了** ⇒ 报 `[System.String] 不包含名为 "Add" 的方法`、`Set-Content 参数 Path 为空字符串` 这类完全指错方向的错 | `$out` / `$input` / `$args` / `$pid` / `$home` / `$error` / `$host` 这类名字**一律别用**（`$pid` 是**只读自动变量**，赋值直接报错） |
 | 2 | `$Matches` 会被**下一个**正则覆盖 | 一个条件里连用两个 `-match`，后面用 `$Matches[2]` 时它已经是**第二个**正则的捕获组 ⇒ 解析出的字典"条目数对、内容全空" | **一次 `-match` 立刻把 `$Matches` 落到局部变量**；更稳的是**不在一个条件里连用两个 `-match`** |
 | 3 | `New-Object T(a, b)` **不是**构造函数调用 | 参数会被当成**一个数组**传，或类型不对时**返回 null 且不报错**（如 `[math]::Ceiling()` 返回 `double`，而 `Bitmap(double,double)` 没有重载 ⇒ null）⇒ 后面报"无法对 Null 值表达式调用方法" | 一律用 `[Type]::new(...)`，并**显式 `[int]` 转换** |
-| 4 | PowerShell 5.1 按 **ANSI** 读 `.ps1` | 脚本里写中文注释 / 字符串（尤其 `→`、`★` 这类符号）会把字符串**截断** ⇒ 报一堆莫名的"缺少终止符" | **`.ps1` 内部只用 ASCII**；要输出中文就从数据文件里读 |
+| 4 | PowerShell 5.1 按 **ANSI** 读**无 BOM** 的 `.ps1` | 脚本里写中文注释 / 字符串（尤其 `→`、`★` 这类符号）会把字符串**截断** ⇒ 报一堆莫名的"缺少终止符" | **唯一口径 = 文件里有没有非 ASCII 字节**：没有 ⇒ 不需要 BOM；**有**（代码 / 注释 / 输出都算）⇒ **整个文件必须存成 UTF-8 with BOM**（推荐仍正文全 ASCII、中文从数据文件读） |
 | 5 | `Set-Content` 改文件有**编码风险** | 中文变乱码，或直接被工具拦下 | 优先用编辑工具；非要脚本写就用 `[System.IO.File]::WriteAllText($p, $t, (New-Object System.Text.UTF8Encoding($false)))` |
 | 6 | `Get-Content` **不带编码** | Windows 上可能按 GBK 解码 UTF-8 文本 ⇒ 中文乱码 / 匹配不上 | 读日志用 `Select-String`（自带编码探测）或显式 `-Encoding UTF8`；大文件用 `search_content` |
 | 7 | 长命令后面接 `Select-Object -Last N` | 它会把输出**全部缓冲到进程结束**，期间一个字都不显示 ⇒ 人和 AI 都会以为程序死了 | 长命令**后台启动 + 自己轮询** |

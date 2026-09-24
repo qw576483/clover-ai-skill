@@ -141,7 +141,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify.ps1 *> .ai-tmp/
 ```
 
 1. **⛔ `*>` 重定向出来的文件是 UTF-16LE**（带 BOM）。直接 `grep FAIL` 会**一条都匹配不到**（字符之间插了 `\x00`），极易误判成"闸门全绿"。⇒ 先转码再读：`iconv -f UTF-16LE -t UTF-8 .ai-tmp/test/verify-out.txt | grep -n '^FAIL\|^HUMAN-ONLY'`。（配套：本宿主的 PowerShell 工具 stdout 常不回显 ⇒ 一律**落盘 + 回读**。）
-2. **`impl-by-executor` 会把"你自己新增的实现 / 测试文件"判成孤儿**：该判据要求时间窗（默认 72 h）内改动的每个 `.cs` / `.go` 都能对上一行派活留痕（`.ai-tmp/test/ledger.tsv` 的 `kind=dispatch` 行；旧项目 `dispatch-log.tsv` 也算）。主 agent 直改的场合必须**先**按 `SKILL.md`「派活清单」第 6 条补一行（`kind=direct-fix`，或 `kind=adjudicated`），**再**跑闸门；事后补写会撞上证据新鲜度那一项。⚠️ **新增的 `*_test.go` / `verify-*.cs` 也算实现文件**，同样要点名。验收判据不是"看完工报告"，而是**闸门逐行全 `PASS`**（`SUMMARY: FAIL=0`）。
+2. **（历史）`impl-by-executor` 会把"你自己新增的实现 / 测试文件"判成孤儿**：该判据要求时间窗（默认 72 h）内改动的每个 `.cs` / `.go` 都能对上一行派活留痕。⛔ **这条闸门已删、不检了**（它数的是"有没有一行台账"，人一眼就能看出谁改的）。留下的规矩只有一条：主 agent 直改（`SKILL.md`「派活清单」第 6 条那条窄例外）时，在 `.ai-tmp/test/ledger.tsv` 补一行 `kind=direct-fix`。
 3. **⛔ 长时间 `go test` / `go vet` / 闸门：别直接跑，会被宿主的 shell 超时打断（`Signal: SIGTERM`）** —— 而且**输出连同缓冲区一起丢**（`... 2>&1 | tail` 这种管道尤其会把已完成的结果也吞掉，看起来像"卡住"，其实是**假挂起**）。正确做法二选一：① 用 `run_in_background` 跑，完成后再读；② **落盘 + 回读**：`go test ./game/... -count=1 > gotest.txt 2>&1`，然后单独 `cat gotest.txt`（即使 shell 报了 SIGTERM，**文件通常已经写完**，先去看文件）。
    ⚠️ 被 `SIGTERM` 打断的 `go` 进程可能**不释放构建缓存锁** ⇒ 后续 `go` 命令全部**真的**阻塞。判据：连续两条 `go` 命令都无输出且不动 ⇒ 先查残留 `go.exe`（`tasklist //FI "IMAGENAME eq go.exe"`），⛔ 不要因为第二条也"没输出"就断定代码有问题。
 4. **⛔ 往 `策划/验收表.md` 的表格单元格里写数学竖线会把列数撑破**：写 `|增益| ≥ 1` 会让该行从 5 列变 7 列，闸门 / 后续脚本按列解析就会错位。⇒ 写成 `abs(增益) ≥ 1`（或全角 `｜`）。自查：`grep "^| D150 " 策划/验收表.md | awk -F'|' '{print NF}'` 应为 **7**（5 列 + 首尾空）。

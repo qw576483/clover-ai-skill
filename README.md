@@ -21,7 +21,7 @@ QQ 群：**clover-engine交流1群** `1101150552`
 | `patterns/` | 可复制的范式：服务端（handler / datadef / timer / player-lookup / auth-server …）与客户端（ui / network / resource / fsm / event / timer / app-flow / entity-view …） |
 | `scaffold/` | 新项目脚手架与多 agent 任务书模板（`new-project.md`、`agent-impl.md`、`project-skill.md`、`coverage-matrix.md`） |
 | `experience/` | 踩坑沉淀（时间黑洞、性能排查、3D MMO 实战等） |
-| `scripts/` | 健康检查（`skill-health.ps1`、`skill-lint.ps1`、`gate-sync.ps1`） |
+| `scripts/` | 健康检查（`skill-health.ps1`、`skill-lint.ps1`）与工具（`compile-check.ps1`、`silent-failures.py`、`env-check.ps1`、`play-driver.ps1` 等，见 `SKILL.md` 路由表） |
 
 ## 怎么用
 

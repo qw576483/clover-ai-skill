@@ -48,12 +48,13 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 
 **4. 定规模档位**（只改**采样密度**，⛔ 不改"要不要判"）：`S 小 demo` 1-way · `M 中型` 2-way(pairwise) · `L 复刻/大型` 3-way + 全状态全边界。判一次、写在规格顶部；可上调，⛔ 不可因赶时间下调。
 
-**5. 素材先用参考物 A 自己的**：穷尽 = **≥4 轮**不同关键词（中英各半）× **≥3 类**站点 × 换过格式与打包；⛔ 穷尽之前不许上通用兜底素材。调研落盘 `策划/素材调研.md`（没有这份文件 = 素材闸门未通过）。
+**5. 素材先用参考物 A 自己的**：穷尽 = **≥4 轮**不同关键词（中英各半）× **≥3 类**站点 × 换过格式与打包；⛔ 穷尽之前不许上通用兜底素材。调研落盘 `策划/素材调研.md`（没这份文件 = 没做过调研）。
 
 **6. 开工前跑一次环境自检**（杀软 / 显卡 / 崩溃风暴）→ 见「§4 取证清单」第 5 条（脚本 `tools/env-check.ps1`）。
 ⛔ **360 没关时 Unity 编辑器根本起不来**：① 开工前问一句「360 关了吗」，不确定 = 按没关处理；② 别把"起不来"当"慢"。
 
-**7. 备齐四件套**：① `tools/verify.ps1` ② 强制层（git hook / CI / 打包入口）③ 基线图 `策划/基线图/` ④ diff 闭环器。**缺 ①② ⇒ 不许写代码；缺 ③④ ⇒ 不许碰外观 / UI。**
+**7. 备齐两件**：① `tools/verify.ps1`（就那 5 条）② 强制层（git hook / CI / 打包入口）。**缺 ①② ⇒ 不许写代码。**
+③ 基线图 / ④ diff 闭环器 = **可选**：只有真的要**逐像素**跟原版比时才做；日常 `表现类` = **截图 + 目检**。
 
 **8. 建完 `client/` + 把 `com.unity.pipeline` 写进 `Packages/manifest.json` 后，让用户自己开编辑器**；用户不开 ⇒ **停**（⛔ 不许自己 `unity run` / `-batchmode` 顶替）。
 
@@ -81,7 +82,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 **3. 派活后给用户一句预告**：说清**派了什么 / 成员名 / 队名**（异步不阻塞界面；成员完成后会 `send_message` 主动回报）。
 - 另一类故障 —— **命令 hang 住**（team 通道治不了，它只保证"调用方不陪等"）：任务书须逐字要求"**命令显式超时 + 心跳文件 + >12 分钟落盘回报**"（`patterns/multi-agent.md` 9b / `scaffold/agent-impl.md` §2.5）；用户随时打断无损 ⇒ **15 分钟没动静就去查心跳文件**。
 
-**5. 派活后立刻留痕**：`<项目根>/.ai-tmp/test/ledger.tsv` 追加一行，**固定 5 列** = `时间 \t kind \t 主体 \t 对象 \t 详情`，kind ∈ `dispatch`（执行者 / 任务书 / 预计范围）、`play`（执行者 / 片名 / 进 Play 的理由）、`heartbeat`（片名 / 步骤 / 状态）、`direct-fix` 或 `takeover`（执行者 / 相对路径 / 理由）—— **所有记账共用一个文件**，⛔ 不再分开建三个 tsv。**修 bug 优先交回原执行者。**
+**5. 派活后立刻留痕**：`.ai-tmp/test/ledger.tsv` 追加一行（**固定 5 列** = `时间 \t kind \t 主体 \t 对象 \t 详情`；kind ∈ `dispatch` / `play` / `heartbeat` / `direct-fix` / `takeover`，各列含义见 `reference/rules-full.md` §1.8）—— **所有记账共用一个文件**，⛔ 不再分开建三个 tsv。**修 bug 优先交回原执行者。**
 
 **6. 小改动例外（主 agent 自己做）**：单文件 + 净增删 ≤ 20 行 + 不改数据格式 / 不新增行为 +（用户明说 或 点状缺陷）⇒ 做，并留 `# direct-fix:` 一行。
 ⚠️ **很窄**：**多文件** / 改格式 / 新增行为 / **要写探针·驱动·脚本·截图** 一律派活；"4 个文件各改 1 行"**不适用**。
@@ -99,33 +100,39 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 
 **3. 日志**：**非预期分支必须留痕**（含 `switch` 的 default、高频回调只报一次）；客户端用 `Game.Logger.Info/Warn/Error(tag,msg)`，服务端用 `logger.Infof/Warnf/Errorf`；⛔ 裸 `Debug.Log` / ⛔ 服务端 `log.Printf`。
 
-**4. 禁用 API（会被闸门测红）**：`PlayerPrefs` / 裸 `Input` / `GameObject.Find` / `FindObjectOfType` / `Instantiate(` / `Resources.Load`。有例外 ⇒ 必须在 `策划/验收表.md` 的「允许的差异」里逐条登记（**只写在代码注释里 = 没登记 = 违规**）。
+**4. 禁用 API**：`PlayerPrefs` / 裸 `Input` / `GameObject.Find` / `FindObjectOfType` / `Instantiate(` / `Resources.Load` —— 硬禁令，**抽查靠 grep，不靠记性**。有例外 ⇒ 在 `策划/验收表.md` 的「允许的差异」里登记（**只写在代码注释里 = 没登记 = 违规**）。
 
-**5. 临时文件**：一次性产物只放 `<项目根>/.ai-tmp/test/`；驱动 `.ai-tmp/drivers/`；宿主 `.ai-tmp/hosts/`；**截图 `.ai-tmp/screenshots/`**（⛔ 不进 `Assets/`）；**判据资产**（探针 / 驱动 / 量法脚本）⇒ 落 `tools/probes/` 并提交。⛔ 不许散落到项目根 / `client/_dev/` / `Assets/` / `策划/` / 工程外。
-🚨 **`.ai-tmp` 有预算，超了就 FAIL**（闸门 `tmp-budget`）：**文件 ≤ 300 个、体积 ≤ 200 MB**。⛔ **构建缓存 / 依赖目录一律不许进 `.ai-tmp`** —— `GOCACHE` / `GOPATH` / `GOTMPDIR` / `node_modules` / `bin` / `obj` 指向系统默认位置（如 `%LOCALAPPDATA%\go-build`）。实测有项目把三个缓存目录塞进去：`gocache` 8562 + `gopath` 8313 + `gotmp` 1577 个文件 / 数 GB。⛔ 不许把整个目录**备份进** `.ai-tmp`（`*-bak-<时间戳>/`、`plan/` 之类）。**逐帧 TSV 必须带行数上限**（默认 ≤ 20 万行），结论落地后**即删**，只留过滤后的小产物。**"用完即删"是硬要求**：每片结束扫一遍 `.ai-tmp`，只留"本轮还在引用"的。
-🚨 **一律写绝对路径**，⛔ 不许写 `.ai-tmp/...`：**判断标准不是"我 `cd` 对了"，而是"这条命令里有没有 .NET / IO API"** —— `[IO.File]::AppendAllText('.ai-tmp\...')` / `IO.StreamWriter` 按**进程工作目录**（= 工作区根）解析，**不跟随 `Set-Location`**；`Copy-Item` / `Get-FileHash` / `Set-Content` 是 PS cmdlet ⇒ 跟随。⇒ **凡参数经过 .NET / IO API，一律绝对路径**；写盘后**回读目标文件核对**，并**扫一遍工作区根 `.ai-tmp`**（近 3 小时内本片新文件数必须为 0）。
-🚨 **驱动脚本的"自算根"陷阱**：`P=$(cd "$(dirname "$0")/../.." && pwd)` 从**别的 cwd** 跑 ⇒ `P` 算成那个 cwd ⇒ 锁 / `trash/` / 状态文件全落到那儿，而产物看上去"一切正常"。⇒ ① 驱动 / 判据脚本必须在 `<项目根>/` 根下运行；② 自算 `P` 后必须自我核对（`[ -d "$P/.ai-tmp" ] || { echo "abort: P=$P 不是项目根"; exit 9; }`）。
+**5. 临时文件**：一次性产物只放 `<项目根>/.ai-tmp/test/`（驱动 `drivers/`、宿主 `hosts/`、截图 `screenshots/`，⛔ 不进 `Assets/`）；**判据资产**（探针 / 驱动 / 量法脚本）⇒ `tools/probes/` 并提交；⛔ 不许散落到项目根 / `client/_dev/` / `Assets/` / `策划/` / 工程外。
+🚨 **三条最容易踩的坑**（细则见 `reference/rules-full.md` §1.8）：① **`.ai-tmp` 有预算**（闸门 `tmp-budget`：**≤300 文件 / ≤200 MB**，缓存与目录备份一律不许进）；② **经过 .NET / IO API 的路径一律绝对路径**（`Set-Location` 不跟随）；③ **驱动脚本"自算根"必须自我核对**（`[ -d "$P/.ai-tmp" ] || exit 9`）。
 
 **6. 原版资源**：下载 / 解包素材只放 `<项目根>/原版资源/`（含 `清单.md`）；进工程**只复制被引用的那几个**（⛔ 整包 / 整表全量搬），路径收敛到 `Core/ResPaths.cs`。
 
 **7. 配表**：一个功能一个**中文名** xlsx；页签名 = 表名**含后缀**（`skill_cs`）；运行时只走 `Tables.Default.X.Get(id)`。
 
-**8. 工程卫生**：一个 `.cs` 一个 MonoBehaviour；`.ps1` 纯 ASCII 或带 BOM。
+**8. 工程卫生**：一个 `.cs` 一个 MonoBehaviour；`.ps1` **有非 ASCII 字节就必须带 BOM**（唯一口径）。
 🚨 **`.ps1` 两个坑（都会让你"以为跑过了"）**：① **无 BOM 但含中文** ⇒ PS 5.1 按 **ANSI** 解码 ⇒ 引号被吞、报语法错（存成 **UTF-8 with BOM**）；② **`"$var:"` 被当成盘符引用** ⇒ **整份脚本解析失败、一行都不执行**，而**上一次跑的日志还在** ⇒ 会误判成"这轮跑过了"（用 `"${var}:"`；`Test-Path` 先确认日志**首行时间戳 = 本轮**）。
 **发车前三件必做**：① `Tokenize` 后 `errs.Count -eq 0`；② BOM 检查；③ **删除本轮日志**再发车。
 
 **9. ⛔ 不许改 skill、不许改引擎源码**（本 skill 的仓库源 / 宿主副本 / 项目级 `tools/ai-skill/`；`clover-client-unity-engine` 与 `clover-server-engine` 的 `Runtime/**` / `pkg/**` / `internal/**` / `Editor/**`）。
 发现**引擎缺口**（该有却没有的能力）/ **引擎 bug** / **skill 说不清或写错** ⇒ **写进 `<项目根>/引擎问题.md`**，然后**用绕法把活做完**（⛔ 不许停在这儿，⛔ 不许改源码绕过）。
-文件三段固定：`## 引擎缺口` / `## 引擎 bug` / `## skill 问题`；每行 `现象 | 最小复现 | 影响 | 我们的绕法 | 建议`（写不出复现的也照写，标"未复现"）。
+三段固定：`## 引擎缺口` / `## 引擎 bug` / `## skill 问题`；每行 `现象 | 最小复现 | 影响 | 我们的绕法 | 建议`（写不出复现的也照写，标"未复现"）。
 **唯一例外**：用户**本轮明说**"可以改引擎 / 顺手修引擎" ⇒ 才按 `patterns/engine-fix.md` 改，并同样在 `引擎问题.md` 记一行指向那次修复。
-判据（闸门 `no-engine-edits`）：交付前引擎仓 `git status --porcelain` 为空、skill 各副本字节未变；有引擎类问题却没有 `引擎问题.md` ⇒ `engine-issues` FAIL。
+判据（人工过目，非闸门条目）：引擎仓 `git status --porcelain` 为空、skill 各副本字节未变；有引擎类问题却没写 `引擎问题.md` ⇒ 补上。（`no-engine-edits` / `engine-issues` 已删、不检了。）
 
 ---
 
 ## §4 取证清单（**要验证 / 出证据前读**）
 
+**0. 验收哲学（先读这条；它管着下面所有条款，冲突时以它为准）**
+> **验收 = 用户的抱怨消失 + 关键路径跑过一次 + 表现类看一眼。** ⛔ 不做"程序化自证仪式"。
+- **默认只做三件事**：① 用户报的问题**能复现 → 修好 → 复现不了**；② **关键路径真跑一次**（编译 / 起服 / 进 Play / 打开界面），看**原始输出**或截图；③ **表现类**用**截图 + 目检**（"这条线歪了""这个按钮小了"这种一眼能看出的，⛔ **不写脚本判**）。
+- **只有"光看会骗人"时才上机械判据** —— 全部就 **5 条**，见 §6 第 2 条。其余检查一律**可选自检**，红了只当提示。
+- **写任何判据之前先问两句**：①「这条判据抓到的，是**人眼 / 逻辑一眼能看出来**的东西吗？**是 ⇒ 不写判据。**」②「这条判据上次红的时候，抓的是**真缺陷**还是**它自己写错了**？**后者 ⇒ 删。**」
+- **证据形态**：**一条命令 + 关键原始输出（几行）**，或**一张截图**。⛔ **不再要求**：五列 TSV / 每片必交证据表 / 每个判据必配负控 / 每步记 SHA256。
+- **用户不会报一个没问题的 bug** —— 出问题直接去查就行，**不需要各种验证仪式**。
+
 **1. 改动回路四拍**：① 只读取证 + 改动清单（⛔ 不写代码）→ ② 批量改（⛔ 不编译不截图）→ ③ **一次**编译 + 离线预演（**编译失败 ⇒ 中止一切验证**）→ ④ **集中出证据一次**。
-⛔ **别把四拍做成四份文档**：③ 的"预演报告" = 回报里**一行**（哪些格已就绪 / 哪些有风险）；④ 的"证据分格表" = **验收表里那几行**，⛔ 不另建 tsv。台账**只有四样**：`策划/验收表.md`、`策划/差异登记.tsv`、`.ai-tmp/test/ledger.tsv`、`策划/基线图/`（+ 交付前的联络图）—— 其余"清单 / 矩阵 / 报告"一律**并进这四样**，⛔ 不许另开文件。
+⛔ **别把四拍做成四份文档**：③ 的"预演报告" = 回报里**一行**；④ 的"证据分格表" = **验收表里那几行**，⛔ 不另建 tsv。台账**只有四样**：`策划/验收表.md`、`策划/差异登记.tsv`、`.ai-tmp/test/ledger.tsv`、`策划/基线图/`（+ 联络图）—— 其余"清单 / 矩阵 / 报告"一律**并进这四样**，⛔ 不许另开文件。
 
 **2. 取证要批量**：一个交付单元 = **一条驱动链一次跑完它的所有格 + 采一次联络图**。⛔ 不许"改一处编译一次 / 截一次图 / 逐项进出 Play / 每片各自重进一次 Play 做同一件事"。
 
@@ -133,23 +140,21 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 
 **4. 进 Play 记账（⛔ 不设次数上限）**：`ledger.tsv` 里 kind=`play` 的行，每次一行，**第 5 列（为什么必须进这条链）必须非空**。⛔ **账本只判"有没有理由"，不判"行数多不多"**。
 
-**5. 进 Play / 怀疑"卡·掉帧"之前，第一件事 = 环境自检**：跑 `tools/env-check.ps1`（脚本 = 本 skill `scripts/env-check.ps1`）—— 一次查三样：**杀软**（360 及同类；⛔ 不确定 = 按没关处理）/ **图形设备**（渲染设备名 + 帧时间 + 分辨率；是否落到 `Microsoft Basic Render Driver` 软件光栅）/ **崩溃风暴**（近 24h 同一 exe 崩溃 ≥3 次 ⇒ 先查是哪个进程，⛔ 别归因到你的代码）。
-**exit 1 ⇒ 停**：⛔ **此机器上一切"卡 / 掉帧 / 性能"结论无效**。
+**5. 进 Play / 怀疑"卡·掉帧"之前先跑环境自检** `tools/env-check.ps1`（= 本 skill `scripts/env-check.ps1`）：**杀软**（360 及同类；⛔ 不确定 = 按没关处理）/ **图形设备**（是否落到 `Microsoft Basic Render Driver` 软件光栅）/ **崩溃风暴**（近 24h 同一 exe 崩溃 ≥3 次 ⇒ 别归因到你的代码）。**exit 1 ⇒ 停**：⛔ 此机器上一切"卡 / 掉帧 / 性能"结论无效。
 
 **6. 采集即冻结**：采完 ⇒ 被验证文件冻结；要改 ⇒ **只重采受影响的行**。
 
-**7. 证据必须有锚点 + 分级**：**L3** 被测程序自己写的标记 / **L2** 脚本采集产物（须配 ledger）/ **L1** 执行者写的文字（⛔ 不能当判据）/ **L0** 无产物 = 未验证。
-⚠️ 判据要**判"过程"不判"结果"** —— 一条能靠"改一个数字"变绿的检查项，还没在判该判的东西（→ `reference/anti-gaming.md`）。
+**7. 证据的分级（一句话）**：**执行者自己写的文字不算证据**（"已修复 / 已实测 / 确认一致"都只是叙述）；**产物 / 截图 / 原始输出 / 运行时日志才算**。
+⛔ 但也**别把它做成仪式**：默认就是"**一条命令 + 几行原始输出**"或"**一张截图**"。
 
 **8. 证据必须比被验证对象新**；作废**只作废受影响的行**。
 
-**9. 每条验收行必须标类别**：`数值类` = 运行时日志 + 断言（**不截图**）/ `表现类` = **一次联络图**（格号 + 格上数值；AI 只读汇总图）/ `性能类` = **帧时间 + 渲染设备名（必须同时给）**。
+**9. 证据形态按内容分两类**：`数值类`（数值 / 逻辑 / 状态 / 坐标 / 计时）= **运行时日志 + 断言，⛔ 不截图**；`表现类`（动画 / 贴图 / UI 可见与对齐 / 颜色）= **截图 + 目检**（诊断态可拼**一次联络图**，AI 只读汇总图）。`性能类` = **帧时间 + 渲染设备名（必须同时给）**。
 
 **10. 判定权三分**：**可计算 → 脚本**；**参考物自带 → 参考物**；**只有眼睛能判 → 人**（同机位并排图）。**执行者的叙述不算证据**（"已修复 / 已实测 / 确认一致"都只是叙述）。
 - **验不了 ⇒ BLOCKED**（缺什么 / 试过什么 / 谁能给）；⛔ **声称验过自己验不了的东西 = 最严重违规**。
 
-**11.「抖 / 飘 / 抽搐 / 滑步」这类逐帧现象**，`eval_file` 的粒度（5~6 s 一次 = 0.2 Hz）判不了 ⇒ 必须开逐帧通道：注册 `UnityEditor.EditorApplication.update`，每帧落一行 TSV（带 `frame` + 时钟行），终止 = 显式 stop 文件 / 帧数 / 时长；存活判据 = **"日志有 `hook registered`" + "行数在长"两条一起看**。
-→ 做法 / 口径 / 案例读 `experience/per-frame-jitter-evidence.md`（⛔ 搭这条通道前必读）。
+**11.「抖 / 飘 / 抽搐 / 滑步」这类逐帧现象** `eval_file`（0.2 Hz）判不了 ⇒ 开逐帧通道（注册 `UnityEditor.EditorApplication.update`，每帧一行 TSV，显式 stop 文件 / 帧数 / 时长终止；存活判据 = 日志有 `hook registered` **且** 行数在长）→ 做法与案例见 `experience/per-frame-jitter-evidence.md`（⛔ 搭通道前必读）。
 
 ---
 
@@ -162,24 +167,19 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 - **爆炸半径修复**（跨文件 / 改格式 / 新增行为 / 改共享资源）⇒ 显式写出影响域（**维度 / 因果链 / 受影响行**），**只重判受影响的行**。
 - 判据：**改门板会影响"能不能走过去 / 挡不挡视线"** —— 只修报的那一条 = 拆东墙补西墙。
 
-**3. ⛔ 判据自己也会出事故：先确认它"能失败"，再确认它"该失败"**：
-- **假红**：命中数 ≈ 总帧数 ⇒ 几乎一定是**口径错**（基线要基于**游程 / 极值 / 分位**，不基于"出现过"）。
-- **永远不可能通过**：判据测的是素材不是代码 ⇒ 判据必须"**修我们的代码能让它变绿**"。
-- **负控打空**：注入量必须作用在**统计量本身**上（改第 1 个样本不影响中位数 ⇒ 等于没做、还假通过）⇒ 每条负控都要核对"红的**确实**是它自己那条"。
-- **分母口径**：速度类判据别用 `Time.deltaTime`（被 `Time.maximumDeltaTime` 夹到 1/3 s），要用时钟自己的推进量 `ΔrenderMs`。
-- **剔除瞬态 ≠ 隐藏证据**：要剔就**再单列一条判据**判它。
-- **两条一起做**：每条判据配 `--corrupt` 负控（注入缺陷 ⇒ 必须转红），片内跑一遍全量负控并写进报告。
-→ 案例 / 实测数字读 `experience/per-frame-jitter-evidence.md`。
+**3. ⛔ 判据自己也会出事故（先确认"能失败"、再确认"该失败"）** ⇒ 六种失败模式（假红 / 永远不可能通过 / 负控打空 / 分母口径 / 剔除瞬态 / 负控可选）与处置见 `reference/gate-self-accidents.md`。
 
 ---
 
 ## §6 交付清单（**想说"做完了"之前读**）
 
-**1. 验收表每一格都填满**：`策划/验收表.md` **零空行、零"不一致"**；允许的差异逐条登记（是什么 + 为什么 + 出处 + 何时消除）。
+**1. 验收 = 三件事（这就是全部）**：① 用户报的问题**能复现 → 修好 → 复现不了**；② **关键路径真跑一次**（编译 / 起服 / 进 Play / 打开界面），看**原始输出**或截图；③ **表现类看一眼**（截图 + 目检）。
+⛔ **不做"程序化自证仪式"** —— 不再要求"验收表每格填满 / 每行标类别 / 覆盖关系机械比对 / 实体清单 × 状态矩阵"。⛔ **但也不许"只修报的那一条"**：游戏是复合产物（几何对 + 碰撞错 = 箱子能穿；动画数据在 + 没播 = 木头人），**自己看出来的问题顺手一起修**。
 ⛔ **合法结束只有两种**：① **全部做完**；② **真的被阻塞**（缺的只有用户能给：本机文件 / 账号 / 付费 / 用户亲手点按钮 / 二选一决策），并说清"要用户给什么 + 拿到后我立刻做什么"。**除此之外任何一句"到此为止"都违规。**
 
-**2. "检查过"必须是一次机械比对（判**覆盖关系**，⛔ 不是行数相等）**：跑 `coverage-rows` —— ① `策划/实体清单.tsv`（脚本枚举，⛔ 手写）里**每个实体**都能在 `策划/验收表.md` 判定行里找到 ≥1 行；② 判定行**每一行**都对得上清单里的某个实体。⛔ **别写成"清单行数 == 判定行数"**：清单是**一实体一行**、判定行是**一实体 × 多状态多行**，两数**结构性不等** ⇒ 那样写要么**恒红**、要么被"两边凑相等"**凑成假绿**（口径见 `patterns/full-coverage-audit.md` 的「§7 闸门」第 1 条 `coverage-rows`）。
-⛔ **不许症状驱动**（报一条修一条 ⇒ 没报的全漏）；⛔ **不许"单维度完工当完工"** —— **游戏是复合产物**（几何对+碰撞错 = 箱子能穿；动画数据在+没播 = 木头人；音频在+没挂事件 = 全程无声）。
+**2. 交付前只跑 5 条机械判据**（落到 `tools/verify.ps1`，模板见 `reference/verify-template.md`）：
+① **编译 / 构建通过**；② **证据新鲜度**（图必须晚于它验证的源码 —— 人眼看图**永远**看不出是旧的，这条**只有机器判得准**）；③ **引用可达**（表里引的文件 / 行在盘上存在）；④ **交付卫生**（`.ai-tmp` ≤300 文件 / ≤200 MB、无 `bin/obj`、无 `-bak-`、无散落临时文件）；⑤ **脚本自己别崩**（`.ps1` 语法 0 错 + 非 ASCII 带 BOM；崩了 ⇒ **本次结论作废**）。
+**其余检查一律可选自检**，红了只当提示，⛔ 不许拿它拦交付。**写任何新判据前先问**：这条抓到的是**人眼 / 逻辑一眼能看出来**的东西吗？**是 ⇒ 不写**。
 
 **3. 1:1 硬标准六维**：布局按原版像素 / 素材必须是 A 原版 / 字体照原版 / 色调不加滤镜 / 交互反馈 / 节奏 = `策划/对照表.md` 每行"原版值(出处) / 我们的值 / **差值 = 0**"。
 ⛔ **画面 / UI / 表现不像原版 = 该版本不可交付**；"基本一致 / 大致像 / 略有差异" **不算一致**。
@@ -204,7 +204,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 
 ## §7 跟用户说话清单（**要回复用户前读**）
 
-**1. 只有两种能开口**：① **被阻塞**（缺的只有用户能给）② **全部做完**（验收表每格填满且自己读过证据）。
+**1. 只有两种能开口**：① **被阻塞**（缺的只有用户能给）② **全部做完**（三件事都做完：报的问题修好、关键路径真跑过一次、表现类看过 —— `§6` 第 1 条；⛔ **不是**"验收表每格填满再交表"）。
 **其余一切句子一律删掉、继续做** —— 包括「要不要 / 接下来 / 进度 / 还需要我 / 你看行吗 / 计划 / 待办 / 还差几步」。
 
 **2. ⛔ 禁止的句式**：「我先汇报进度，下一棒继续做」「验收表里有 N 行不一致，已登记，本轮到此」「预算快满了」「我会继续做」—— **"我会继续做"这句本身就是停工信号**。
@@ -222,10 +222,12 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 **2. ⛔ 红线**：新建项目时，工作区里**别的** `clover-project-*`（源码 / skill / 策划 / docs / 生成器 / 素材）**不许读 / grep / 照抄**；通用形状只从本 skill 的 `patterns` / `scaffold` / `experience` 取。**两个例外**：① 用户本轮点名；② [**游戏 Demo 清单**](https://github.com/qw576483/clover-doc/blob/main/ai/game-demo.md) **列出的** `clover-project-*` **可读、可对照**其**做法与形状**（目录 / 交付口径 / 生成器组织），⛔ 但它的领域内容（游戏专有名词 / 数值 / 素材）不许沿用。
 **路径可达的证据**：交付前跑 `tools/verify.ps1`；验收表里每个 `<路径>:<行号>`、每个截图路径都要**能查到**（悬空 = 等于没证据）。
 
-**3. 闸门是什么、为什么必须有**：**提示词是请求，闸门才是保证。** "必须始终成立"的事 ⇒ **同时**落 ① `tools/verify.ps1` 检查项 ② 强制层（git hook / CI / 打包入口）③ 会话起始必读卡。
-判据：**能不能用一条命令把它测红**？不能 ⇒ 先做成脚本再谈遵守。
-⛔ **但闸门不是"零失败率"** —— 三条补充（缺一条 ⇒ 闸门会被迎合）：**判过程不判结果** / **证据分级（L1 文字不算）** / **闸门自身也要被闸**（新增或改检查项后必须做**两次自检**：已知正确样本 PASS + 已知错误样本 FAIL；模板与本项目的检查项清单必须能机械比对 ⇒ `scripts/gate-sync.ps1 -Project <项目根>`）。
-→ `reference/deterministic-gates.md`（为什么 · 挂点）、**`reference/anti-gaming.md`**（闸门挡不住什么 · 防博弈 · 证据锚点）。
+**3. 闸门怎么用（⛔ 别让它长回来）**：**提示词是请求，闸门才是保证** —— 但闸门**只留 5 条**（§6 第 2 条），其余都是**可选自检**。
+- **上限 = 5 条**：想加一条检查项，先过 §4 第 0 条那两句反问；**过不了就别加**。**"计划中 / planned"的检查一律删掉** —— 一标 planned 就会有人去实现它，最后又长回几十项。
+- **闸门自身也会崩**：`.ps1` 语法 0 错 + **有非 ASCII 字节就必须带 BOM**（唯一口径）；**崩了 ⇒ 本次结论作废**，⛔ 不许假装绿。
+- **两条离线真判据**（能离线判的⛔ 不进 Play）：编译 ⇒ `scripts/compile-check.ps1 -Project <项目根>`；"静默失败"（空 `catch` / 吞异常 / `_ =`）⇒ `scripts/silent-failures.py --root <项目根>`。
+- **模板清单只是参考**：`GATE-ITEMS` 块 `required` 计数 = 0 —— 判据与命名由项目自己定，**不对齐、不报缺名**；⛔ 无对账脚本（要就自己内联）。
+→ `reference/deterministic-gates.md`（为什么 · 挂点）、`reference/anti-gaming.md`（闸门挡不住什么 —— **当复盘读**，⛔ 不是必做检查清单）。
 
 **4. 层级声明**：用户本轮明说 > 本页规则层 > 项目级 skill > 项目文档 > 既有代码（见 §7 第 3 条）。
 
@@ -242,15 +244,18 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 | 建新工程 | `scaffold/new-project.md`、`reference/fast-compile-loop.md` |
 | 写业务代码前 | `reference/architecture.md`、`reference/engine-mental-model.md` |
 | 菜单 / 流程编排 | `patterns/client/app-flow.md` |
+| **模块执行顺序（输入 `-200` → 模拟 `0` → 表现 `LateUpdate`）** | **`patterns/client/execution-order.md`** |
 | UI / 外观 | `reference/visual-loop.md`、`patterns/client/ui.md` |
 | 网络 / 实体同步 | `patterns/client/network.md`、`patterns/client/entity-view.md` |
-| 配表 | `patterns/table.md` |
+| 配表 | `patterns/table.md`、**`scripts/table-pipeline.ps1`** |
 | **引擎缺口 / 引擎 bug / skill 说不清** | ⛔ **不改源码** ⇒ 写 `<项目根>/引擎问题.md`（`引擎缺口` / `引擎 bug` / `skill 问题` 三段）；**用户本轮明说可改**时，才读 `patterns/engine-fix.md`（最小复现 → 最小修复 → 根因写进代码注释 + 回归用例） |
 | 派活 / 编排 | `patterns/multi-agent.md`、`scaffold/agent-impl.md` |
-| **"检查过 / 是不是 1:1" 怎么机械判** | **`patterns/full-coverage-audit.md`**（复合产物穷举矩阵：12+3 维度 → 实体清单 → 状态矩阵 → 判据 → 闸门）；实例化模板 **`scaffold/coverage-matrix.md`** |
-| 验收 / 交付 | `reference/game-delivery.md`、`reference/verify-template.md`、`reference/design-review.md` |
+| **（可选，大型复刻才用）穷举自检** | `patterns/full-coverage-audit.md`（12+3 维度矩阵）、`scaffold/coverage-matrix.md` —— ⛔ **默认不做**：验收 = 抱怨消失 + 关键路径跑一次 + 表现类看一眼 |
+| 验收 / 交付 | `reference/game-delivery.md`、`reference/verify-template.md`、`reference/design-review.md`、**`scripts/readback-selfcheck.ps1`**、**`scripts/baseline-index-check.py`** |
 | 素材 | `reference/asset-sources.md` |
-| **原版素材打包 / 交付文档自检 / README 用图发布** | **`scripts/pack-original-assets.ps1`**（`-Src`/`-Out`）、**`scripts/check-delivery-docs.py`**（`--root`/`--docs`/`--conclusion-col`）、**`scripts/readme-shots.ps1`**（`-Shots`/`-Dest`/`-MapFile`，缺帧 exit1） |
+| **素材引用闸门（"进了工程却到不了"的素材）** | **`reference/check-assets-template.md`**（复制成 `<项目根>/tools/check-assets.ps1`；`-Warn` 只报不删；五形态判覆盖） |
+| **原版素材打包 / README 用图发布** | **`scripts/pack-original-assets.ps1`**（`-Src`/`-Out`）、**`scripts/readme-shots.ps1`**（`-Shots`/`-Dest`/`-MapFile`，缺帧 exit1） |
+| **离线真编译 / 扫"静默失败"**（⛔ 不启编辑器） | **`scripts/compile-check.ps1`**（`-Project <项目根>`，可选 `-Assembly auto\|runtime\|editor`；exit 0/1/2）、**`scripts/silent-failures.py`**（`--root <项目根>`；找空 `catch` / 吞异常不记日志 / `_ =` 丢弃返回值） |
 | **交付用 README / LICENSE**（README 五节骨架 + 实机图落仓库；LICENSE = MIT + 第三方素材声明） | **`scaffold/new-project.md` §0.2**、**`scaffold/license-third-party-declaration.md`** |
 | 服务端 | `patterns/handler.md`、`patterns/datadef.md`、`patterns/signup-login.md`、`patterns/auth-server.md` |
 | **掉帧 / 卡 / 帧率异常** | **`experience/perf-triage.md`**（**先证伪环境（渲染设备）→ CPU/GPU 拆分 → A/B → 才轮到代码红旗**） |
@@ -260,11 +265,12 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 | **像素 diff / 截图统计 / 字体量法（判定交给脚本）** | **`clover-tools/visual-verify/`** —— `visual-diff.py`（`--threshold` 0.1 / `--max-diff-ratio` 0.001 / `--max-diff-pixels` / `--min-ssim` 0.99 / `--aa-policy`）、`shot-stats.py`、`font-metrics.py`；用法与判据见该目录 `README.md` |
 | **进 Play 跑探针场景（一次会话多场景 / 每场景新会话）** | **`scripts/play-driver.ps1`**（`-ProjectPath` / `-Scene` / `-FreshSession` / `-ReusePlay` / `-PreflightOnly`；每条 unity 调用自动带 `--project-path`） |
 | **写探针 / 定出图判据**（输入桩逐帧边沿语义 / 场景开始-结束日志标记 / 退化帧唯一色数 / 出图闸门 / 机位随图落盘） | **`scaffold/probe-harness.md`** |
-| Unity CLI / Pipeline | `reference/unity-cli.md`、`reference/pipeline-and-unity-cli.md` |
+| **离线判 Unity 精灵帧序 / 逐帧 pivot（不进编辑器、零依赖）** | **`scripts/frame-order-check.py`** |
+| **一次性产物 → 判据资产（唯一合法通道 + append-only 账本）** | **`scripts/promote-judgement-asset.ps1`** |
+| Unity CLI / Pipeline | `reference/unity-cli.md`、`reference/pipeline-and-unity-cli.md`、**`scripts/console-filter.py`** |
 | 服务端环境 | `reference/server-env.md` |
-| **闸门挡不住什么 / 防博弈 / 证据不可伪造** | **`reference/anti-gaming.md`** |
-| **"项目闸门跟模板脱节了吗"** | **`scripts/gate-sync.ps1 -Project <项目根>`**（缺项 ⇒ FAIL；并检查「带 `[SHIPPED-VERBATIM]` 的模板骨架代码 == 已发布 gate 代码」的 `skeleton-equals-shipped` 漂移） |
-| **复检闸门自检：已知正确样本必绿 + 注入缺陷必红（夹具外置）** | **`scripts/gate-selftest.ps1 -Project <项目根>`** |
+| **闸门为什么会被骗（复盘用，⛔ 不是必做检查清单）** | `reference/anti-gaming.md`、**`scripts/cleanup-ambiguity-sim.ps1`**、**`scripts/cleanup-finally-twin-check.ps1`** |
+| **判据 / 闸门自己做事故（假红 / 永远不可能通过 / 负控打空 / 分母口径 / 剔除瞬态 / 负控可选）** | **`reference/gate-self-accidents.md`** |
 | **项目级 skill 的指针指向空目标** | **`scaffold/project-skill.md` 硬规则 5**（报告缺规则、⛔ 不许代填） |
 | **案例 / 代价 / 细则** | `reference/rules-full.md` |
 

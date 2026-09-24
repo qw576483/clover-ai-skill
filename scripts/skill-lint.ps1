@@ -165,10 +165,13 @@ if (-not (Test-Path $tplPath)) {
     }
     $codeLabels = @($codeLabels | Sort-Object -Unique)
     $badLabels = @($codeLabels | Where-Object { $_ -match '[^\x00-\x7F]' })
-    # count floor: a regex that silently stops matching must never read as green
-    if ($codeLabels.Count -lt 8) {
+    # count floor: a regex that silently stops matching must never read as green.
+    # Floor lowered 8 -> 4 on purpose: the template's gate list was deliberately cut to 5 items
+    # (SKILL.md section 4 item 0: verification = complaint gone + key path run once + eyeball the
+    # visual class). A high floor would force the template to keep ceremony it just removed.
+    if ($codeLabels.Count -lt 4) {
         $fail++
-        Say 'FAIL' 'label-ascii' ('' + $codeLabels.Count + ' label(s) extracted -- fewer than 8 means the extraction broke, not that the labels are fine')
+        Say 'FAIL' 'label-ascii' ('' + $codeLabels.Count + ' label(s) extracted -- fewer than 4 means the extraction broke, not that the labels are fine')
     } elseif ($badLabels.Count -gt 0) {
         $fail++
         Say 'FAIL' 'label-ascii' ('non-ASCII label(s): ' + ($badLabels -join ', ') + ' -- a BOM-less copy of the block turns these into mojibake and the item never matches')

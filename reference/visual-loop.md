@@ -112,6 +112,8 @@
 
 用 `Pillow` 之类把各格拼成大图，**每格必须烧上**：`格号 + 状态名 + 类别 + 关键数值`。格间留分隔线；角落放采集时间 / 构建标识；同时输出 `index.tsv`：`格号 ↔ 验收表行号 ↔ 截图来源 ↔ 采集时的日志行`。
 
+**工具（已实现，⛔ 不手摆）**：拼版 = `clover-tools/visual-verify/compose-contact-sheet.py`；窗口级截屏 = 同目录 `capture-editor-window.ps1`（编辑器以管理员身份启动、外部置顶被 UIPI 挡住时，用引擎 `Editor/capture-editor-screen.cs` 的 `run_script` 入口在进程内采）。用法与判据见 §8.6。
+
 ### 8.4 判定（**脚本按格做，AI 只看汇总**）
 
 ① 脚本按格做**确定性 diff / 数值断言** → 逐格 `PASS / FAIL`；② **AI 只读整张联络图一次**（聚类 / 摘要 / 滤渲染噪声）；③ 只有 `FAIL` 的格才去看那一格的**原始大图**；④ 终审仍然是人。
@@ -121,3 +123,41 @@
 - ⛔ **时间序列 / 手感 / 动画节奏 / 音效时机**不许用拼版代替 —— 这类只能逐帧比或由人给基线。
 - ⛔ **每格必须来自真实运行**：格上烧的数值与 `index.tsv` 里的日志行必须对得上，脚本要校验"这 N 条日志都在"（防止"拼一张图看起来都验了"）。
 - ⛔ **检测不许变成 AI 看图**：判定永远是脚本数字，AI 只看汇总 —— 否则就是把**最贵、最不可靠**的东西放到了判定位上。
+
+### 8.6 采集与拼版的判据资产（用法 + 判据）
+
+**① 窗口级截屏** —— OS 层像素，采的是**用户真正看到的画面**（含编辑器叠加的组件图标 / Gizmos / 选中高亮，这些**不在**游戏后缓冲里），与 `Screenshot.CaptureToFile`（帧末取后缓冲）互补，⛔ 不互相替代（区别写在两个文件头注释）。
+
+| 入口 | 位置 | 何时用 |
+|---|---|---|
+| `capture-editor-window.ps1` | `clover-tools/visual-verify/` | 外部（PowerShell）采窗口像素 |
+| `EditorScreenCapture.Info/Raise/Drop/Shot/Gizmos/Freeze` | 引擎 `Editor/capture-editor-screen.cs`（`run_script --entry CloverEngine.Editor.EditorScreenCapture.Shot`） | 编辑器以**管理员**身份启动时（UIPI 挡住外部置顶），在编辑器**进程内**采 |
+
+| 参数（PS1） | 默认 | 说明 |
+|---|---|---|
+| `-Out` | 必填 | 目标 `.png`（非 `.png` 直接拒绝） |
+| `-TitleMatch` | — | 窗口标题**正则**（忽略大小写），按面积取最大匹配 |
+| `-EditorPid` | 0 | 限定进程；与 `-TitleMatch` **至少给一个** |
+| `-TimeoutSec` | 15 | 等窗口出现（0 = 单次尝试） |
+| `-X/-Y/-W/-H` | — | 窗口内相对矩形裁剪（四个一起给） |
+| `-Focus` / `-TopMost` / `-Desktop` | off | 还原 / 置顶 / 改走桌面合成（遮挡时可采到别的窗口） |
+| `-AllowMultiMonitor` | off | 多显示器**默认拒绝**（坐标口径含糊） |
+| `-MinMeanRGB` | 2.0 | 退化阈值 |
+
+判据（失败一律 **exit 非 0**，⛔ 不许静默出一张黑图）：窗口找不到 / 超时 = `3`；最小化且未 `-Focus` = `3`；多显示器未 `-AllowMultiMonitor` = `5`；`PrintWindow` 自报失败 = `6`；**全黑或纯色**（`uniqueColors<=1` 或 `meanRGB < -MinMeanRGB`）= `4`，此时 `<Out>` **不产出**（诊断副本写 `<Out>.rejected.png`）；裁剪框越界 / 参数非法 = `2`。成功时打印 `hwnd / rect / uniqueColors / meanRGB / bytes / sha256`。
+
+**② 联络图拼版** —— `clover-tools/visual-verify/compose-contact-sheet.py`：
+
+| 参数 | 默认 | 说明 |
+|---|---|---|
+| `--shots` | 必填 | 目录 / glob / 单个文件；逗号或分号分隔，可重复（目录与 glob 内部 `sorted()` 定序） |
+| `--cols` | 4 | 列数 |
+| `--labels` | — | 分号分隔的 `[格号=]状态名[\|类别\|关键数值]`（带 `\|` 时须三段齐全），烧在格下 |
+| `--out` | 必填 | 联络图 PNG |
+| `--index` | `<out 去扩展名>.index.tsv` | 索引表列：`格号 / 截图来源 / 状态 / 类别 / 关键数值` |
+| `--title` | — | 顶部标题：**采集时间 / 构建标识由调用方传入**（工具不自动烧时间戳，否则破坏确定性） |
+| `--cell-size` | 480x320 | 每格图像框 |
+
+判据：缺任一张图 = **exit 4 且一个字节都不写**（⛔ 不半发布）；标签数量不匹配 / 格号越界 = `2`；依赖缺失 = `3`。每格坐标 / 尺寸 / 居中全由 `--cols` 与 `--cell-size` 算出、缩略图固定 `LANCZOS` ⇒ **同输入两次跑，图与索引的 SHA256 相同**（脚本自带打印这两个 SHA，便于当场复核）。
+
+⚠️ **两条实测坑（写同类脚本请照抄，2026-09-24 当场复现并修掉）**：① `--shots <目录>` 与 `--out` 落在同一目录时，**输出文件不算输入**（否则第二遍把第一遍写的图纳入输入 ⇒ 格数 7→8、SHA 全变，看起来像"工具不确定"）。② Python 的 `stdout` 在**重定向**下编码是 GBK（实测 `sys.stdout.encoding == "gbk"`）⇒ 目标路径里的**非 GBK 字符**会让 `print` 在**文件已写好之后**抛 `UnicodeEncodeError` 并以 exit 1 收场（**假红 + 状态与判据不一致**），中文则被写成 GBK 字节、按 UTF-8 读成乱码；显式 `sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")` 即可（⛔ 不要去改被验源码的编码）。
