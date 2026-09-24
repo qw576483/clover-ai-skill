@@ -1,4 +1,4 @@
-# 模块速查表（提炼自 clover-server-engine-index.md）
+# 模块速查表
 
 业务只依赖 `clover-server-engine/pkg/*` 转发层（类型别名 + 工厂），不引 `internal/*`。
 

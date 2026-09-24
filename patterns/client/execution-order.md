@@ -5,7 +5,7 @@
 > **输入慢一帧**（开火 / 移动"点了没反应"）和**射线打的是上一帧的眼睛位置**。
 > 这两种故障在截图与日志里都看不出来 —— 所以必须有一条能机械跑的检查兜着。
 >
-> 本页给：阶段表（谁属于哪个阶段）+ cs16 实测映射（每个值 `文件:行`）+ **可在任何项目里跑的值域/数量检查**。
+> 本页给：阶段表（谁属于哪个阶段）+ **可在任何项目里跑的值域/数量检查**。
 > ⛔ 术语钉死：这里的"**表现**"专指**帧末读模拟结果去画**（`LateUpdate`），不是"音效 / 提示"这类事后表现。
 
 ---
@@ -36,37 +36,7 @@
 两条补充，缺一条就会被问"为什么不是随便挑的数字"：
 
 - **为什么 `-100` 落在 `-200` 与 `0` 之间**：`[DefaultExecutionOrder]` 对 `Update` 与 `LateUpdate` **同时生效**，同一批类在两条链上保持**同一个相对次序**。于是 `LateUpdate` 里自动得到"相机 `-200` → 视图 `-100`"的顺序 —— 视图读到的永远是**本帧**相机算完的位姿。⛔ 别用别的数字，否则 `Update` 链和 `LateUpdate` 链必然有一条是错的。
-- **⛔ 别把"挂载顺序"当"执行顺序"**：`gameObject.AddComponent<A>()` 之后 `AddComponent<B>()` 只决定 **`Awake` / `OnEnable`** 的先后，**不决定 `Update` 的先后**。（cs16 实测就是这么干的：`Bootstrap` 先挂地图模块再挂比赛模块，解决的是 `Awake` 里找门面；谁先 `Update` 由 `[DefaultExecutionOrder]` 说了算。）
-
----
-
-## 2. cs16 实测映射（2026-09-24 回读源码，逐处带 `文件:行`）
-
-| 类 | 值 | 阶段 | 出处（原文见 §5 锚点表） |
-|---|---|---|---|
-| `EngineRunner`（引擎侧） | `-10000` | ① 引擎 tick | `clover-client-unity-engine/Runtime/Core/EngineRunner.cs:78` |
-| `PlayerModule` | `-200` | ② 输入采集 | `clover-project-cs16/client/Assets/Scripts/Module/Player/PlayerModule.cs:31` |
-| `ViewModule` | `-100` | ④ 表现（帧末读） | `clover-project-cs16/client/Assets/Scripts/Module/View/ViewModule.cs:33` |
-| `MatchModule` | 不写（`0`） | ③ 模拟 | `clover-project-cs16/client/Assets/Scripts/Module/Match/MatchModule.cs:118` |
-| `AudioModule` | 不写（`0`） | ⑤ 事后表现 | `clover-project-cs16/client/Assets/Scripts/Module/Audio/AudioModule.cs:24` |
-| `BotModule` | 不写（`0`） | ③ 模拟（AI） | `clover-project-cs16/client/Assets/Scripts/Module/Bot/BotModule.cs:141` |
-
-**cs16 自己的正确性前提（原文照抄，不是我总结的）** —— `PlayerModule.cs:17-21`：
-
-```text
-PlayerModule.Update   (order -200)  采集输入 → match.SetLocalInput(cmd)      ← 必须早于模拟 Tick
-MatchModule.Update    (order    0)  模拟推进：扣弹/限速/累后坐力/移动解算    ← agent-03
-PlayerModule.LateUpdate             ① 相机算位姿与视线 ② 射击队列消费+射线 ③ 写相机
-```
-
-> 放反了会得到两种典型故障：输入慢一帧（开火"点了没反应"）、以及"射线打的是上一帧的眼睛位置"。
-
-**"输入采样"到底发生在哪一刻（这条决定 `-200` 是否读得到本帧输入）**：引擎驱动器 `EngineRunner` 挂 `-10000`（最优先），它的 `Update` 第一件事就是 `Input?.Tick()`（`clover-client-unity-engine/Runtime/Core/EngineRunner.cs:78`、`Runtime/Core/Game.cs:754`）⇒ **本帧输入在 `-10000` 就已采样完**，`-200` 的输入采集读到的是**本帧**数据。这正是"引擎 tick 必须排在一切业务之前"的原因。
-
-⚠️ **cs16 有一条注释基于过期前提，照抄前必须知道**：`PlayerMotor.cs:189-190` 写"`Game.Input.Tick()` 由引擎的 `EngineRunner`（**默认执行顺序**）驱动，与业务 `Update` 的先后不保证"，并因此"再直读一次 WASD"来消除移动慢一帧。按当前引擎，`EngineRunner` 的值是 `-10000`、**不是**默认序号，先后是**确定**的（引擎 tick 先跑）⇒ 那段直读属于**冗余保险**，不是必需。
-⇒ 结论：**先保证"引擎驱动器 `-10000` 唯一且业务不占"**，再谈输入层；⛔ 不许在输入层假定"引擎 tick 可能后跑"而重复采样（那是用错误前提换来的一份永不被执行的代码路径）。
-
-（cs16 的客户端引擎包是指向 `clover-client-unity-engine` 的 junction，实测：`clover-project-cs16/client/Packages/com.clover.unity-engine` 的 `LinkType=Junction`、`Target={c:\Work\Server\f-v2\clover-client-unity-engine}` ⇒ 上面读的 `EngineRunner.cs` 就是 cs16 实际跑的那份。）
+- **⛔ 别把"挂载顺序"当"执行顺序"**：`gameObject.AddComponent<A>()` 之后 `AddComponent<B>()` 只决定 **`Awake` / `OnEnable`** 的先后，**不决定 `Update` 的先后**。挂载顺序解决的是 `Awake` 里找门面；谁先 `Update` 由 `[DefaultExecutionOrder]` 说了算。
 
 ---
 
@@ -80,7 +50,7 @@ PlayerModule.LateUpdate             ① 相机算位姿与视线 ② 射击队�
 2. 每个值必须 ∈ `{-200, -100}`；命中别的值 ⇒ **越界，点名** `类名 文件:行 值`；
 3. `-200` 的个数必须**恰好 1**；`0 个` ⇒ **假绿**（输入采集悄悄挪回默认 `0` = 模拟层，顺序从此无人保证），`≥2 个` ⇒ 越界；
 4. `client/ProjectSettings/` 下任何文件出现非空 `m_ExecutionOrder` ⇒ **FAIL**（顺序被藏进资产面板，代码里 grep 不到）；
-   反之"该 key 全仓 0 命中" ⇒ PASS（cs16 = PASS）。
+   反之"该 key 全仓 0 命中" ⇒ PASS。
 
 ```powershell
 # 值域 + 数量检查（把 $Client 换成你的 client 目录）
@@ -100,7 +70,7 @@ $n200 = @($rows | Where-Object { $_.Value -eq -200 }).Count
 if ($n200 -ne 1) { Write-Output ("FAIL execution-order: -200 count = $n200 (must be exactly 1: 0 = input moves to the sim phase silently)") }
 ```
 
-> ⚠️ 上例只认**字面量**（`[DefaultExecutionOrder(-200)]`）。若代码里写成 `[DefaultExecutionOrder(ExecutionOrder)]`（cs16 的 `ViewModule` 就是这么写的：常量是编译期常量，attribute 接受它），脚本要回读**同一个文件里的 `ExecutionOrder` 常量**再判 —— §4 的完整脚本就是这么做的。**自查一下你的解析器能覆盖两种写法**，否则它会静默漏掉一整类（这正是"判据自己也会骗人"）。
+> ⚠️ 上例只认**字面量**（`[DefaultExecutionOrder(-200)]`）。若代码里写成 `[DefaultExecutionOrder(ExecutionOrder)]`（常量是编译期常量时 attribute 也接受它），脚本要回读**同一个文件里的 `ExecutionOrder` 常量**再判 —— §4 的完整脚本就是这么做的。**自查一下你的解析器能覆盖两种写法**，否则它会静默漏掉一整类（这正是"判据自己也会骗人"）。
 
 ### 3.2 「缺一个阶段值」会被谁抓到
 
@@ -160,45 +130,13 @@ Write-Output ("===== execution-order: FAIL=$fail  (scanned " + $rows.Count + ' a
 exit $(if ($fail -gt 0) { 1 } else { 0 })
 ```
 
-对 cs16 现状的**期望输出**（本次实测）：`scanned 2 attribute(s)` / `FAIL=0` —— `PlayerModule = -200`、`ViewModule = -100`，`-200` 恰好 1 个，`client/ProjectSettings/` 下 `m_ExecutionOrder` 0 命中。
-
----
-
-## 5. cs16 锚点表（本文出现的每个 cs16 符号都能在源码里核对）
-
-> 格式：`| 符号 | 域 | 出处 | 该行必须出现的原文 |`。
-> 域 = `cs16`（被上浮的项目，路径相对工作区根）或 `引擎`（API 出处）。
-> 校验方式：**回读该 `文件:行`，断言行内含「必须出现的原文」，且符号能在对应源码树里 grep 到**；任一不成立即点名 FAIL。
-> 自查：抽查一行**不存在的符号名** ⇒ 检查必须转红并点名该行（转不了红 ⇒ 这条锚点检查等于没做，它可能一直在"未解析就跳过"）。
-
-<!-- cs16-symbol-roots: AppFlow,IAppFlow,Bootstrap,PlayerModule,PlayerMotor,ViewModule,MatchModule,AudioModule,BotModule,CsMapModule,CsHudSnapshot,CsMatchConfig,CsTeam,CsConst,SceneNames,ResPaths,Events,State,Trigger,GameKey,CsPlayerSettingsStore,CloverRes,CloverInput,ICsMatch,ICsMap -->
-
-| 符号 | 域 | 出处 | 该行必须出现的原文 |
-|---|---|---|---|
-| `DefaultExecutionOrder` | cs16 | `clover-project-cs16/client/Assets/Scripts/Module/Player/PlayerModule.cs:31` | `[DefaultExecutionOrder(-200)]` |
-| `ExecutionOrder` | cs16 | `clover-project-cs16/client/Assets/Scripts/Module/Player/PlayerModule.cs:37` | `public const int ExecutionOrder = -200;` |
-| `PlayerModule` | cs16 | `clover-project-cs16/client/Assets/Scripts/Module/Player/PlayerModule.cs:17` | `(order -200)` |
-| `LateUpdate` | cs16 | `clover-project-cs16/client/Assets/Scripts/Module/Player/PlayerModule.cs:19` | `PlayerModule.LateUpdate` |
-| `MatchModule` | cs16 | `clover-project-cs16/client/Assets/Scripts/Module/View/ViewModule.cs:18` | `MatchModule.Update` |
-| `ViewModule` | cs16 | `clover-project-cs16/client/Assets/Scripts/Module/View/ViewModule.cs:33` | `[DefaultExecutionOrder(ExecutionOrder)]` |
-| `ExecutionOrder` | cs16 | `clover-project-cs16/client/Assets/Scripts/Module/View/ViewModule.cs:39` | `public const int ExecutionOrder = -100;` |
-| `LateUpdate` | cs16 | `clover-project-cs16/client/Assets/Scripts/Module/View/ViewModule.cs:138` | `private void LateUpdate()` |
-| `MatchModule` | cs16 | `clover-project-cs16/client/Assets/Scripts/Module/Match/MatchModule.cs:118` | `private void Update()` |
-| `AudioModule` | cs16 | `clover-project-cs16/client/Assets/Scripts/Module/Audio/AudioModule.cs:24` | `执行顺序` |
-| `BotModule` | cs16 | `clover-project-cs16/client/Assets/Scripts/Module/Bot/BotModule.cs:141` | `private void Update()` |
-| `Bootstrap` | cs16 | `clover-project-cs16/client/Assets/Scripts/App/Bootstrap.cs:107` | `地图模块必须先于比赛模块` |
-| `EngineRunner` | 引擎 | `clover-client-unity-engine/Runtime/Core/EngineRunner.cs:78` | `[DefaultExecutionOrder(-10000)]` |
-| `EngineRunner` | 引擎 | `clover-client-unity-engine/Runtime/Core/EngineRunner.cs:205` | `private void Update()` |
-| `Game.Tick` | 引擎 | `clover-client-unity-engine/Runtime/Core/EngineRunner.cs:207` | `Game.Tick(Time.deltaTime);` |
-| `Game.Tick` | 引擎 | `clover-client-unity-engine/Runtime/Core/Game.cs:750` | `public static void Tick(float dt)` |
-| `Input?.Tick()` | 引擎 | `clover-client-unity-engine/Runtime/Core/Game.cs:754` | `try { Input?.Tick(); }` |
-| `PlayerMotor` | cs16 | `clover-project-cs16/client/Assets/Scripts/Module/Player/PlayerMotor.cs:189` | `Game.Input.Tick()` |
+**期望输出**：`scanned 2 attribute(s)` / `FAIL=0` —— 两个 `[DefaultExecutionOrder]`（`-200` / `-100`），`-200` 恰好 1 个，`client/ProjectSettings/` 下 `m_ExecutionOrder` 0 命中。
 
 ---
 
 ## 6. 与其他文档的关系
 
-- **流程站点 / 面板与场景的编排** → `patterns/client/app-flow.md`（其 §9 是 cs16 实测骨架，与本页同批上浮）；
+- **流程站点 / 面板与场景的编排** → `patterns/client/app-flow.md`；
 - **逐帧现象（抖 / 飘 / 慢一帧这类）怎么取证** → `experience/per-frame-jitter-evidence.md`（本页 §3.2 最后一行那个盲区就靠它）；
 - **事件名唯一来源 / 分层（UI 不引 Module）** → `reference/architecture.md`、`reference/client-conventions.md`；
 - **引擎能力表（`Game.Fsm` / `Game.Scene` / `Game.Timer` 的签名）** → `clover-client-unity-engine/Runtime/Core/**`、`Runtime/Presentation/**`（本页所有 API 断言都落到这两处）。

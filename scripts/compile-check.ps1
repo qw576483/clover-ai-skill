@@ -135,8 +135,8 @@ function Get-UnityToolchain([string]$hub) {
 #   <client>\Temp\bin\Debug    (the <OutputPath> Unity writes into every csproj)
 #   <refProjDir>\Temp\bin\Debug, \bin\Debug, \bin\Release, \bin
 # If none of them has it the assembly is reported UNRESOLVED and FAILS without
-# running csc: never silently dropped (measured 2026-09-24 on
-# clover-project-super-mario, which gets all 6 engine references this way).
+# running csc: never silently dropped (measured on a project that
+# gets all 6 engine references this way).
 # The located dll is also DATED against the newest source of the project it is
 # supposed to have been built from. A dll older than that source is a stale-dll
 # reference (fast-compile-loop pit 4 / the KNOWN LIMITATION in the header), whose
@@ -218,7 +218,7 @@ $assets = Join-Path $client 'Assets'
 # WHY NOT INSIDE THE PROJECT (slice sink4, 2026-09-24): the rsp/log files below are pure
 # build by-products, and the project's tmp-budget gate (template item 27 / SKILL 3.5) counts
 # every file under <project>\.ai-tmp.  Writing them there leaked 2 files per assembly on
-# EVERY run (measured on clover-project-cs16: compile-<asm>.rsp + .log), which eats the file
+# EVERY run (measured: compile-<asm>.rsp + .log per assembly), which eats the file
 # budget of a resource this script does not own -- and a leaked cache is exactly what that
 # gate reports as "build cache inside .ai-tmp".  The system temp dir is the right place for
 # build by-products; evidence the caller wants to KEEP must be copied out explicitly.
