@@ -262,6 +262,88 @@ Game.Fsm.Force("running");
 string cur = Game.Fsm.Current;   // 不是 CurrentState
 ```
 
+## 客户端通用件（引擎已提供，⛔ 别自己再写一份）
+
+> 这一节与上面的「模块」**不同层**：上面那些挂在 `Game` 门面上、由 `Launch` / `Init` 挂载；
+> 本节全是**与题材无关的通用件** —— 静态工具类 / 纯逻辑类 / 值类型 / 编辑器横切，
+> 业务 `using CloverEngine;` 直接调，**没有 Init、没有门面属性**。
+> ⛔ 遇到同形状需求（命中几何 / 格遍历 / 路径跟随 / 瓦片池化 / 配置加载链 / 场景脚手架…）**先来这里查**，
+> 不要在 `Assets/Scripts/Core/` 里再重写一份。
+> 类名 / 方法名的唯一真源是引擎源码（下表「引擎文件」列）；⛔ 本表不抄签名之外的语义。
+
+### Runtime/Core（`CloverEngine.Core`）
+
+| 件 | 用途 | 引擎文件 | 关键 API |
+|---|---|---|---|
+| **HitShape** | 命中判定几何：正面扇形 + 矩形走廊 + 线段通畅（纯函数，无状态） | `Runtime/Core/HitShape.cs` | `ToUnit(dx, dy, out fx, out fy)` / `InFrontCone(fx, fy, dx, dy, cosMin)` / `InMeleeRect(fx, fy, dx, dy, reach, halfWidth)` / `LineClear(walkable, from, to, maxSteps)` |
+| **ProjectileRuntime** | 投射物飞行积分 + 逐格扫掠 + 最近命中 | `Runtime/Core/ProjectileRuntime.cs` | `ProjectileBody.Step(dt)` / `ProjectileRuntime.Advance(ref body, dt, blocked, target, …)` / `TrySweepTerrain(from, to, blocked, …)` / `FindNearestHit(count, target, pos, hitRadius)` / `GridOf(pos)` |
+| **GridGraph** | 格子图算法底座：8 邻接 BFS 连通性 / 边界环封 / 可走格索引 + O(1) 抽样 | `Runtime/Core/GridGraph.cs` | `FloodFill(…)` / `CountUnreachableTargets(…)` / `FillUnreachablePockets(…)` / `SealBorderRing(…)` / `WalkableIndex.Rebuild(…)` / `WalkableIndex.Pick(index)` / `Fill` / `FillRect` / `LineH` / `LineV` / `FillDisk` |
+| **GridBitSet** | 「格集合 ↔ base64 位图」编解码：逐格幂等 + 越界丢弃 + 坏串不抛 | `Runtime/Core/GridBitSet.cs` | `Encode(indices, w, h)` / `Decode(cells, w, h, into)` / `IndexOf(x, y, w, h)` / `ToCell(index, w, h, out x, out y)` / `MaxCells` |
+| **GridUtil** | 矩形 → 整数格遍历（`FloorToInt` 口径 + 右/上边收边 epsilon） | `Runtime/Core/GridUtil.cs` | `TryGetTileRange(r, out xMin, …)` / `ForEach(r, action, epsilon)` / `Enumerate(r, epsilon)` / `EdgeEpsilon` |
+| **EnterLatch&lt;T&gt;** | 「进入触发一次、持续逗留不重复、离开重新武装」的状态跃迁闩锁（纯值类型） | `Runtime/Core/EnterLatch.cs` | `ShouldEmit(inside, at)` / `Fired` / `HasLastTrigger` / `LastTriggerAt` / `Reset()` |
+| **StableHash** | 程序化生成结果的自证设施：FNV-1a 64 + 格子特征哈希 | `Runtime/Core/StableHash.cs` | `Combine(hash, value)` / `Fnv1a64(data)` / `HashGrid(w, h, read, seed)` / `HashGridHex(…)` / `ToAscii(…)` / `Hex(hash)` |
+| **PathFollower** | 沿 `AStar` 逐格路径推进 + 按格更新朝向（格中心制，无 MonoBehaviour） | `Runtime/Core/PathFollower.cs` | `new PathFollower(iso, minMoveSpeed, repathIntervalSeconds)` / `SnapTo(grid)` / `SetPath(path, target)` / `Advance(tilesPerSecond, dt)` / `StepToward(target, speed, dt)` / `Pos` / `Dir` / `Grid` |
+| **Separation2D** | 角色间水平推开（防"两个角色站进同一格"，纯函数） | `Runtime/Core/Separation2D.cs` | `TryResolve(circles, count, result)` / `TryResolveOne(position, radius, others, count, out result)` / `Circle` |
+| **ScreenPointUtil** | 屏幕点 ↔ 画布矩形 / 世界点换算（含正交「屏幕 → 地面」的退化口径） | `Runtime/Core/ScreenPointUtil.cs` | `CameraForCanvas(canvas)` / `TryScreenToWorldInRect(…)` / `TryScreenToLocalInRect(…)` / `ContainsScreenPoint(…)` / `TryScreenToGround(cam, screen, out world, fallbackDepth)` |
+| **ClientConfig**（`ConfigSectionLoader<T>` / `ConfigSource`） | 「带默认值的配置段」的**加载链**：多来源按序回退 + 容错解析 + 全坏回默认值 + `Reload` 热改 | `Runtime/Core/ClientConfig.cs` | `new ConfigSectionLoader<T>(tag, sources, parse, createDefault, normalize)` / `new ConfigSource(name, readText, logLabel)` / `Value` / `Source` / `LoadCount` / `Reload()` / `Load()` |
+| **OrderedAsyncResult&lt;T&gt;** | 乱序异步结果按下标落位 | `Runtime/Core/OrderedAsyncResult.cs` | `new OrderedAsyncResult<T>(count)` / `Put(index, value)` / `TryTakeOrdered(out T[] ordered)` / `IsComplete` / `FilledCount` |
+| **LogThrottle** | 日志防刷屏：限频 / 只报一次 / 计数打点 / 可注入时钟 | `Runtime/Core/LogThrottle.cs` | `WarnThrottled / ErrorThrottled / WarnOnce / ErrorOnce(tag, key, message, intervalSeconds)` / `InfoCounted / WarnCounted / ErrorCounted(tag, key, message, everyN)` / `Clock` / `Reset()` |
+| **JsonWriter** | 手写 JSON 输出（写进 `StringBuilder`）+ 最小 JSON 解析 | `Runtime/Core/JsonWriter.cs` | `WriteKey / WriteString / WriteInt / WriteLong / WriteBool / WriteFloat / WriteDouble / WriteNull(sb, …)` / `ParseValue(s, ref pos)` / `ParseObject(s, ref pos)` / `ParseArray(s, ref pos)` |
+| **ServiceAutoWire** | 从程序集里解析某契约的**唯一**实现（无 DI 容器版），供非 MonoBehaviour 的装配点 | `Runtime/Core/ServiceAutoWire.cs` | `TryResolve<T>(assembly, out service)` / `TryResolve<T>(assembly, out service, out error)` / `FindImplementations(contract, assembly)` / `ClearCache()` |
+| **Screenshot** | 截图落盘（编辑器 / 自动化验证 / 玩家反馈） | `Runtime/Core/Screenshot.cs` | `CaptureToFile(path, superSize = 1)` |
+
+### Runtime/Presentation（`CloverEngine.Presentation`）
+
+| 件 | 用途 | 引擎文件 | 关键 API |
+|---|---|---|---|
+| **TileNodePool** | `SpriteRenderer` 瓦片节点池：逐格节点的借 / 还 / 清（取出即激活，与归还严格配对） | `Runtime/Presentation/TileNodePool.cs` | `new TileNodePool(root)` / `Take(parent)` / `Return(sr)` / `Clear()` / `SplitDemand(freeCount, demand, out fromFree, out create)` / `CreatedCount` / `ReusedCount` / `FreeCount` |
+| **TileRenderState** | 一格瓦片的**不可变**渲染状态（5 字段 / 11 标量）—— 池化路径"复用与新建逐项相同"的结构性保证 | `Runtime/Presentation/TileRenderState.cs` | `new TileRenderState(sprite, color, localScale, position, sortingOrder)` / `SameAs(other)` |
+| **TileRenderer** | 等距瓦片**渲染内核**：一格一层该怎么摆 / 用哪张图 / 什么色 / 什么排序 | `Runtime/Presentation/TileRenderer.cs` | `new TileRenderer(iso, pixelsPerUnit, tilePixelsPerUnit)` / `StateOf(cell, layer, sprite, placeholderColor, …)` / `Apply(sr, parent, state)` / `Build(takeNode, parent, state)` / `ApplyPlan(plan, cell, …)` / `LocalScaleFor / PlaceOfPx / SortOrder / HeightPxOf` |
+| **TilemapGenUtil** | **程序化瓦片地图**的通用生成算法（块级迷宫"全连通 + 环路" / 四边开口 + 镜像拼块） | `Runtime/Presentation/TilemapGenUtil.cs` | `TryBuildSlotMaze(rng, slotsX, slotsY, loopsMin, loopsMax, …)` / `ConnectSlots(…)` / `TryVerifySlotConnectivity(…)` / `TryPickByEdges(rng, pieces, group, …)` / `StampPiece(…)` / `FindNearest(…)` |
+| **ChunkedTilePlanner** | 分块（chunk）规划 + 每帧节点预算 + 双缓冲换块 | `Runtime/Presentation/ChunkedTilePlanner.cs` | `new ChunkedTilePlanner(chunkSize, maxNodesPerFrame)` / `BeginFrame()` / `TryAccept(nodeCost)` / `RequestRebuild()` / `ConsumeRebuild()` / `ChunkRangeOf(…)` / `EnumerateChunks(…)` / `AcceptedThisFrame` / `RejectedThisFrame` |
+| **ITileWorld / TileWorld** | 2D 瓦片世界的**空间事实面**：实心格位图 + 移动托台小数顶高 + 世界边界（⛔ 只回答事实，**不含**位移解算） | `Runtime/Presentation/TileWorld.cs` | `IsSolid(tx, ty)` / `IsSolidAt(x, y)` / `SetSolid(tx, ty, solid)` / `TryGetCarrierTop(tx, ty, out topY)` / `SetCarrierTop(…)` / `SetBounds(minX, maxX, groundTopY)` / `SolidCount` / `CarrierCount` |
+| **SortingLayers** | 2D `sortingOrder` 层级预算表 + 深度序 + 同序确定性次级键 | `Runtime/Presentation/SortingLayers.cs` | `new SortingLayers(fieldHeightTiles, …)` / `DepthOrder(worldY)` / `TiebreakOffset(id)` / `ValidateBudget()` / `BudgetValid` / `Ground`…`Effect` |
+| **SnapshotInterpolator** | 「低频权威快照 → 高帧率插值表现」的渲染时钟 + 插值窗口选择（非 MonoBehaviour） | `Runtime/Presentation/SnapshotInterpolator.cs` | `new SnapshotInterpolator(options, clockSeconds)` / `Push(serverMs, payload)` / `Tick()` / `HasWindow` / `WindowStartPayload` / `RenderClockMs` / `Reset()` |
+| **UnitFacingMap** | 「N 档朝向 → 视角号 / 是否镜像」的通用映射（纯逻辑，不持有 Unity 对象） | `Runtime/Presentation/UnitFacingMap.cs` | `UnitFacingMap.Default` / `new UnitFacingMap(stepToView, flipFromStep)` / `ViewForStep(step)` / `StepFlip(step)` / `ViewForHeading(headingDeg, out view, out flip)` |
+| **SpriteEntityViewSource** | 2D 精灵实体视图**来源**：把「一个实体」变成「场景里一个 `SpriteRenderer` 节点」（含异步加载 / 逐帧动画 / 深度排序） | `Runtime/Presentation/SpriteEntityView.cs` | `new SpriteEntityViewSource(accepts, layers, …)` / `CanBuild(spec)` / `Build(objectID, root, spec)` / `GetAnimator(objectID)` / `ApplyDepth(objectID, worldY)` / `Tick(dt)` / `Release(objectID)` |
+| **SpriteFrameAnimator** | 轻量逐帧动画器：帧表（`Sprite[]`）→ `SpriteRenderer`，由业务 Tick 驱动 | `Runtime/Presentation/SpriteFrameAnimator.cs` | `new SpriteFrameAnimator(target)` / `Play(frames, fps, loop)` / `PlayOnce(…)` / `PlayStill(…)` / `Advance(dt)` / `FrameIndex` / `IsPlaying` / `Stop()` |
+| **SpriteSet** | 「批量异步预加载 → 按名同步取 → 缺失只报一次」的精灵组合件 | `Runtime/Resource/SpriteSet.cs` | `new SpriteSet(resource)` / `LoadSet(paths, onDone)` / `Get(name)` / `IsReady` / `Count` / `Clear()` |
+| **TextFit** | 可变长文本的**单行显示截断**（二分找最长可行前缀 + 省略号） | `Runtime/Presentation/TextFit.cs` | `Clamp(label, raw, ellipsis)` / `Measure(label, text)` / `ClampSelf(label)` |
+| **RuntimePanelProvider** | 「零资产」运行时面板提供者：按类名反射造面板模板 → 交给 `UIManager` 克隆 | `Runtime/Presentation/RuntimePanelProvider.cs` | `new RuntimePanelProvider(params Assembly[])` / `AddAssembly(assembly)` / `Install(bus)` / `Uninstall()` / `Invalidate()` / `PanelTypeCount` |
+| **UIPanelGuards** | 面板参数取值守卫：`OnOpen(param)` 的载荷缺失 / 类型不符 ⇒ 留痕 + 降级（⛔ 不抛异常） | `Runtime/Presentation/UIPanelGuards.cs` | `TryGet<T>(param, out value)` / `Require<T>(param, panelName, out value)` / `RequireValue<T>(param, panelName, fallback)` |
+| **UiImageLoader** | UI 图**异步装载器**：请求序号守卫 + 占位保留 + 同路径去重 + 色调回填 | `Runtime/Presentation/UiImageLoader.cs` | `SetSprite(img, path, tint)` / `SetTint(img, tint)` / `IsPending(img)` / `IsLoaded(img)` / `RequestedPath(img)` / `EnsureUnlit(img)` |
+| **SpriteStripLoader** | 「多帧条带 → 定长帧表」加载器：整条 `LoadAll` 主路 + 逐帧按名兜底 + 就绪回调 + 同路径去重缓存 | `Runtime/Presentation/SpriteStripLoader.cs` | `new SpriteStripLoader(resource)` / `RequestStrip(stripPath, frameCount, onReady)` / `IsReady(stripPath)` / `Cached(stripPath)` / `Slice(all, stripPath, frameCount)` |
+| **SpriteSwapButton** | 通用 **sprite-swap 按钮**工厂：常态 / 悬停 / 按下 / 禁用各一张 sprite | `Runtime/Presentation/SpriteSwapButton.cs` | `Create(parent, spec, skin)` / `CreateFromStrip(parent, spec, stripPath, frameCount, …)` / `Apply(button, skin)` / `Skin` / `Spec` |
+| **PointerFloatLayer** | 「指针悬浮」两个通用件：浮层跟随指针（含避出画布） | `Runtime/Presentation/PointerFloatLayer.cs` | `PointerFloatLayer.Create(parent, name, canvas)` / `Acquire(…)` / `SetSize(size)` / `Release()` / `PointerFloatPlacement.Resolve(pointerLocal, size, canvasRect, …)` |
+| **DragDropLayer** | 「拖放层」本体：拖影跟随指针 + 目标格高亮（回调式）+ 屏幕点 → 网格坐标 + 落点判定 | `Runtime/Presentation/DragDropLayer.cs` | `DragGridMetrics.Create(cols, rows, origin, cellSize, …)` / `TryCellAtLocal(local, out col, out row)` / `CellRect(col, row)` / `DragDropLayer` 本体 / `DropVerdict` |
+| **DragGestureRouter** | 「拖拽 vs 滚动」手势仲裁器（纯逻辑，无 MonoBehaviour / 无协程） | `Runtime/Presentation/DragGestureRouter.cs` | `new DragGestureRouter(dragThresholdPx, allowScroll)` / `Begin(pointer)` / `Move(pointer, escapedScrollRegion)` / `End()` / `Current` / `ClickSuppressed` |
+| **CameraBoundsKit** | 相机边界夹制（**格空间**，⛔ 不是世界 AABB）的纯函数 | `Runtime/Presentation/CameraBoundsKit.cs` | `ClampCameraGrid(camera, focus, mapWidth, mapHeight, …)` / `ClampFocusGrid(focus, mapWidth, mapHeight, …)` / `ClampSpan(s, lo, hi)` |
+| **CameraMath** | 相机数学纯函数：FOV 换算 / 跟随 / 平滑 / 世界→视口 / 边缘滚动 / 震屏衰减 / 缩放 / 可见格矩形 | `Runtime/Presentation/CameraMath.cs` | `Follow(current, target, dt, tau)` / `SmoothDamp(…)` / `WorldToViewport(…)` / `WorldToScreen(…)` / `EdgeScrollOffset(…)` / `ShakeMagnitude(…)` / `Zoomed(…)` / `VisibleGridRect(…)` |
+| **LoadingPacing** | 读条屏的**分档 / 节奏纯函数**：档 → completeness、按时间放行到第几档、引擎进度 → 档号 | `Runtime/Presentation/LoadingPacing.cs` | `FrameIndex(completeness, frameCount)` / `CompletenessOf(index, count)` / `MaxIndexAt(elapsedSeconds, cadenceSeconds, count)` / `SceneLoadFrameIndex(engineProgress, count, loadedFrame, …)` |
+| **BitmapFont** | 位图字模的**排版内核**（纯数据 + 纯函数；⛔ 不引用 `UnityEngine` ⇒ 可离线自检） | `Runtime/Presentation/BitmapFont.cs` | `IGlyphSource` / `Chain(sources)` / `TryResolve(chain, c, out glyph, out index)` / `WrapLines(…)` / `CountLines(…)` / `CellUv(…)` / `WrapWidthPx(…)` / `BestFitScale(…)` |
+| **WorldOverlayWidgets** | 「世界 / 屏幕叠加层」四件通用件（**只做机制**：池化 · 定位 · 显隐 · 渐隐 · 跟随） | `Runtime/Presentation/WorldOverlayWidgets.cs` | `WorldProjectedLabelLayer.Apply(items)` / `TryWorldToCanvas(canvas, world, tag, out local)` / `ScreenTargetBar` / `WorldNameplate` / `CenterAnnounceLayer` / `SoftwareCursorLayer` |
+| **FramePacingPolicy** | 帧节奏：目标帧率 / 垂直同步的推荐与钉住 | `Runtime/Presentation/FramePacing.cs` | `Recommend(out targetFrameRate, out vSyncCount, out refreshHz)` / `RecommendVSyncCount(refreshHz)` / `Pin(targetFrameRate, vSyncCount, …)` / `TryRead(out fps, out vSyncCount, out error)` / `Describe(…)` |
+
+### Runtime/Resource（`CloverEngine.Resource`）
+
+| 件 | 用途 | 引擎文件 | 关键 API |
+|---|---|---|---|
+| **FrameBank** | 「整目录抓帧 → 按帧号排序 → 帧号→下标映射 → 统一画布锚点 → 生命周期」的精灵目录件 | `Runtime/Resource/FrameBank.cs` | `new FrameBank(resource, fallbackPixelsPerUnit)` / `LoadDir(path)` / `FrameNumberMap(path, mode)` / `UnifyCanvasAnchor(frames, cacheKey)` / `ParseFrameIndex(name)` / `WhiteSprite()` / `Cached(path)` / `Clear()` |
+
+### Editor（`CloverEngine.Editor`）
+
+| 件 | 用途 | 引擎文件 | 关键 API |
+|---|---|---|---|
+| **SceneScaffold** | 「最小可运行场景」脚手架：主相机（正交 + `MainCamera` tag + `AudioListener`）+ 可选 2D 灯光 + 命名根节点 + 入口脚本，并按选项幂等写 Build Settings / Play 起始场景 | `Editor/SceneScaffold.cs` | `SceneScaffold.Create(scenePath, options, out error)` / `ApplyBuildSettings(scenePaths, replace)` / `SetPlayModeStartScene(scenePath, onlyIfNull)` / `SceneScaffoldOptions` / 菜单 `Clover/场景脚手架/生成最小可运行场景…` / `-executeMethod CloverEngine.Editor.SceneScaffold.ExecuteFromCommandLine -scene <path>` |
+| **PixelArtSlicing** | 切图规则的**请求载体 + 工程侧切图器契约**（引擎不直接切，由工程注册切图器） | `Editor/PixelArtSlicing.cs` | `IPixelArtSlicer` / `PixelArtSliceRequest` / `PixelArtSliceItem` |
+| **PixelArtImportSettings** | 像素素材导入规范（配置资产）：目录规则表 + 切图规则表 | `Editor/PixelArtImportSettings.cs` | `PixelArtImportSettings`（`ScriptableObject`）/ `MatchRule(path)` / `MatchSlicingRule(path)` / `PixelArtDirectoryRule.ResolveImportMode(global)` / `Validate()` |
+| **PixelArtImportPostprocessor** | 按配置资产给纹理配好像素导入设置，并把切图请求交给已注册的切图器 | `Editor/PixelArtImportPostprocessor.cs` | `PixelArtImportPostprocessor.RegisterSlicer(IPixelArtSlicer)` |
+| **MapBake**（`MapBaker` / `MapBakeOptions`） | 静态地图烘焙：场景 → 可行走网格 `.bytes`（含障碍 / 出生点 / 命名标记） | `Editor/MapBake/MapBaker.cs`、`Editor/MapBake/MapBakeOptions.cs` | `MapBaker.Export(options, out summary)` / `ExportInteractive(options, onDone)` / `ExportFromMenu()` / `MapBakeOptions.Load() / Save() / Clone() / Validate()` / `ShouldBakeCollider(layer, minY, maxY)` |
+
+> **已单独登记、本表不重复的件**（需要细节去对应文档）：
+> `Rng` / `AStar` / `IsoLayout` / `FileSlotStore` / `LogThrottle` / `GridUtil` / `FrameBank` / `SpriteSet` / `Screenshot` / `OrderedAsyncResult<T>` / `FramePacingPolicy` / `UnitFacingMap` / `TextFit` / `DragGestureRouter` / `SortingLayers` / `ScreenPointUtil` / `ITileWorld`·`TileWorld` / `SpriteFrameAnimator` / `RuntimePanelProvider` / `SnapshotInterpolator` → `clover-doc/client/reference/api-cheatsheet.md`「数据与通用件」一节及各模块节；
+> `ViewBob` / `LookAccumulator` / `TextHooks` / `Sound` → `clover-doc/client/development/presentation-modules.md` 与 `clover-doc/client/reference/api-cheatsheet.md` 的「第一人称 rig」「UI 构件」两节。
+
 ## asmdef 依赖
 
 | asmdef | 所在目录 | 可引用 |

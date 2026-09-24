@@ -411,7 +411,7 @@ unity projects list --format json        # 复核 isFavorite=true
 ### 2.1.2 建完**交给用户打开**；用户不开就不继续（★★★ 硬闸门）
 
 ```
-① AI：创建 client/ + 写好全部代码 + 写好工程生成器（Editor 脚本）
+① AI：创建 client/ + 写好全部业务代码 + 生成最小可运行场景（用引擎 `Editor/SceneScaffold`，⛔ 不要再自写一份场景生成器）
 ② AI：★【在让用户「添加项目到 Hub、打开编辑器」之前】先把 com.unity.pipeline 写进 manifest（§2.2 的 P-0）
 ③ AI：才让用户去「添加项目到 Hub + 打开编辑器」，并给出「可直接照做的 Hub 步骤」
 ④ 用户：打开（这一步只能用户做，AI 做不了）—— 首次启动即带 Pipeline 服务
@@ -613,7 +613,7 @@ Game.OnMsg(MsgDef.XxxNotify, ctx => { var n = ctx.Bind<XxxNotify>(); /* ... */ }
   "server": {
     "addr": "127.0.0.1:8002",
     "udp_addr": "127.0.0.1:8003",
-    "tls": true,
+    "tls": false,
     "auth_addr": "http://127.0.0.1:8051",
     "call_timeout": 10,
     "max_reconnect_count": 5
@@ -640,9 +640,12 @@ Game.OnMsg(MsgDef.XxxNotify, ctx => { var n = ctx.Bind<XxxNotify>(); /* ... */ }
 > 客户端日志特征：`[Clover][Network] reliable link connected (…)` 紧接着 `reliable link lost (…)` / `reconnecting in …s`
 > （链路日志由 `Game.Logger` 以 `Network` tag 输出，可在 `logs/` 文件日志里检索）。
 
-**必须连同加载器一起生成**：`client/Assets/Scripts/Core/ClientConfig.cs`（范式见
-`patterns/client/config.md`，可直接照抄）。**只建 `Configs/` 目录或只放 json、不写加载器 = 未完成** ——
-那样业务会继续把地址/账号/密码/超时写死在代码里（历史事故：同一份超时还在两处各写一遍）。
+**必须连同项目侧配置入口一起生成**：`client/Assets/Scripts/Core/ClientConfig.cs` —— 内容是
+「**配置段类型（字段 + 默认值） + `CloverEngine.ConfigSectionLoader<T>` 的来源 / 解析注入 + 薄门面 `Cfg`**」
+（范式见 `patterns/client/config.md`，可直接照抄）。**只建 `Configs/` 目录或只放 json = 未完成** ——
+那样业务会继续把地址/账号/密码/超时写死在代码里。
+⛔ **加载链本身（按序试来源 → 读/解析失败跳过 → 全坏回落默认值 → `Reload` 重跑）由引擎件
+`clover-client-unity-engine/Runtime/Core/ClientConfig.cs` 负责，⛔ 不要再手写一份加载器。**
 
 ### 2.5 纯单机项目（不接服务端）
 
@@ -719,13 +722,13 @@ public class GameMain : MonoBehaviour
 □ handler 签名 func(c event.Ctx) error，import 为 pkg/transport/event
 □ client 由 unity projects create 生成（有 Packages/ + ProjectSettings/）
 □ manifest.json 已加 com.clover.unity-engine（**默认 git URL**；仅"工作区内联调引擎源码"时才用 `file:` 相对路径，⛔ 不许写绝对路径）
-□ client/Assets/Configs/config.json + Core/ClientConfig.cs 均已生成，业务代码无硬编码地址/账号/密码/超时
+□ client/Assets/Configs/config.json 已生成；Core/ClientConfig.cs = **配置段类型 + 引擎 `ConfigSectionLoader` 注入 + 薄门面**（⛔ 无手写加载链）；业务代码无硬编码地址/账号/密码/超时
 □ server.addr 填的是网关 TCP 口（8002），不是 WS 口（8001）
-□ server.tls 与服务端 gateway.tcp_tls_disabled 相反（服务端默认 false → 客户端 true）
+□ server.tls 与服务端**是否成对配了 gateway.tls_cert/tls_key** 一致（没配证书 ⇒ 客户端 false）
 □ import 路径已替换为实际 module 名，无 {module} 占位符残留
 □ 服务器环境已自检（env.exe info 就绪）；未就绪时未擅自降级为离线/单机版
 □ 用户点名的功能全部真实实现（无"暂未实现 / 框架已预留"）
-□ 客户端场景已创建并保存、已入 Build Settings、业务脚本已挂载（打开工程点 Play 即跑）
+□ 客户端场景已创建并保存、已入 Build Settings、业务脚本已挂载（用引擎 `Editor/SceneScaffold` 的 `Create` / `ApplyBuildSettings` / `SetPlayModeStartScene`，⛔ 不自写场景生成器）（打开工程点 Play 即跑）
 □ unity console tail 无编译错误
 □ 引用了外部资源 → client/资源欠缺清单.md 已生成
 □ 业务消息号已集中在 client/Assets/Scripts/Def/MsgDef.cs（脚本里无散落消息号字面量）
