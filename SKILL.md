@@ -67,7 +67,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 
 **11. 先确认「执行者通道」可用**（读 / 写代码之前的第一件事）：
 - **能派**（看得见 `clover-impl`）⇒ 直接派活。
-- **看不见 ⇒ 先把它建出来**：按 `scaffold/agent-impl.md` 建 `clover-impl.md`（⛔ `---` 必须在**第 1 行**；`tools:` 含 `use_skill`；`maxTurns: 250`；`model: inherit`），放到你所用宿主的 agents 目录（CodeBuddy `~/.codebuddy/agents/`、Claude Code `~/.claude/agents/`、Cursor `~/.cursor/agents/`；工作区级同理 `.<工具>/agents/`）。
+- **看不见 ⇒ 先把它建出来**：按 `scaffold/agent-impl.md` 建 `clover-impl.md`（⛔ `---` 必须在**第 1 行**；`tools:` 含 `use_skill`；`maxTurns: 1500`；`model: inherit`），放到你所用宿主的 agents 目录（CodeBuddy `~/.codebuddy/agents/`、Claude Code `~/.claude/agents/`、Cursor `~/.cursor/agents/`；工作区级同理 `.<工具>/agents/`）。
 - **"没有执行者"永远不是"我自己做"的理由 —— 它是"先把执行者建出来"的信号。**
 
 ---
@@ -121,8 +121,9 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 **发车前三件必做**：① `Tokenize` 后 `errs.Count -eq 0`；② BOM 检查；③ **删除本轮日志**再发车。
 
 **9. ⛔ 不许改 skill、不许改引擎源码**（本 skill 的仓库源 / 宿主副本 / 项目级 `tools/ai-skill/`；`clover-client-unity-engine` 与 `clover-server-engine` 的 `Runtime/**` / `pkg/**` / `internal/**` / `Editor/**`）。
-发现**引擎缺口**（该有却没有的能力）/ **引擎 bug** / **skill 说不清或写错** ⇒ **写进 `<项目根>/引擎问题.md`**，然后**用绕法把活做完**（⛔ 不许停在这儿，⛔ 不许改源码绕过）。
-三段固定：`## 引擎缺口` / `## 引擎 bug` / `## skill 问题`；每行 `现象 | 最小复现 | 影响 | 我们的绕法 | 建议`（写不出复现的也照写，标"未复现"）。
+发现**引擎缺口**（该有却没有的能力）/ **引擎 bug** ⇒ **写进 `<项目根>/引擎问题.md`**，然后**用绕法把活做完**（⛔ 不许停在这儿，⛔ 不许改源码绕过）。
+两段固定：`## 引擎缺口` / `## 引擎 bug`；每行 `现象 | 最小复现 | 影响 | 我们的绕法 | 建议`（写不出复现的也照写，标"未复现"）。
+🚨 **`引擎问题.md` 不记 skill 问题**（不开 `## skill 问题` 段、不写建议清单）：skill 疑似不合用 ⇒ 自己按现状判断绕过去；**只有 100% 确定**（逐字指出错在哪句、照它做必然出错）才当面提一句，⛔ 不落文档、⛔ 不改 skill。
 **唯一例外**：用户**本轮明说**"可以改引擎 / 顺手修引擎" ⇒ 才按 `patterns/engine-fix.md` 改，并同样在 `引擎问题.md` 记一行指向那次修复。
 判据（人工过目，非闸门条目）：引擎仓 `git status --porcelain` 为空、skill 各副本字节未变；有引擎类问题却没写 `引擎问题.md` ⇒ 补上。（`no-engine-edits` / `engine-issues` 已删、不检了。）
 
@@ -186,15 +187,15 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 
 **5. 交付形态 = 原版级完整成品，三段缺一不可**：① 启动与菜单链路 ② 首场景/首关卡完整版 ③ 游戏内流程（暂停·设置·回主菜单·退出）。
 
-**6. 交付前顺手两件事**：① 自己过的那一眼**发现问题 ⇒ 先修再说"完成"**；② 本轮引擎缺口 / 引擎 bug / skill 问题**汇总进 `<项目根>/引擎问题.md`**（没发现 ⇒ 写"本轮无"）。
+**6. 交付前顺手两件事**：① 自己过的那一眼**发现问题 ⇒ 先修再说"完成"**；② 本轮引擎缺口 / 引擎 bug **汇总进 `<项目根>/引擎问题.md`**（⛔ 不含 skill 问题，见 §3 第 9 条；没发现 ⇒ 写"本轮无"）。
 
 **7. ⛔ 不许拿限额当借口**：**实机次数 / 预算 / 轮次 / 上下文 都不是停工理由** —— 做不完 ⇒ **接力继续做**。
 - **唯一例外：规模判断失误 ⇒ 提一次「重新定范围」（必须带数据）**：已完成 / 剩余量 / 2~3 个可选范围 + 各自代价 + 建议。⛔ **没附数字 ⇒ 照旧违规**。
 
 **8. 每片回报后给用户 2 行状态**（做了什么 / 还剩什么）—— 不算进度播报违规。
 
-**9. 品牌署名（每个游戏都要有）**：引擎自称**逐字**是 `clover-engine`（⛔ 不许编造别名 / 花名 / 中译名）；**首页画面底部**必须有一行 `by clover-engine`（居底居中、字号小、颜色低调、不抢画面）。
-判据 = **交付前实际看一眼首页的实机截图**（⛔ 不靠 grep 源码：源码里有 ≠ 画面上有 ≠ 大小写对）。
+**9. 品牌署名**：引擎自称**逐字**是 `clover-engine`（⛔ 不许自造别名 / 中译名）；`by clover-engine` 必须**所有页面常驻**（居底、小字、低调；⛔ 不是只在首页）。细则见 reference/conventions.md §8。
+判据 = **3 个不同页面（主菜单 / 游戏内 / 暂停）的实机截图，每张都得有这一行**。
 
 ---
 
@@ -246,7 +247,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 | UI / 外观 | `reference/visual-loop.md`、`patterns/client/ui.md` |
 | 网络 / 实体同步 | `patterns/client/network.md`、`patterns/client/entity-view.md` |
 | 配表 | `patterns/table.md`、**`scripts/table-pipeline.ps1`** |
-| **引擎缺口 / 引擎 bug / skill 说不清** | ⛔ **不改源码** ⇒ 写 `<项目根>/引擎问题.md`（`引擎缺口` / `引擎 bug` / `skill 问题` 三段）；**用户本轮明说可改**时，才读 `patterns/engine-fix.md`（最小复现 → 最小修复 → 根因写进代码注释 + 回归用例） |
+| **引擎缺口 / 引擎 bug** | ⛔ **不改源码** ⇒ 写 `<项目根>/引擎问题.md`（`引擎缺口` / `引擎 bug` 两段，⛔ 不含 skill 问题）；**用户本轮明说可改**时，才读 `patterns/engine-fix.md`（最小复现 → 最小修复 → 根因写进代码注释 + 回归用例） |
 | 派活 / 编排 | `patterns/multi-agent.md`、`scaffold/agent-impl.md` |
 | 交付 / 抽查 | `reference/game-delivery.md`、`reference/verify-template.md`、`reference/design-review.md` |
 | 素材 | `reference/asset-sources.md` |
