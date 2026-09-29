@@ -53,8 +53,10 @@ Update()       ← Game.Tick 由引擎的 EngineRunner 驱动（Camera/Anim 等�
 
 ## 4. 表现域能力边界（先查再写，别自己造轮子也别硬套）
 
-> ⛔ **硬闸门：动手写任何"通用设施"之前，先在这张表里找一遍。** UI 构建、对象池、存档/设置、图集、本地化、配表、动画、相机、场景、音效 —— **只要属于这十类，就必须先确认引擎有没有现成的；有就用引擎的。**
+> ⛔ **硬闸门：动手写任何"通用设施"之前，先在这张表里找一遍。** UI 构建、对象池、存档/设置、图集、本地化、配表、动画、相机、场景、音效、**快照插值 / 帧动画 / 拖放浮层 / 朝向 / 颜色变换 / 战斗原语** —— **只要属于这些类，就必须先确认引擎有没有现成的；有就用引擎的。**
 > **这份表若不全 = 业务必然重造轮子**：看到表里没有的通用需求，**先去引擎 `Runtime/**` 搜一遍再动手**。
+> **第③招（最灵、最省时间）：横向比** —— `git grep -c "<引擎类型名>" -- "clover-project-*/client/Assets/Scripts"`，**别的项目在用 ⇒ 你不许自建**。引擎件是**陆续从各项目下沉进去的**（下沉动作常常与你并行）⇒「我开工时它还没有」只在同一天成立，**交付前必须再扫一遍并回接**。
+> **自建通用件的唯一合法姿势**：文件头写一行「为什么不用引擎件 `X` + 缺什么」（要能指到 `文件:行` 或本表条目）—— 写不出来 ⇒ 就是该用引擎件。
 
 | 模块 | 真实能力 | 缺口 / 注意 |
 |---|---|---|
@@ -81,6 +83,11 @@ Update()       ← Game.Tick 由引擎的 EngineRunner 驱动（Camera/Anim 等�
 | ★ **配表 / 本地化** | `CloverData.InitDataTable(...)` / `DataTable` / `Localization` | 同质化配置与 UI 文案不要硬编码、也不要自己写解析器 |
 | ★ **`Game.Sound`** | `PlayBGM / StopBGM / PlaySFX / PlaySFXAt / PlayVoice / StopAll / SetVolume / GetVolume / SetMute`（`SoundGroup.BGM/SFX/Voice`）＋ 播放闸门 `MaxPlaysPerFrame` / `MaxConcurrentPerClip`（默认 `0` = 不限） | BGM 双音源交替 + 淡入淡出；路径约定 `Sound/{BGM,SFX,Voice}/{name}`（走 `Game.Res`）。**音量 / 静音只在内存、不持久化** —— 要存设置自己写 `Game.Setting`。★ **播放闸门**：① 缺失**整进程只报一次**（四处 `clip == null` 全走 `LogThrottle.WarnOnce`）；② `MaxPlaysPerFrame`（单帧最多**真正起播**几次）/ `MaxConcurrentPerClip`（同一路径**同时播放**的音源数上限）—— 默认 `0` = **不限**，超限**丢弃该次播放**（⛔ 不排队、⛔ 不打断在播音源）+ 限频告警；只作用于 `PlaySFX`/`PlaySFXAt`/`PlayVoice`（BGM 不受影响）。阈值的**取值**仍是业务的。⛔ 别在业务侧再写探测缓存 / 帧计数 / 并发表；要"问一句这条音效在不在"用 `Game.Res.Exists` |
 | ★ **地图 / 场景** | `Game.Map`（`IMapData`：`LoadFromResource` / `Load` / `WalkableAt`；格式层 `CloverMapFormat` / `CloverMapData` / `CloverMapWriter` 属引擎 internal）；`Game.Scene.Load` | 有现成地图格式；**但它是偏 3D 的**，2D 平台跳跃要不要用需先评估格式适配度，别硬套 |
+| ★ **`CloverEngine.SnapshotInterpolator`** | 「低频权威快照 → 高帧率插值表现」的**渲染时钟 + 插值窗口**件（无 MonoBehaviour，由业务 `Tick` 驱动）：`Tick` / `RenderClockMs` / `SelectWindow` + 参数 `HistSlots` / `RenderLagIntervals` / `LagSteerMaxRate` / `CatchUpMaxRate` | 服务端 10~20 Hz 推快照、客户端 60 FPS 的**任何**联网玩法都用它。⛔ 别在业务里自写「历史缓冲 + 落后量 + 速率修正」那一套：时钟**只按真实时间前进、收到快照绝不重置**；速率必须是**有界比例**修正（瞬跳时钟会让单位前跳一大截，完全不校正会让插值静默失效） |
+| ★ **`CloverEngine.SpriteFrameAnimator` / `SpriteStripLoader` / `SpriteSet` / `FrameBank`** | 代码逐帧切 Sprite 的轻量动画（条带加载 / 帧号映射 / 帧数组预载 `Preload`） | 2D 像素 · 逐帧精灵项目**先看这几件**；`Game.Anim` 的 `CreateAnimator` 是 **Unity Animator** 路线，两者解决不同问题 —— 只有需要 AnimatorController 状态机时才用它 |
+| ★ **`CloverEngine.DragDropLayer` / `DragGestureRouter` / `PointerFloatLayer`** | 拖放层（拖起 → 跟随图层 → 落下）/「拖拽 vs 滚动」手势仲裁（含让位规则与「压点击」标记）/ 指针浮动层（跟随指针的预览件与锚点） | 卡牌 · 背包 · 建造类"拖动放置"**先看这三件**。⛔ 别自写手势仲裁与浮动层：uGUI 把 `pointerDrag` 判给**最深层的 `IDragHandler`**，让位规则很细 |
+| `CloverEngine.UnitFacingMap` / `ColorTransform` / `ProjectileRuntime` / `HitShape` / `Separation2D` / `PathFollower` | 朝向极角 ↔ 视角号 + 镜像（`StepForHeading` / `Standard16StepToView`）；逐实例颜色变换（乘 + 加）；弹道飞行；命中形状；2D 分离（推挤）；沿路径跟随 | 逐视角精灵 · 队伍染色 · 战斗表现原语 —— ⛔ 别自写弹道插值 / 推挤分离 / 朝向映射 |
+| `CloverEngine.TileWorld` / `TileRenderer` / `TileNodePool` / `ChunkedTilePlanner` | 2D 瓦片世界 / 渲染 / 节点池 / 分块规划 | 2D 地图与瓦片层（与 `Game.Map` 的偏 3D 路线并存，别混用） |
 
 ## 5. 主角操作的三条铁律（做 3D/2.5D 玩法必看）
 
