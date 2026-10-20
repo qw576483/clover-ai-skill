@@ -97,6 +97,7 @@ public class LoginPanel : UIPanel
 ```
 
 > `Layer` 默认 `Normal`。需要弹窗遮罩设为 `UILayer.Popup`，需要最顶层设 `UILayer.Top`/`System`。
+> **有 Popup 打开时引擎自动隐藏整个 `Normal` 层**（关闭最后一个时恢复）⇒ 常驻 HUD 放 `Normal` 即可，⛔ 不要再在业务里写"弹窗打开就藏 HUD / 击杀信息"的让位代码；确实要压在弹窗上的元素放 `Top`。
 
 ## 模板 2：打开 / 关闭 / 取值
 
@@ -293,7 +294,7 @@ public class ConfirmDialog : UIPanel
     private Args _args;
 
     public override string PanelName => "ConfirmDialog";
-    public override UILayer Layer => UILayer.Popup;   // 弹窗：自动加遮罩 + 互斥
+    public override UILayer Layer => UILayer.Popup;   // 弹窗：自动加遮罩 + 互斥 + 隐藏 Normal 层
 
     public override void OnOpen(object param)
     {

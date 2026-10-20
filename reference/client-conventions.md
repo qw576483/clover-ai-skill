@@ -333,10 +333,14 @@ catch (CloverCallException ex)
 // 后端无关：GameKey 由引擎翻译成当前生效后端的实际按键
 if (Game.Input.GetKeyDown(GameKey.Space)) Jump();
 if (Game.Input.GetKeyDown(GameKey.Num1)) StartSolo();   // 数字 1
+if (Game.Input.GetKeyDown(GameKey.Delete)) DeleteSelected();   // Delete / Insert / Home / End / PageUp / PageDown 都有
+string typed = Game.Input.TextInput;                    // 本帧可打印字符流（不含 IME 组合串）
 float h = Game.Input.GetAxis("Horizontal");
 var mouse = Game.Input.MousePosition;
 bool click = Game.Input.GetMouseButtonDown(0);
 ```
+
+> 名字 / 搜索框这类文本输入用 `Game.Input.TextInput`（每帧取、自行拼缓冲），**不要**直连 `Keyboard.current` 或 `onTextInput`。中文 IME 的组合串不在该接口里（Input System 无组合串），需要中文输入时由业务自绘或接平台输入法。
 
 ### 为什么禁止直连
 

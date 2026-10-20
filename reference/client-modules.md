@@ -80,13 +80,13 @@
 | 模块 | API | 说明 |
 |------|-----|------|
 | **Entity** | `Game.Entity.Create(objectID, typeID, group)` / `Get(objectID)` / `GetAll()` / `GetByGroup(group)` / `Destroy(objectID)` / `BindView(objectID, view)` / `GetView(objectID)` / `DestroyGroup(group)` / `ClearAll()` | 实体管理（`Create` 参数**不是** prefab+position）。异步 View 工厂（模型异步加载 + 占位 + 竞态 + 贴地）走 `CloverPresentation.EntityView.CreateView(...)` 后 `BindView` 登记 |
-| **Map** | `Game.Map.Load(bytes, out error)` / `LoadFromResource(path, onDone)` / `WalkableAt(x, z)` / `Clear()`（另有 `Loaded` / `Status` / `Width` / `Depth` 等只读属性） | 逻辑地图（服务端权威地图的**只读投影**，本地碰撞 / 寻路查询用）。**与 `Game.Scene`、`Game.CloverScene` 三者不同义** |
+| **Map** | `Game.Map.Load(bytes, out error)` / `LoadFromResource(path, onDone)` / `WalkableAt(x, z)` / `Clear()` / `HasHeightField` / `SurfaceCountAt(x,z)` / `TryGetSurfaceHeights(x,z,list)` / `TryGetTopSurfaceHeight(x,z,out y)`（另有 `Loaded` / `Status` / `Width` / `Depth` 等只读属性） | 逻辑地图（服务端权威地图的**只读投影**，本地碰撞 / 寻路查询用）。**高度场**给出同格多层可站面（台上/台下、箱顶/地面）；位图只回答"能不能走"。**与 `Game.Scene`、`Game.CloverScene` 三者不同义** |
 | **Pool** | `Game.Pool.Spawn(key, parent, group)` / `Despawn(obj)` / `Preload(key, count, group)` / `Clear(key)` / `ClearGroup(group)` / `ClearAll()` / `GetActiveCount(key)` / `GetInactiveCount(key)`；空闲过期回收 `IdleExpirySeconds`（默认 0 = 关闭）/ `TrimIdle()` | 回收是 **`Despawn`**，不是 `Recycle`。`IdleExpirySeconds>0` 时闲置超时报废，回收惰性发生在 `Spawn`/`Despawn` 内（不新增 Tick） |
-| **Input** | `Game.Input.State` / `.Available` / `.BackendName` / `.IsLocked` | 输入（后端无关；需 `CloverInput.Init()` 挂载） |
+| **Input** | `Game.Input.State` / `.Available` / `.BackendName` / `.IsLocked` / `GetKey/GetKeyDown/GetKeyUp(GameKey)` / `MouseDelta/MousePosition` / `TextInput`（本帧可打印字符流，**不含 IME 组合串**） | 输入（后端无关；需 `CloverInput.Init()` 挂载）。`GameKey` 含字母/数字/方向/功能键 + `Delete`/`Insert`/`Home`/`End`/`PageUp`/`PageDown` |
 | **Scene** | `Game.Scene.Load(name, onProgress, onDone)` / `Unload(name, onDone)` / `CurrentScene` / `OnSceneLoaded` / `OnSceneUnloaded` | 场景管理（异步 + 加载门控 + 场景级回收）。**方法名是 `Load`，不是 `LoadScene`** |
 | **UI** | `Game.UI.Open<T>(param)` / `Close<T>()` / `Close(name)` / `CloseAll()` / `Get<T>()` / `IsOpen<T>()` / `OnPanelOpened` / `OnPanelClosed` | 面板实现 `IUIPanel`；预制体放 `Resources/UI/{面板类型名}`。**是 `Open`/`Close`，不是 `Show`/`Hide`** |
 | **Animation** | `Game.Anim.CreateAnimator(go, controller)` / `Destroy(player)` | 动画（基于 Unity Animator；Spine / 龙骨由业务自接 SDK） |
-| **Sound** | `Game.Sound.PlayBGM / StopBGM / PlaySFX / PlaySFXAt / PlayVoice / StopAll / SetVolume / GetVolume / SetMute`（`SoundGroup.BGM/SFX/Voice`） | 声音 |
+| **Sound** | `Game.Sound.PlayBGM / StopBGM / PlaySFX / PlaySFXAt / PlayVoice / StopAll / SetVolume / GetVolume / SetMute`（`SoundGroup.BGM/SFX/Voice`）；`PlaySFXAt(clip,pos, SfxAtOptions{MinDistance,MaxDistance,Rolloff,Volume,Pitch})` | 声音。3D 音效的衰减档位/音量/音高走 `SfxAtOptions`（默认 1/500 对数），**不要自建 3D 音源池** |
 | **Camera** | `Game.Camera.Follow(target, smoothTime)` / `Unfollow()` / `Shake(duration, intensity)` / `SetBounds(bounds)` | 相机 |
 | **Quality** | `Game.Quality.Level / Config / IsThrottling / CurrentFPS` / `SetLevel(level)` / `AutoDetect()` / `OnLevelChanged` / `OnThrottling` | 设备性能等级与画质档位 |
 | **SpriteAtlas** | `Game.Atlas.Load(name, cb)` / `Release(name)` / `GetSprite(atlas, sprite, cb)` / `UnloadAll()` | 图集（带引用计数） |
@@ -211,13 +211,19 @@ Game.Atlas.Release("ui_common");
 // —— 动画（基于 Unity Animator；Spine / 龙骨等骨骼动画由业务自接 SDK） ——
 var ap = Game.Anim.CreateAnimator(enemyGo, controller);
 ap.Play("idle");
-ap.CrossFade("run", 0.2f);
-ap.OnComplete(() => Game.Anim.Destroy(ap));
+ap.CrossFade("run", 0.2f);          // 第二参 = **秒**（引擎用 CrossFadeInFixedTime）
+ap.OnComplete(() => Game.Anim.Destroy(ap));   // 只对最近一次 Play/CrossFade 的那段派发一次
 
 // —— 声音 ——
 Game.Sound.PlayBGM("bgm_main", 0.5f);
 Game.Sound.PlaySFX("click");
-Game.Sound.PlaySFXAt("boom", transform.position);
+Game.Sound.PlaySFXAt("boom", transform.position);   // 默认 1/500 对数衰减
+Game.Sound.PlaySFXAt("boom", transform.position, new SfxAtOptions
+{
+    MinDistance = 3f, MaxDistance = 120f,           // 3D 衰减档位
+    Rolloff = AudioRolloffMode.Logarithmic,
+    Volume = 0.8f, Pitch = 1f,
+});
 Game.Sound.SetVolume(SoundGroup.SFX, 0.8f);
 Game.Sound.SetMute(SoundGroup.BGM, true);
 
@@ -278,6 +284,7 @@ string cur = Game.Fsm.Current;   // 不是 CurrentState
 | **HitShape** | 命中判定几何：正面扇形 + 矩形走廊 + 线段通畅（纯函数，无状态） | `Runtime/Core/HitShape.cs` | `ToUnit(dx, dy, out fx, out fy)` / `InFrontCone(fx, fy, dx, dy, cosMin)` / `InMeleeRect(fx, fy, dx, dy, reach, halfWidth)` / `LineClear(walkable, from, to, maxSteps)` |
 | **ProjectileRuntime** | 投射物飞行积分 + 逐格扫掠 + 最近命中 | `Runtime/Core/ProjectileRuntime.cs` | `ProjectileBody.Step(dt)` / `ProjectileRuntime.Advance(ref body, dt, blocked, target, …)` / `TrySweepTerrain(from, to, blocked, …)` / `FindNearestHit(count, target, pos, hitRadius)` / `GridOf(pos)` |
 | **GridGraph** | 格子图算法底座：8 邻接 BFS 连通性 / 边界环封 / 可走格索引 + O(1) 抽样 | `Runtime/Core/GridGraph.cs` | `FloodFill(…)` / `CountUnreachableTargets(…)` / `FillUnreachablePockets(…)` / `SealBorderRing(…)` / `WalkableIndex.Rebuild(…)` / `WalkableIndex.Pick(index)` / `Fill` / `FillRect` / `LineH` / `LineV` / `FillDisk` |
+| **AStarContext** | A* 的**跨调用复用工作区**（容器不在每次调用里 new）+ 只判连通性入口 | `Runtime/Core/AStarContext.cs` | `new AStarContext(initialCapacity = 0)` / `Find(walkable, from, to, maxNodes, pathOut)` / `CanReach(…)` / `TryFind(…)` / `TryFindSmoothed(walkable, from, to, pathOut, maxNodes)` / `Reset()`；静态 `AStar.Find` 只留给一次性调用，批量问路/每秒可达性检查用本类 |
 | **GridBitSet** | 「格集合 ↔ base64 位图」编解码：逐格幂等 + 越界丢弃 + 坏串不抛 | `Runtime/Core/GridBitSet.cs` | `Encode(indices, w, h)` / `Decode(cells, w, h, into)` / `IndexOf(x, y, w, h)` / `ToCell(index, w, h, out x, out y)` / `MaxCells` |
 | **GridUtil** | 矩形 → 整数格遍历（`FloorToInt` 口径 + 右/上边收边 epsilon） | `Runtime/Core/GridUtil.cs` | `TryGetTileRange(r, out xMin, …)` / `ForEach(r, action, epsilon)` / `Enumerate(r, epsilon)` / `EdgeEpsilon` |
 | **EnterLatch&lt;T&gt;** | 「进入触发一次、持续逗留不重复、离开重新武装」的状态跃迁闩锁（纯值类型） | `Runtime/Core/EnterLatch.cs` | `ShouldEmit(inside, at)` / `Fired` / `HasLastTrigger` / `LastTriggerAt` / `Reset()` |
@@ -290,7 +297,7 @@ string cur = Game.Fsm.Current;   // 不是 CurrentState
 | **LogThrottle** | 日志防刷屏：限频 / 只报一次 / 计数打点 / 可注入时钟 | `Runtime/Core/LogThrottle.cs` | `WarnThrottled / ErrorThrottled / WarnOnce / ErrorOnce(tag, key, message, intervalSeconds)` / `InfoCounted / WarnCounted / ErrorCounted(tag, key, message, everyN)` / `Clock` / `Reset()` |
 | **JsonWriter** | 手写 JSON 输出（写进 `StringBuilder`）+ 最小 JSON 解析 | `Runtime/Core/JsonWriter.cs` | `WriteKey / WriteString / WriteInt / WriteLong / WriteBool / WriteFloat / WriteDouble / WriteNull(sb, …)` / `ParseValue(s, ref pos)` / `ParseObject(s, ref pos)` / `ParseArray(s, ref pos)` |
 | **ServiceAutoWire** | 从程序集里解析某契约的**唯一**实现（无 DI 容器版），供非 MonoBehaviour 的装配点 | `Runtime/Core/ServiceAutoWire.cs` | `TryResolve<T>(assembly, out service)` / `TryResolve<T>(assembly, out service, out error)` / `FindImplementations(contract, assembly)` / `ClearCache()` |
-| **Screenshot** | 截图落盘（编辑器 / 自动化验证 / 玩家反馈） | `Runtime/Core/Screenshot.cs` | `CaptureToFile(path, superSize = 1)` |
+| **Screenshot** | 截图落盘（编辑器 / 自动化验证 / 玩家反馈）；接受**绝对路径**，父目录自动创建 | `Runtime/Core/Screenshot.cs` | `CaptureToFile(path, superSize = 1)`；取证相机由**常驻驱动**创建（`run_script` 临时入口 new 的对象在调用返回后销毁） |
 
 ### Runtime/Presentation（`CloverEngine.Presentation`）
 
@@ -338,7 +345,7 @@ string cur = Game.Fsm.Current;   // 不是 CurrentState
 | **PixelArtSlicing** | 切图规则的**请求载体 + 工程侧切图器契约**（引擎不直接切，由工程注册切图器） | `Editor/PixelArtSlicing.cs` | `IPixelArtSlicer` / `PixelArtSliceRequest` / `PixelArtSliceItem` |
 | **PixelArtImportSettings** | 像素素材导入规范（配置资产）：目录规则表 + 切图规则表 | `Editor/PixelArtImportSettings.cs` | `PixelArtImportSettings`（`ScriptableObject`）/ `MatchRule(path)` / `MatchSlicingRule(path)` / `PixelArtDirectoryRule.ResolveImportMode(global)` / `Validate()` |
 | **PixelArtImportPostprocessor** | 按配置资产给纹理配好像素导入设置，并把切图请求交给已注册的切图器 | `Editor/PixelArtImportPostprocessor.cs` | `PixelArtImportPostprocessor.RegisterSlicer(IPixelArtSlicer)` |
-| **MapBake**（`MapBaker` / `MapBakeOptions`） | 静态地图烘焙：场景 → 可行走网格 `.bytes`（含障碍 / 出生点 / 命名标记） | `Editor/MapBake/MapBaker.cs`、`Editor/MapBake/MapBakeOptions.cs` | `MapBaker.Export(options, out summary)` / `ExportInteractive(options, onDone)` / `ExportFromMenu()` / `MapBakeOptions.Load() / Save() / Clone() / Validate()` / `ShouldBakeCollider(layer, minY, maxY)` |
+| **MapBake**（`MapBaker` / `MapBakeOptions`） | 静态地图烘焙：场景 → 可行走网格 `.bytes`（含障碍 / 出生点 / 命名标记 / **可选高度场**） | `Editor/MapBake/MapBaker.cs`、`Editor/MapBake/MapBakeOptions.cs` | `MapBaker.Export(options, out summary)` / `ExportInteractive(options, onDone)` / `ExportFromMenu()` / `MapBakeOptions.Load() / Save() / Clone() / Validate()` / `ShouldBakeCollider(layer, minY, maxY)` / `BakeHeightField` + `HeightFieldSource` / `WalkableTransform`（高度场段追加在标记点段之后，旧读端按 flag 跳过） |
 
 > **已单独登记、本表不重复的件**（需要细节去对应文档）：
 > `Rng` / `AStar` / `IsoLayout` / `FileSlotStore` / `LogThrottle` / `GridUtil` / `FrameBank` / `SpriteSet` / `Screenshot` / `OrderedAsyncResult<T>` / `FramePacingPolicy` / `UnitFacingMap` / `TextFit` / `DragGestureRouter` / `SortingLayers` / `ScreenPointUtil` / `ITileWorld`·`TileWorld` / `SpriteFrameAnimator` / `RuntimePanelProvider` / `SnapshotInterpolator` → `clover-doc/client/reference/api-cheatsheet.md`「数据与通用件」一节及各模块节；
