@@ -19,6 +19,8 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 3. **做完才交付**：没做完 ⇒ 只说"还没做完"。⛔ 不做一点交一点、⛔ 不交最小可运行版、⛔ 不留 `docs/交接-*.md` / `NEXT.md` / `进度*.md`。
 4. **写不出出处的量不许进工程**：几何 / 碰撞 / 坐标 / 尺寸 / 颜色 / 数值 / 公式 / 字体 / 时长都要有出处（参考物 `文件:行` / 资源文件 / 规格条款）。"看起来合理"不是出处。
 
+**「原版」是谁**：= 用户点名那款游戏**正式发行的版本本身**（本体资源 > 官方商店页 / 实机视频 > 维基·社区实机图；⛔ 同人复刻 / 移植 / 重制 / 概念图 / 文字描述 / AI 图都**不算**）。本体拿不到 ⇒ **必须上网找参考图**（中英 ≥3 轮）存 `策划/参考图/`，每张标来源 + 版本；矛盾时以用户点名版本为准（没点名取最新正式版），一张都找不到 = 阻塞项。细则 `reference/rules-full.md` §0。
+
 ## 你现在要做什么？—— 按这一刻查表
 
 | 你要做 | 读 |
@@ -53,6 +55,8 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 **4. 定规模档位**（只改**采样密度**，⛔ 不改"要不要判"）：`S 小 demo` 1-way · `M 中型` 2-way(pairwise) · `L 复刻/大型` 3-way + 全状态全边界。判一次、写在规格顶部；可上调，⛔ 不可因赶时间下调。
 
 **5. 素材先用参考物 A 自己的**：穷尽 = **≥4 轮**不同关键词（中英各半）× **≥3 类**站点 × 换过格式与打包；⛔ 穷尽之前不许上通用兜底素材。调研落盘 `策划/素材调研.md`（没这份文件 = 没做过调研）。
+
+**5.1 「穷尽」的可检验判据**（⛔ 不满足 = 没穷举，不许写「未取到」、更不许降级）：先列目录再挑文件 · 报「未取到」必须附目录清单 · 名字变体与站点类别各 ≥3 · 私有格式算「已找到（需转换）」。五条细则见 `reference/asset-sources.md` §2.1.2。
 
 **6. 开工前跑一次环境自检**（杀软 / 显卡 / 崩溃风暴）→ 见 §4 第 5 条（脚本 `tools/env-check.ps1`）。
 ⛔ **360 没关时 Unity 编辑器根本起不来**：① 开工前问一句「360 关了吗」，不确定 = 按没关处理；② 别把"起不来"当"慢"。
@@ -100,8 +104,7 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 
 ## §3 写码清单（**写 / 改代码前读**）
 
-**1. 写不出出处的量不许进工程**（§0 铁律 3 的执行面）：参考物已有的**一律解析搬运，⛔ 不许重写**（"栅格化成近似"也算）；载体拿不到按**降级链**逐级退（原始数据 → 程序里的常量 → 专用格式原始结构 → 参考图/视频量化 → 阻塞），退到底才 BLOCKED。
-**表现素材同等对待**：技能 / 攻击 / 受击 / 死亡先落那一行 `官方表行 → 原版 cel → 工程路径 → 用法`；原版有帧就必须用原版帧，⛔ 不许程序化几何 / 环 / 盘 / 跨技能借素材顶替（§0 铁律 0）。
+**1. 写不出出处的量不许进工程**（§0 铁律 3 的执行面）：参考物已有的**一律解析搬运，⛔ 不许重写**（"栅格化成近似"也算）；载体拿不到按**降级链**逐级退（原始数据 → 程序里的常量 → 专用格式原始结构 → 参考图/视频量化 → 阻塞），退到底才 BLOCKED；表现素材同等对待（§0 铁律 0）。
 
 **2. 先查引擎能力，别重造轮子**（★ 最常被追责的一条）：写通用设施前 **三招必做**（过能力表 / 引擎 `Runtime/**` 搜 / **横向比别的 `clover-project-*` 有没有在用**）；**引擎有就用引擎的**，细则 `reference/rules-full.md` §6。
 
@@ -149,6 +152,8 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 
 **4. 节奏（一拍）**：批量改 → **编译一次**（编不过 ⇒ 中止一切检查，否则查的是旧程序集）→ **跑一次关键路径 / 看一眼截图** → 出证据。⛔ 不许"改一处编译一次 / 截一次图"，⛔ 也不许攒着从不看。
 
+**4.1 ⛔ 追绿色**：一轮里主要时间在「证明」而不是「产出」＝ 跑偏；正确节奏 = 批量改一批 → 编译一次 → 跑一次 → 下一批，**Play 是收尾不是心跳**（用户说「先做，最后再验」⇒ Play 上限 1）。反例 5 条见 `reference/rules-full.md` §1.13。
+
 **5. 能离线判的不进 Play**（数值 / 逻辑 / 坐标走离线断言，秒级）。
 **进 Play / 怀疑"卡·掉帧"之前先跑** `tools/env-check.ps1`：杀软（360 及同类，⛔ 不确定 = 按没关处理）/ 图形设备（是否落到 `Microsoft Basic Render Driver`）/ 崩溃风暴（近 24h 同一 exe 崩 ≥3 次 ⇒ 别归因到你的代码）。**exit 1 ⇒ 停**：此机器上一切"卡 / 帧时间"结论无效。
 
@@ -181,10 +186,9 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 **2. 交付前自己过一眼**（§4 第 3 条，5 秒）：编译过 + **`git status` 扫一眼**（临时文件 / `-bak-` / 生成垃圾有没有混进仓库）+ 打开看一眼就是那个样子。
 ⛔ **没有"必须跑的闸门"** —— 项目里若还留着 `tools/verify.ps1`，它只是**想查时能用的一个脚本**，⛔ 不再有任何"必跑"含义。
 
-**3. 1:1 硬标准（感官在前）**：动画 / 特效 / 打击感 / 布局 / 素材 / 字体 / 色调 / 节奏 = `策划/对照表.md` 每行"原版值(出处) / 我们的值 / 差值 = 0"；每个技能 / 特效还要有一行 `官方表行 → 原版 cel → 工程路径 → 用法`，缺行或用环 / 盘 / 占位素材顶替 = **不合格**。
+**3. 1:1 硬标准（感官在前）**：动画 / 特效 / 打击感 / 布局 / 素材 / 字体 / 色调 / 节奏 = `策划/对照表.md` 每行"原版值(出处) / 我们的值 / 差值 = 0"；缺行或用环 / 盘 / 占位素材顶替 = **不合格**（§0 铁律 0）。
 ⛔ **画面 / UI / 表现不像原版 = 该版本不可交付**；"基本一致 / 大致像 / 略有差异" **不算一致**。
 ⛔ **只报"数字全对 / 日志全绿"不算验收** —— 血条恒满、角色纯白无贴图、动画根本没播这类**静默失效只有看图才发现**。
-⛔ **占位物 / 纯色块 / 默认 UI / 自画近似图 / 自己"设计"的布局** —— 一律**不可交付**。
 
 **4. 不许东拼西凑 / 糊弄 / 缩水**：通用模板 · 别处片段 · 占位色块 · 内置几何体 · 默认字体 · OnGUI 调试文字 · "留钩子后续替换" · "框架已预留" —— **全都不算完成**；系统清单里每一行都要做完。
 
@@ -250,22 +254,22 @@ description: Clover 引擎（Go 服务端 + Unity 客户端）的项目式交付
 | UI / 外观 | `reference/visual-loop.md`、`patterns/client/ui.md` |
 | 网络 / 实体同步 | `patterns/client/network.md`、`patterns/client/entity-view.md` |
 | 配表 | `patterns/table.md`、**`scripts/table-pipeline.ps1`** |
-| **引擎缺口 / 引擎 bug** | ⛔ **不改源码** ⇒ 写 `<项目根>/引擎问题.md`（`引擎缺口` / `引擎 bug` 两段，⛔ 不含 skill 问题）；**用户本轮明说可改**时，才读 `patterns/engine-fix.md`（最小复现 → 最小修复 → 根因写进代码注释 + 回归用例） |
+| 引擎缺口 / bug | ⛔ 不改源码 ⇒ 写 `<项目根>/引擎问题.md`（两段，⛔ 不含 skill 问题）；用户明说可改时才读 `patterns/engine-fix.md` |
 | 派活 / 编排 | `patterns/multi-agent.md`、`scaffold/agent-impl.md` |
 | 交付 / 抽查 | `reference/game-delivery.md`、`reference/verify-template.md`、`reference/design-review.md` |
 | 素材 | `reference/asset-sources.md` |
-| **素材引用自查（"进了工程却到不了"的素材）** | **`reference/check-assets-template.md`**（需要时复制成 `<项目根>/tools/check-assets.ps1`；`-Warn` 只报不删；五形态判覆盖） |
+| 素材引用自查 | `reference/check-assets-template.md`（复制成 `tools/check-assets.ps1`；`-Warn` 只报不删） |
 | **原版素材打包 / README 用图发布** | **`scripts/pack-original-assets.ps1`**（`-Src`/`-Out`）、**`scripts/readme-shots.ps1`**（`-Shots`/`-Dest`/`-MapFile`，缺帧 exit1） |
-| **离线真编译 / 扫"静默失败"**（⛔ 不启编辑器） | **`scripts/compile-check.ps1`**（`-Project <项目根>`，可选 `-Assembly auto\|runtime\|editor`；exit 0/1/2）、**`scripts/silent-failures.py`**（`--root <项目根>`；找空 `catch` / 吞异常不记日志 / `_ =` 丢弃返回值） |
-| **交付用 README / LICENSE**（README 五节骨架 + 实机图落仓库；LICENSE = MIT + 第三方素材声明） | **`scaffold/new-project.md` §0.2**、**`scaffold/license-third-party-declaration.md`** |
+| 离线真编译 / 扫静默失败 | `scripts/compile-check.ps1 -Project <项目根>`（`-Assembly auto\|runtime\|editor`）、`scripts/silent-failures.py --root <项目根>` |
+| 交付用 README / LICENSE | `scaffold/new-project.md` §0.2、`scaffold/license-third-party-declaration.md` |
 | 服务端 | `patterns/handler.md`、`patterns/datadef.md`、`patterns/signup-login.md`、`patterns/auth-server.md` |
-| **掉帧 / 卡 / 帧率异常** | **`experience/perf-triage.md`**（**先证伪环境（渲染设备）→ CPU/GPU 拆分 → A/B → 才轮到代码红旗**） |
+| 掉帧 / 卡 / 帧率异常 | `experience/perf-triage.md`（先证伪环境（渲染设备）→ CPU/GPU 拆分 → A/B → 才轮到代码红旗） |
 | 踩坑 / 时间黑洞 | `experience/README.md`、`experience/time-sinks.md`、`experience/verify-recipes.md` |
-| **静默失败**（编译不报错 / 零日志：组件为 null / 空屏 / 日志刷屏） | **`experience/time-sinks.md` 的「静默失败三条」** |
-| **"抖 / 飘 / 抽搐 / 一顿一顿"这类逐帧现象** | **`experience/per-frame-jitter-evidence.md`**（逐帧采样通道的做法与口径 + 判据事故案例） |
-| **像素 diff / 截图统计 / 字体量法（判定交给脚本）** | **`clover-tools/visual-verify/`** —— `visual-diff.py`（`--threshold` 0.1 / `--max-diff-ratio` 0.001 / `--max-diff-pixels` / `--min-ssim` 0.99 / `--aa-policy`）、`shot-stats.py`、`font-metrics.py`；用法与判据见该目录 `README.md` |
-| **进 Play 跑探针场景（一次会话多场景 / 每场景新会话）** | **`scripts/play-driver.ps1`**（`-ProjectPath` / `-Scene` / `-FreshSession` / `-ReusePlay` / `-PreflightOnly`；每条 unity 调用自动带 `--project-path`） |
-| **写探针 / 定出图判据**（输入桩逐帧边沿语义 / 场景开始-结束日志标记 / 退化帧唯一色数 / 出图闸门 / 机位随图落盘） | **`scaffold/probe-harness.md`** |
+| 静默失败 | `experience/time-sinks.md` 的「静默失败三条」 |
+| 抖 / 飘 / 抽搐这类逐帧现象 | `experience/per-frame-jitter-evidence.md`（逐帧采样通道 + 判据事故案例） |
+| 像素 diff / 截图统计 / 字体量法 | `clover-tools/visual-verify/`：`visual-diff.py` / `shot-stats.py` / `font-metrics.py`（用法见该目录 `README.md`） |
+| 进 Play 跑探针场景 | `scripts/play-driver.ps1`（`-ProjectPath` / `-Scene` / `-FreshSession` / `-ReusePlay` / `-PreflightOnly`） |
+| 写探针 / 定出图判据 | `scaffold/probe-harness.md` |
 | **离线判 Unity 精灵帧序 / 逐帧 pivot（不进编辑器、零依赖）** | **`scripts/frame-order-check.py`** |
 | Unity CLI / Pipeline | `reference/unity-cli.md`、`reference/pipeline-and-unity-cli.md`、**`scripts/console-filter.py`** |
 | 服务端环境 | `reference/server-env.md` |
