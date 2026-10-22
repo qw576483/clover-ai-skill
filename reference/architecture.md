@@ -24,7 +24,7 @@ client/Assets/Scripts/
 │   ├── Combat/             # 战斗（攻击/伤害/受击/死亡/复活表现）
 │   └── Audio/              # 音效（脚步/挥砍/命中/UI）
 ├── UI/                     # 面板：只读数据 + 发事件，不引用业务模块类
-（含菜单/创角/选角/设置/暂停/结算等流程面板）
+│                           # （含菜单/创角/选角/设置/暂停/结算等流程面板）
 └── App/                    # ★ 唯一组装点：Bootstrap（装配 + 生命周期），不含业务逻辑
 ```
 
@@ -47,7 +47,7 @@ App ──▶ Module ──▶ Core ──▶ Def
 
 ```csharp
 // Module/Combat/CombatModule.cs —— 模块**唯一对外门面**
-namespace CloverMmo1.Module.Combat
+namespace YourGame.Module.Combat
 {
     public interface ICombat
     {
@@ -58,8 +58,6 @@ namespace CloverMmo1.Module.Combat
     internal sealed class CombatModule : ICombat { /* 内部只被 App 构造 */ }
 }
 ```
-
-规则：
 
 - **一个模块 = 一个门面接口 + 若干内部类**；MonoBehaviour 全部 `internal`，只在模块目录内 `AddComponent`；
 - 模块之间**不允许**通过 `FindObjectOfType` / `GameObject.Find` / 全局单例互相找；
@@ -74,7 +72,7 @@ namespace CloverMmo1.Module.Combat
 - **禁止**在 App 里出现：业务判断（伤害 / 胜负 / 掉落）、逐帧业务循环、资源加载细节、具体的 `Game.Net.Send`（除装配期的登录流程外）；
 - 逐帧更新由各模块自己 `Update`（MonoBehaviour）或 App 转发 `Tick`，**App 不写业务每帧逻辑**。
 
-**反面教材**：把登录流程 + 实体视图创建销毁 + 模型加载与归一化 + 动画装配 + HUD 刷新 + 热键 / 探针 + 相机装配全塞进 `Bootstrap` ⇒ 任何一处改动都要动同一个文件，一次网络异常引发全部功能瘫痪。**这就是"耦合"的代价。**
+**反例**：登录流程 + 实体视图创建销毁 + 模型加载 + 动画装配 + HUD 刷新 + 相机装配全塞进 `Bootstrap` ⇒ 任何一处改动都要动同一个文件，一次网络异常引发全部功能瘫痪。
 
 ## 4. 自检（**需要时自查**；⛔ 默认不跑、不拦交付 —— `SKILL.md` §4）
 
@@ -83,27 +81,19 @@ namespace CloverMmo1.Module.Combat
 wc -l client/Assets/Scripts/App/*.cs
 
 # ② 跨模块耦合体检：Module/X 里出现 Module/Y 的具体类型
-grep -rn "Module\." client/Assets/Scripts/Module/ | grep -v "本模块命名空间"
+grep -rn "Module\." client/Assets/Scripts/Module/
 
 # ③ UI 引用了业务模块（应 0 命中）
-grep -rn "using CloverMmo1.Module" client/Assets/Scripts/UI/
+grep -rn "using .*\.Module" client/Assets/Scripts/UI/
 
 # ④ 业务模块里直连网络（除 Net 模块外应 0 命中）
 grep -rn "Game.Net\." client/Assets/Scripts/Module/ | grep -v "/Net/"
 
 # ⑤ 裸事件名（应全部来自 Core/Events.cs 常量）
 grep -rnE 'Game\.Event\.(On|Emit|Off)\("' client/Assets/Scripts/
-
-# ⑥ 硬规则命中（应 0 命中；有例外必须已在「策划/验收表.md → 允许的差异」登记）
-grep -rnE 'Debug\.Log|Resources\.Load|PlayerPrefs|GameObject\.Find|FindObjectOfType' client/Assets/Scripts/
-grep -rnE '(^|[^.])\bInput\.(GetKey|GetMouse|mousePosition|GetAxis)' client/Assets/Scripts/   # 裸 UnityEngine.Input
-
-# ⑦ 临时文件位置（应 0 命中：探针/一次性脚本只许在 <项目根>/.ai-tmp/）
-grep -rn --include=*.cs --include=*.ps1 '' client/_dev _assets_src _assets_tmp 2>/dev/null | wc -l
 ```
 
-> ⑥⑦ 与 §1~§5 一样，是**想查时才跑**（⛔ 默认不跑；完整 **8 条**见 `SKILL.md` 的「交付清单」）。**没有这两条时，「临时文件遍地」「`Resources.Load` 绕过 `Game.Res`」这类违反不留任何痕迹**，交付时"看起来完全合规"。
-> ②③④⑤ **允许为 0 命中**；有命中就必须在交付说明里给出理由，否则返工。
+> ②③④⑤ 允许 0 命中；有命中就必须给出理由，否则返工。禁用 API（`PlayerPrefs` / `Resources.Load` / 裸 `Input` 等）的 grep 与例外登记口径见 `SKILL.md` §3 第 5 条与 §4。
 
 ## 5. 服务端分层（沿用仓库既有约定，不要另发明）
 

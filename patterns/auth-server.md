@@ -14,7 +14,7 @@
 ③ 游戏服  ──HTTP──▶  账号服    /auth/verify {token} ──▶ owner（网关据此绑定会话）
 ```
 
-登录模式只有这一种，**没有可切换的模式配置**；游戏服不碰账号表、不存密码、不持有密钥。
+没有可切换的登录模式：游戏服不碰账号表、不存密码、不持有密钥。
 
 ---
 
@@ -97,7 +97,7 @@ var reply = await Game.Net.Call<ELoginReply>(
 >
 > ⚠️ **引擎把 verifier 的任何 error 都映射成 401**（`internal/domain/auth/state/state.go:297-302` 写死 `KindTicketInvalid`）⇒ **「渠道服务故障」与「玩家票据无效」在 HTTP 层不可区分**，只能靠日志（`logger.Warnf` 已带原始 err）区分。
 
-**能，扩展点在账号服，不在游戏服。** 游戏服侧**没有任何登录注入点** —— 登录链路唯一（`RemoteAuthenticator` → `/auth/verify`）。这是刻意的：账号体系的扩展能力该长在账号体系里，否则「账号服必须在线」这条不变量就会出现例外。
+**能，扩展点在账号服，不在游戏服** —— 游戏服侧没有任何登录注入点。账号体系的扩展能力长在账号体系里，否则「账号服必须在线」这条不变量就会出现例外。
 
 **引擎已把整条链路做好，业务只实现一个接口**（`internal/domain/auth/state/channel.go` 定义、`pkg/app/channel.go` 导出）：
 
@@ -127,8 +127,7 @@ func (v wechatVerifier) Verify(ctx context.Context, channel, ticket string) (str
 > ⚠️ 几个**不要**踩的点：
 > - 不要在 `Verify` 里做绑定或建号 —— 那是账号服的职责，重复做会撞唯一键；
 > - `Verify` 返回的渠道账号必须**稳定**（同一用户每次一致），否则每次登录都会新建账号；
-> - 票据无效要**返回 error**，不要返回空字符串 + nil（引擎会判为校验器实现错误并回 500）；
-> - 未注册校验器时接口返回 **501**（不是 401），便于区分「服务端没接渠道」与「票据错了」。
+> - 票据无效要**返回 error**，不要返回空字符串 + nil（引擎会判为校验器实现错误并回 500）。
 
 ---
 
@@ -173,7 +172,7 @@ ag.OnHTTP("/auth/pay/notify", func(ic event.HTTPCtx) error {
 })
 ```
 
-> ⚠️ 引擎侧**已无待做**：账号服能建单 / 流转状态（`AuthGame.OrderStore()`），回推由 game 侧走既有**按玩家寻址事件通道**（`SendQueueEventToPlayer`）完成 —— 不给账号服加 NATS / master 依赖（`SendEventToPlayer` 的底座 `CrossNodeEventBus` 需要两者，且按 game 节点设计）。剩余全是业务：渠道验签、查单应答、发货 handler。
+> ⚠️ 回推由 game 侧走既有**按玩家寻址事件通道**（`SendQueueEventToPlayer`）完成，不给账号服加 NATS / master 依赖（`SendEventToPlayer` 的底座 `CrossNodeEventBus` 需要两者，且按 game 节点设计）。账号服侧全是业务：渠道验签、查单应答。
 
 ---
 

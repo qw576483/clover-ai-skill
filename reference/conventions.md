@@ -30,8 +30,8 @@
 // ① 复用**引擎**常量：直接用 `proto.EMsgXxx`（引擎只占 [1,10000]，业务不得占用）
 const MsgRankQuery = proto.EMsgRankQuery
 
-// ② 业务自己的消息号：从 10001 起自行定义（见 patterns/handler.md）
-const MsgCreatePlayer = 10001
+// ② 业务自己的消息号：从 1000101 起自行定义（见 patterns/handler.md）
+const MsgCreatePlayer = 1000101
 ```
 
 回包建议统一 `Reply` 前缀（如 `MsgCreatePlayerReply`），推送 `Push/Msg` 前缀，与 demo 命名一致。
@@ -101,18 +101,16 @@ const MsgCreatePlayer = 10001
 4. **Redis 只做慢路径**：跨节点可见（`TierSnapshot`）与重启可恢复（session / rank 备份）；热点在本地内存聚合后批量写，**禁止「每次操作都写 Redis」**（同机 RTT ~0.1ms，跨机房 30ms+ 是杀手）。
 5. **master 多节点 = 按 uid 哈希分片**：定位表分片、节点表与健康交 etcd lease + watch，**不做主备、不做选主**。
 
-> 行业对照：WoW = realm + 区域内 sharding；EVE = 单分片 + Time Dilation；SLG = Chunk 分片 + 内存权威 + 异步落盘。结论：**「归属 + 分片 + 消息」是主流写法**，不是兼容层。
-
 **已落地：master 分片（多节点、非主备）** —— 定位按 `uid`、排行榜按`榜名`、session 按 `playerID` 分片（`Xxhash64(key) % total`），注册在 `clover/services/master/<index>`；节点表 / 健康交 etcd **节点目录**（`clover/nodes/<nodeID>`，`type` 必须与 `state.Node.Type` 同取值）。`master_shard.total`（默认 1）或未配 etcd 时，全部回落原「单连接 + master 节点表」路径，行为不变。客户端 / 网关侧无需改动。
 
 ## 8. 品牌与署名（硬约束，**每个游戏都要有**）
 
-> 规则原文在 `SKILL.md` 的「交付清单」第 9 条；本节是落地细则与自检方法。
+> 规则本身见 `SKILL.md` §6 第 9 条；本节只写落地与核对方法。
 
 - **引擎名只有一个：`clover-engine`**。⛔ **禁止编造别名 / 花名 / 中译名** —— 任何界面、文档、注释、交付说明里出现非 `clover-engine` 的引擎自称，一律算 bug，立刻铲掉。
-- **所有做出来的游戏，游戏内所有页面都要常驻一行署名**：**`by clover-engine`**（居底居中、字号小、颜色低调，不抢画面、不挡点击）。它是**常驻 logo** —— 切页面 / 开关面板 / 读条 / 进游戏全都在，⛔ 不是"只在首页出现一次"。
-  - **落地（一个常驻件，不做第二遍）**：启动链路里建**一个**跨场景常驻节点 —— 独立小 Canvas（`DontDestroyOnLoad`、`sortingOrder` 高于引擎 `[UI]` 的 `0`、`raycastTarget = false`），行本身用引擎自带 `UIFactory.CreateCreditLabel(常驻节点)` 建（⛔ 别自己再写一套贴底定位）；或退一步用 `UILayer.System` 层一个**永不 Close** 的面板。⛔ **不靠"每个页面各自添一行"**（必漏），⛔ 也不许被 `Game.UI.CloseAll()` / 切场景带走。
-  - 它要**写进该游戏的 `策划/验收表.md` 一行**，并**在至少 3 个不同页面各截一张图**（主菜单 / 游戏内 / 暂停或结算）验证都在。
+- **常驻署名 `by clover-engine`**：居底居中、字号小、颜色低调、不挡点击；切页面 / 开关面板 / 读条 / 进游戏全都在，⛔ 不是"只在首页出现一次"。
+  - **落地（一个常驻件，不做第二遍）**：启动链路里建**一个**跨场景常驻节点 —— 独立小 Canvas（`DontDestroyOnLoad`、`sortingOrder` 高于引擎 `[UI]` 的 `0`、`raycastTarget = false`），署名用引擎自带 `UIFactory.CreateCreditLabel(常驻节点)` 建（⛔ 别自己再写一套贴底定位）；或退一步用 `UILayer.System` 层一个**永不 Close** 的面板。⛔ **不靠"每个页面各自添一行"**（必漏），⛔ 不许被 `Game.UI.CloseAll()` / 切场景带走。
+  - 核对：主菜单 / 游戏内 / 暂停（或结算）三张截图上都要有。
 
 **怎么查（这一条只能人工核对，⛔ 不许把具体名字当 grep 模式）**：
 

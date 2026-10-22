@@ -34,7 +34,7 @@ func init() {
 **为什么不能只挂内存定时器**：`pkg/runtime/timer` 是**进程内**结构（单 goroutine + 截止时间最小堆）。进程重启 / 崩溃 / 滚动发布 → 堆没了、任务蒸发。
 **别指望 `PersistScope` 兜底**：① `g.Timer` 建调度器时只传时区（`internal/app/mount.go:131-140`）、**未注入 `PersistBackend`** ⇒ 业务调 `PersistScope` / `RestoreScope` 直接得 `timer.ErrNoBackend`（缺迁移后端的原因见 `internal/app/mount.go:107-113`）；② 即便注入，`DumpScope` 存的是**相对剩余时间**（`pkg/runtime/timer/timer.go:665-670`、`:674-698`），`ImportScope` 按剩余量重新入堆、**不补触发已过期任务**（`:746-801`）⇒ 停机 2 小时会把任务**顺延**而不是补算。
 
-### 三条铁律
+### 三条硬规则
 
 1. **deadline 落数据**：凡「到点该发生」的事，数据里必须有一个**绝对时间**字段（Unix 秒或 RFC3339）。
 2. **定时器可丢**：它只负责「到点时立刻做」；丢了最多晚一点，**不能丢结果**。

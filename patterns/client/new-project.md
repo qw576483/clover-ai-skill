@@ -13,7 +13,7 @@
 |---|---|
 | `ProjectSettings/ProjectVersion.txt` | Unity 打不开，不是合法工程 |
 | `Packages/manifest.json` | 加不了包依赖，引不进 clover 引擎 |
-| `.sln` / `.csproj` | 无 IDE 补全、无编译检查，写 C# 全盲写 |
+| `.slnx` / `.csproj` | 无 IDE 补全、无编译检查，写 C# 全盲写 |
 | `.asmdef` | `CloverEngine.*` 引用不到，`Game.Net` / `EMsg` 全部编译错误 |
 
 **结论：在里面写多少业务代码都是白写，必须先有真工程。**
@@ -58,6 +58,8 @@ unity projects create "client" --path "clover-{项目名}" \
 "com.clover.unity-engine": "https://github.com/qw576483/clover-client-unity-engine.git"
 ```
 
+> ⚠️ 模板自带的包清单**没有 Unity 内置模块**，只加这一行会在编译引擎时报 `CS1069`。完整 `dependencies`（引擎包 + 内置模块 + `testables`）见 `scaffold/new-project.md` §2.2，照抄那一份。
+
 **要分发（别人 clone 就能打开）→ 就用这条 git URL**：引擎是独立仓库，**不在**业务工程里，任何本地路径都救不了陌生用户。
 
 要**在工作区内联调引擎源码**（引擎仓库与业务工程同父目录）才改用本地路径 —— 注意 **Unity 的 `file:` 相对路径基准是 `client/Packages/`，不是工程根**：
@@ -70,30 +72,7 @@ unity projects create "client" --path "clover-{项目名}" \
 
 ### 4. 建业务程序集定义
 
-`client/Assets/Scripts/{项目名}.asmdef`：
-
-```json
-{
-    "name": "{项目名}",
-    "rootNamespace": "{项目名}",
-    "references": [
-        "CloverEngine.Core",
-        "CloverEngine.Network",
-        "CloverEngine.Data",
-        "CloverEngine.Resource",
-        "CloverEngine.Presentation"
-    ],
-    "includePlatforms": [],
-    "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
-    "autoReferenced": true,
-    "defineConstraints": [],
-    "versionDefines": [],
-    "noEngineReferences": false
-}
-```
+`client/Assets/Scripts/{项目名}.asmdef` —— 内容逐字见 `scaffold/new-project.md` §2.3（5 个 `CloverEngine.*` 引用；⛔ 少一个就 `Game.Net` / `Game.UI` 编译不过）。
 
 ### 5. 建脚本目录（此时才建，且是有工程之后）
 

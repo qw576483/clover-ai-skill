@@ -1,13 +1,14 @@
 # 资源引用自查模板（`tools/check-assets.ps1`）—— ⛔ 默认不跑，需要时自查（`SKILL.md` §4）
 
-> **为什么有这个文件**：`SKILL.md` 的「写码清单」/ `asset-sources.md` §8.1 / `game-delivery.md` §9.5 / `reference/rules-full.md` 的「原版资源」目录第 7 条 **四处点名**"工具 `tools/check-assets.ps1`"，但此前**一处都没给骨架** —— 结果是每个项目自己现编，而现编出来的那一版（只做"文件名在源码里 `-notmatch`"）**必然把帧序列资源判成未引用**。本文件补上骨架，并把判据升级成"**五种引用形态覆盖**"。
+> **用途**：报出 `client/Assets/Resources/**` 里**没被任何引用形态覆盖**的文件（默认只报不删）。
+> **为什么不能只做"文件名 `-notmatch`"**：那只覆盖五种形态里的第 ① 种，**必然把帧序列资源判成未引用**（实测假阳性近 88%）。
 
 ## 怎么用（**需要时自查**；⛔ 默认不跑、不是交付的拦路虎）
 
-1. **需要时**复制下面骨架到 **`<项目根>/tools/check-assets.ps1`**（正文一律 ASCII ⇒ 存 **UTF-8 无 BOM** 即可；一旦里面出现任何非 ASCII 字节，**整个文件必须改存 UTF-8 with BOM** —— 口径见 `reference/verify-template.md` 硬坑 1）。
+1. **需要时**复制下面骨架到 **`<项目根>/tools/check-assets.ps1`**（正文一律 ASCII ⇒ 存 **UTF-8 无 BOM** 即可；一旦出现任何非 ASCII 字节，**整个文件必须改存 UTF-8 with BOM** —— 口径见 `reference/verify-template.md` 硬坑 1）。
 2. 存量工程先跑 **`-Warn`**（只报数、退出码 0）：`powershell -NoProfile -ExecutionPolicy Bypass -File tools/check-assets.ps1 -Warn`
-3. 新项目 / 新加素材：**不带 `-Warn`** ⇒ 有未覆盖文件即退出码 1（硬失败形态；⛔ 默认不跑，需要时自查）。
-4. ⛔ **`-Warn` 的报告不是删除清单**。必须逐组人工核过（尤其大目录），确认不是形态 ②③④ 漏配，才谈裁剪。
+3. 新项目 / 新加素材：**不带 `-Warn`** ⇒ 有未覆盖文件即退出码 1。
+4. ⛔ **`-Warn` 的报告不是删除清单**：必须逐组人工核过（尤其大目录），确认不是形态 ②③④ 漏配，才谈裁剪。
 
 ## 判据（五种引用形态，任一覆盖即"已引用"）
 
@@ -74,14 +75,10 @@ foreach ($f in $files) {
   # (2b) leaf directory name mentioned (covers D2UiQuest = D2Ui + "Quest/")
   $leaf = ($relD.TrimEnd('/') -split '/')[-1]
   if ($leaf.Length -ge 3 -and ($src -match [regex]::Escape($leaf))) { $covered++; continue }
-  # (3) frame series: the frame index must be < the authoritative count for that action.
-  #     Two WRONG ways, both seen in practice:
-  #       a) name-only matching        -> 88% false positives (frame names are composed at runtime);
-  #       b) a GLOBAL flag ("the project contains Frame(" -> let every _<n> file through)
-  #          -> reports 0 uncovered, i.e. "nothing can ever be trimmed" (the opposite failure).
-  #     The authoritative number lives in the exporter manifest next to the frames:
-  #       manifest.json : actions.<action>.frames   (per direction; dirs = direction count)
-  #     Naming is <action>_<direction>_<frame>.png  -> per-prefix bound check:
+  # (3) frame series: frame index must be < the authoritative count for that action.
+  #     Wrong ways: (a) name-only matching -> ~88% false positives (names are composed at runtime);
+  #     (b) a GLOBAL "project has Frame(" flag -> lets every _<n> file through -> 0 uncovered.
+  #     Authoritative count = manifest.json actions.<action>.frames, next to the frames.
   if ($name -match '_\d+$') {
     $man = Join-Path $dir 'manifest.json'
     $bound = -1
@@ -96,10 +93,8 @@ foreach ($f in $files) {
           $act = ($parts[0..($parts.Count-2)] -join '_')
           $ap = $j.actions.PSObject.Properties | Where-Object { $_.Name -ieq $act } | Select-Object -First 1
           if ($ap -ne $null) { $bound = [int]$ap.Value.frames }
-          # NOTE on manifest `actions.<a>.skipped`: it lists SKIPPED **LAYERS** as strings, e.g.
-          #   "layer#4(S1,wc=1ht): not drawn for bare hands (original behaviour); file exists"
-          # -> NOT frame indices. Never use it as a frame filter: an [int] cast throws, and those
-          #    files are still REQUIRED (the same unit draws them under other weapon classes).
+          # NOTE: manifest actions.<a>.skipped lists skipped LAYERS (strings), not frame indices.
+          # Never use it as a frame filter: those files are still required under other variants.
         }
       } catch { $manState = 'unreadable' }
     }
@@ -142,6 +137,6 @@ exit 0
 
 ## 报告怎么读（⛔ 别直接当删除清单）
 
-- `uncovered` 大、且集中在**大目录**（Monsters / Chars / UI）⇒ 十有八九是形态 ②③④ 没被识别：**先去 `Core/ResPaths.cs` 找目录常量与 `FrameCount*`**，而不是删文件。
-- `uncovered-MB` 才是"删了能省多少"的真实上限 —— 文件数看着吓人、体积常常很小（实测 10529 个文件 ≈ 29.5 MB，因为都是几十 KB 的帧图）。
+- `uncovered` 大、且集中在**大目录**（角色 / 怪物 / UI）⇒ 十有八九是形态 ②③④ 没被识别：**先去 `Core/ResPaths.cs` 找目录常量与 `FrameCount*`**，而不是删文件。
+- `uncovered-MB` 才是"删了能省多少"的真实上限 —— 文件数看着吓人、体积常常很小（帧图都是几十 KB）。
 - `unknown > 0` ⇒ 先把解析异常修掉再看结论（解析失败不算未引用）。

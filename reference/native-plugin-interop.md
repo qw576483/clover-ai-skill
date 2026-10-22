@@ -60,19 +60,14 @@
 
 ## 4. "编辑器起不来"的先看日志
 
-**先看它自己的日志**，按这个顺序：
+按顺序：① `%LOCALAPPDATA%\Unity\Editor\Editor.log` 与 `Editor-prev.log`（每次启动轮转）；② **工程内服务日志** `<project>/Logs/Editor-UDS.log`、`Logs/UDS-Service.log`（Unity 6 的 Unity Data Store，`Failed to open database: 5` 的 `5` 是错误码不是行号 —— **一手原因在这里**）；③ `%LOCALAPPDATA%\Temp\Unity\Editor\Crashes\Crash_*\`；④ **Windows 事件日志 `Application Error`** 的「故障模块 + 异常码」（最硬的一手证据：`msquic.dll` + `0xC0000420` 断言 / `0xC0000005` 访问违例 / `KERNELBASE.dll` + `0x40000015` abort）。
 
-1. `%LOCALAPPDATA%\Unity\Editor\Editor.log` 与 `Editor-prev.log`（**每次启动轮转**，prev 是上一次）；
-2. **工程内的服务日志**：`<project>/Logs/Editor-UDS.log`、`Logs/UDS-Service.log`（Unity 6 的 **Unity Data Store**；`Failed to open database: 5` 的 `5` 是错误码，不是行号）—— **一手原因就在这两个文件里**，比编辑器自己的日志更靠前；
-3. `%LOCALAPPDATA%\Temp\Unity\Editor\Crashes\Crash_*\`（原生崩溃转储，含 `Editor.log` 副本）；
-4. **Windows 事件日志 `Application Error`** —— **故障模块名 + 异常码**是最硬的一手证据：`msquic.dll` + `0xC0000420`（断言）/ `0xC0000005`（访问违例）/ `KERNELBASE.dll` + `0x40000015`（abort）。
-
-**已知诱因与处方**（详见 `unity-cli.md` §9.2，按代价从低到高）：
+**诱因与处方**（详见 `unity-cli.md` §9.2）：
 
 | 诱因 | 识别特征 | 处方 |
 |---|---|---|
-| **中途强杀 Editor**（超时 / `Stop-Process`；**原生崩溃也算强杀**） | `UDSInterface::UDSInterface` → `InitializeAssetDatabaseV2` 栈；`Failed to open database` | **把 `Library` 整体挪走**（改名即可）让它重建 |
-| **安全软件（360 等）拦截** | `Failed to open database: 5` + `信号量已存在` + `Failed to connect to existing shared system data` | 加信任区 / 临时关主动防御 / 用 **Hub GUI 手工打开一次**（GUI 路径对 UDS 不敏感） |
-| 工程或日志放在**点开头**的目录 | `.xxx is not a valid directory name` | 挪到正常路径（且**机器级共享状态已被弄坏，挪回去不等于恢复**） |
+| **中途强杀 Editor**（超时 / `Stop-Process`；**原生崩溃也算强杀**） | `UDSInterface::UDSInterface` → `InitializeAssetDatabaseV2` 栈；`Failed to open database` | **把 `Library` 整体挪走**让它重建 |
+| **安全软件（360 等）拦截** | `Failed to open database: 5` + `信号量已存在` + `Failed to connect to existing shared system data` | 加信任区 / 临时关主动防御 / 用 **Hub GUI 手工打开一次** |
+| 工程或日志放在**点开头**的目录 | `.xxx is not a valid directory name` | 挪到正常路径（机器级共享状态已被弄坏，挪回去不等于恢复） |
 
-> ⚠️ 只挪 `Library/DataStore` **不足以**恢复；真正做到的是「**清干净所有 Unity 进程 + 按 §9.2 处置 + 重开**」。⛔ 不要跳到"只能重启系统"这种过强的结论。
+> ⚠️ 只挪 `Library/DataStore` **不足以**恢复；要做到「清干净所有 Unity 进程 + 按 `unity-cli.md` §9.2 处置 + 重开」。⛔ 不要直接跳到"只能重启系统"。

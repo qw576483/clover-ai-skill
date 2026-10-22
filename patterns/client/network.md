@@ -15,7 +15,7 @@ Assets/Scripts/Def/
 **`Assets/Scripts/Def/MsgDef.cs`**
 
 ```c#
-namespace CQ.Def   // ← 换成实际项目名，不要复用 CloverEngine 命名空间（会与引擎 EMsg 冲突）
+namespace {Name}.Def   // ← 换成实际项目名，不要复用 CloverEngine 命名空间（会与引擎 EMsg 冲突）
 {
     /// <summary>
     /// 业务消息号，与 server/game/def/{msg,reply,push}.go 一一对应，改动必须同步。
@@ -40,20 +40,23 @@ namespace CQ.Def   // ← 换成实际项目名，不要复用 CloverEngine 命�
 **`Assets/Scripts/Def/ProtoDef.cs`**
 
 ```c#
-namespace CQ.Def
+using System;          // [Serializable]
+
+namespace {Name}.Def
 {
-    public class MatchRequest       { public int mode; }
-    public class MatchReply         { public bool ok; public string room_id; }
-    public class PlayRequest        { public int hand; }   // 0 石头 1 剪刀 2 布
-    public class PlayReply          { public bool ok; }
-    public class RoundResultNotify  { public int my_hand; public int rival_hand; public int result; public int score; }
+    // ⛔ 必须 [Serializable]：引擎走 JsonUtility，它只认带该标签的类 —— 漏了字段静默丢失。
+    [Serializable] public class MatchRequest       { public int mode; }
+    [Serializable] public class MatchReply         { public bool ok; public string room_id; }
+    [Serializable] public class PlayRequest        { public int hand; }
+    [Serializable] public class PlayReply          { public bool ok; }
+    [Serializable] public class RoundResultNotify  { public int my_hand; public int rival_hand; public int result; public int score; }
 }
 ```
 
 **使用**：
 
 ```c#
-using CQ.Def;   // 引擎消息号仍用 CloverEngine.EMsg（如 EMsg.Login），业务用 MsgDef，两者不混
+using {Name}.Def;   // 引擎消息号仍用 CloverEngine.EMsg（如 EMsg.Login），业务用 MsgDef，两者不混
 
 Game.Net.Send(MsgDef.Play, new PlayRequest { hand = 0 });
 var reply = await Game.Net.Call<MatchReply>(MsgDef.Match, new MatchRequest { mode = 1 });
@@ -170,8 +173,7 @@ public async void Login(string account, string password)
         // LoginAsync / SignupAsync 会抛 InvalidOperationException。
         CloverAuth.AuthAddr = Cfg.Server.auth_addr;
 
-        // 唯一登录路径：账号密码只发给账号服（HTTP），换回 JWT 后再走长连接。
-        // ELoginRequest 只有 token 一个字段 ——「把账号密码发进游戏服」的旧设计已删除。
+        // 唯一登录路径：账号密码只发给账号服（HTTP），换回 JWT 后再走长连接；ELoginRequest 只有 token 一个字段。
         var token = await CloverAuth.LoginAsync(account, password);
 
         var reply = await Game.Net.Call<ELoginReply>(EMsg.Login, new ELoginRequest { token = token });

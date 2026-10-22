@@ -3,46 +3,9 @@
 > ⛔⛔ **`Game.Fsm` 是全局唯一实例**（实现类 internal、无工厂，业务不能 `new`）：多套状态（游戏流程 / 角色 / UI / 动画）**共用同一张状态表和一个 Current** ⇒ 任一模块 `Force`/`Trigger` 都会跑掉别的模块的 `OnExit`/`OnEnter`；`xxx.Current == "idle"` 这类判断会被别的模块的状态污染；`OnTick` 也只跑 Current 那个。
 > ⇒ **一个项目只用一处 `Game.Fsm`**（通常就是**游戏流程 / 站点**，见 `patterns/client/app-flow.md`）。角色、UI、动画这类**各自独立**的状态机请自建（或直接 `switch`），⛔ 不要四个模块都拿 `Game.Fsm`。
 
-## 模板 1：游戏流程状态机（唯一该用 `Game.Fsm` 的地方）
+## 1. 游戏流程状态机（唯一该用 `Game.Fsm` 的地方）
 
-```csharp
-using CloverEngine;
-using UnityEngine;
-
-public class GameFlowManager : MonoBehaviour
-{
-    private IFsm _gameFlow;
-
-    void Start()
-    {
-        _gameFlow = Game.Fsm;   // ★ Fsm 是 internal，不要 new；直接用 Game.Fsm
-
-        _gameFlow.RegisterState("launch",
-            onEnter: () =>
-            {
-                Game.Logger.Info("FSM", "进入启动状态");
-                _gameFlow.Force("login");
-            });
-
-        _gameFlow.RegisterState("login",
-            onEnter: () => Game.UI.Open<LoginPanel>(),
-            onExit:  () => Game.UI.Close<LoginPanel>());
-
-        _gameFlow.RegisterState("mainCity",
-            onEnter: () => Game.Scene.Load("MainCity"),
-            onExit:  () => { /* 清理主城资源 */ });
-
-        _gameFlow.RegisterState("battle",
-            onEnter: () => Game.Scene.Load("Battle"),
-            onExit:  () => { /* 清理战斗资源 */ });
-
-        _gameFlow.Force("launch");
-    }
-
-    public void EnterMainCity() => _gameFlow.Force("mainCity");
-    public void EnterBattle()   => _gameFlow.Force("battle");
-}
-```
+写法见 `patterns/client/app-flow.md` 模板 2（`RegisterState` / `AddTransition` + 面板与场景编排；全项目只在这一处注册流程状态）。`Game.Fsm` 是 internal、无工厂，直接用 `Game.Fsm`，⛔ 不要 `new`。
 
 > `RegisterState` 的参数名是 **`onTick`**（不是 `onUpdate`）；`Game.Fsm.Current`（不是 `CurrentState`）。
 

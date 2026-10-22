@@ -89,11 +89,11 @@ cd <你的业务服务端目录>
 go build -o server.exe . ; .\server.exe -config configs/all/server.yaml   # 后台起，日志看 ./logs/{date}-all.log
 
 # 2) 跑探针（脱离 Unity；链接的是真实引擎源码）
-cd .codebuddy/doc-audit/tools/client-link-probe
+cd <探针工程>            # 链接引擎 Runtime 源码的控制台工程
 dotnet run -c Release
 ```
 
-探针覆盖：账号服 signup 换 JWT → TCP 建连 → `EMsg.Login` → `UDPBindGrant/BindUDP` → 建角 → `PushPlayerFullSync`/`PushDataSync` → 业务 Call 配对 → 全服广播推送 → **链路意外断开 → 退避重连 → `ResumeSession`** → `wss://` TLS 正向握手。
+探针要覆盖：账号服 signup 换 JWT → TCP 建连 → `EMsg.Login` → `UDPBindGrant/BindUDP` → 建角 → `PushPlayerFullSync`/`PushDataSync` → 业务 Call 配对 → 全服广播推送 → **链路意外断开 → 退避重连 → `ResumeSession`** → `wss://` TLS 正向握手。
 
 **三个必须知道的坑**：
 
@@ -107,14 +107,13 @@ dotnet run -c Release
 
 `mkcert/certs/server.pem` 由 mkcert 签发，其 CA **已装进系统信任链** ⇒ `wss://127.0.0.1:8001/ws` 能**在不设任何证书校验回调**的前提下握手成功 —— 这就是「TLS 正向握手」的验证方式，**不需要自己造证书**。
 
-> 服务端 `server.yaml` 跑的是 **`tcp_tls_disabled: false`（TCP 口也走 TLS）**，客户端 `config.json` 里 `server.tls: true` 与之匹配 —— **这两个开关必须相反**，改一边不改另一边就是"连上就断"。排障时先对齐这两个值，再怀疑证书。
-> TCP / WS 的 TLS 下限已放宽到 **1.2**（QUIC/WT 仍是 1.3），所以只支持 1.2 的原生 `SslStream` 也能握上手。若显式设成 `tcp_tls_disabled: true`（保留明文 TCP），服务端启动日志会打一条告警 —— 那是降级形态，不是默认。
-> 另外：TCP 口**探针 / robot 工具已自动适配**（进程内首次连接判定 TLS 还是明文），不需要额外配置。
+> 服务端 `server.yaml` 的 **`tcp_tls_disabled: false`**（TCP 口也走 TLS）与客户端 `config.json` 的 `server.tls: true` **必须相反** —— 改一边不改另一边就是"连上就断"；排障先对齐这两个值，再怀疑证书。
+> TCP / WS 的 TLS 下限是 **1.2**（QUIC/WT 仍 1.3），只支持 1.2 的原生 `SslStream` 也能握上。显式设 `tcp_tls_disabled: true`（明文 TCP）时服务端启动日志会告警 —— 那是降级形态，不是默认。
+> TCP 口**探针 / robot 已自动适配**（进程内首次连接判定 TLS 还是明文），不需要额外配置。
 
 ## 8. 多节点 / 发布验证 → 用 `manager`；容量 / 并发验证 → 用 `robot`
 
-> 命令、AI 调用约定（一律 `--json`、破坏性操作用 `--yes`、**靠退出码判成败**）、以及"读报告前必须知道的坑"，统一见 **`reference/workflow-and-standards.md` §9 / §10`**（本节不重复）。
-> 本章要补两条**前提**：
+> 命令、AI 调用约定（一律 `--json`、破坏性操作用 `--yes`、**靠退出码判成败**）、以及"读报告前必须知道的坑"，统一见 **`reference/workflow-and-standards.md` §9 / §10**（本节不重复）。本章只补两条**前提**：
 
 - **manager 的前提**：节点必须上报 admin 地址（引擎启动时把 `admin.listen_addr` 写进 `clover/nodes/<nodeID>`）。admin 默认只绑回环 ⇒ **跨机管理要把 admin 配成内网可达地址，并同时配置 `admin.token`** —— 「非回环 + 无 token」会被 `AdminConfig.Normalize` 拒绝启动，否则 `doctor` 会报 DOWN。另注意 manager 自身**不发**令牌头：被管节点一启用 token，`drain` / `shutdown` / `upstream` 会被 401 拒绝。
 - **robot 的前提**：压测账号 = **前缀 + 序号**（默认 `robot_1`…），必须先 `signup` 或让 `run --signup` 自动注册。

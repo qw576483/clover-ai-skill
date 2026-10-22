@@ -52,62 +52,19 @@ void Start()
 - 模板见 `patterns/client/network.md` 模板 0。
 - **引擎号位由引擎自己用**：`1-7` 是引擎请求 + 网关直发帧（含 `EMsg.QueuePosition`=7 排队位置），`4001+` 是引擎推送；业务只从 `10001` 起编。排队位置与会话通道加密**全在引擎里闭环** —— 业务不要给 `ELoginRequest.encrypt` 赋值，也不要自己实现排队 UI 之外的东西。
 
-### 3.1 注册监听
+### 3.1 注册 / 取消监听
 
-```csharp
-// 注册推送监听（OnMsg 返回 void，没有可保存的句柄）
-void OnSomeNotify(NetCtx ctx)
-{
-    var msg = ctx.Bind<SomeNotify>();
-    // 处理逻辑
-}
-Game.OnMsg(EMsg.SomeNotify, OnSomeNotify);
-
-// 取消监听：传回同一个方法引用
-Game.OffMsg(EMsg.SomeNotify, OnSomeNotify);
-```
+`Game.OnMsg(EMsg.X, Handler)` **返回 void**（没有可保存的句柄）；取消要 `Game.OffMsg(EMsg.X, 同一个方法引用)`。handler 签名 `void Handler(NetCtx ctx)`，消息体用 `ctx.Bind<T>()` 取。模板见 `patterns/client/network.md` 模板 1 / 6。
 
 ### 3.2 请求-回包
 
-```csharp
-try
-{
-    var reply = await Game.Net.Call<BuyItemReply>(EMsg.BuyItem, new BuyItemRequest
-    {
-        item_id = 1001,    // ★ 业务消息字段必须是 snake_case（与服务端 json tag 对齐）
-        count = 1,
-    });
-    Game.Logger.Info("Net", $"购买成功: {reply.order_id}");
-}
-catch (CloverCallException ex)
-{
-    // 服务端业务错误（EMsg.Error 回包）：ex.ServerError 为描述，ex.Code 为机器可读错误码（见 ErrCode）
-    Game.Logger.Error("Net", $"业务错误: {ex.ServerError} (code={ex.Code})");
-}
-catch (TimeoutException)
-{
-    Game.Logger.Error("Net", "请求超时");
-}
-```
+`await Game.Net.Call<TReply>(EMsg.X, req)`；两类异常必须分开处理 —— `CloverCallException`（服务端业务错误：`ex.ServerError` 人类可读、`ex.Code` 机器码）与 `TimeoutException`（默认 10s，`GameConfig.CallTimeoutSeconds` 可配）。模板见模板 3。
 
 ### 3.3 可靠 / 非可靠发送
 
-```csharp
-// ⛔ 协议体字段名 = JSON 键（引擎按 C# 字段名序列化）⇒ 必须与服务端 Go 的 json tag 对齐，
-//    也就是**小写 snake_case**。写成 PascalCase（Content / X / Y）时服务端解出来全是零值
-//    —— **静默丢字段**，两端都不报错。
+`Game.Net.Send`（TCP，保证到达）/ `Game.Net.SendUnreliable`（UDP，可能丢）。
 
-// 可靠发送（TCP，保证到达）
-Game.Net.Send(EMsg.ChatMessage, new ChatMessage { content = "你好" });
-
-// 非可靠发送（UDP，可能丢失）
-Game.Net.SendUnreliable(EMsg.PositionSync, new PositionData
-{
-    x = transform.position.x,
-    y = transform.position.y,
-    z = transform.position.z,
-});
-```
+⛔ **协议体字段名 = JSON 键**（引擎按 C# 字段名序列化）⇒ 必须与服务端 Go 的 json tag 对齐，即**小写 snake_case**。写成 PascalCase（`Content` / `X` / `Y`）时服务端解出来全是零值 —— **静默丢字段**，两端都不报错。模板见模板 2。
 
 ### 3.4 高频周期同步：优先用推送，别用高频 Call 轮询
 
@@ -115,37 +72,20 @@ Game.Net.SendUnreliable(EMsg.PositionSync, new PositionData
 
 高频 `Call` 轮询的代价：每秒几十次 `Call`，每次都要分配 requestID、往 pending 表插一项、挂一个超时定时器；同时 `def/push.go` 里定义好的 `Push*` 消息号全程没人用、客户端也不注册 `OnMsg` ⇒ 推送通道白白浪费。
 
-> 引擎注释确实认可「20fps 状态同步也可直接 `g.Reply` 轮询」（原文在 `internal/app/facade.go:514`；⛔ `pkg/app/app.go` 只是**别名透传门面**，没有实现体也没有那段注释）⇒ 轮询**不算违规**。但既然 `def/push.go` 已定义推送消息号，就该真用起来，否则那些常量是死代码。
-> **配套要求**：选轮询 → 切勿在 `def/push.go` 留一堆没人用的推送消息号；选推送 → 客户端必须注册对应 `OnMsg`。
+> 引擎注释确实认可「20fps 状态同步也可直接 `g.Reply` 轮询」（原文在 `internal/app/facade.go:514`；⛔ `pkg/app/app.go` 只是别名透传门面，没有实现体）⇒ 轮询**不算违规**。**配套**：选轮询就别在 `def/push.go` 留没人用的推送消息号；选推送则客户端必须注册对应 `OnMsg`。
 > **禁止未查证断言**：不确定引擎有没有某个 API 时去源码查（`PushToPlayer/PushToScene/PushToAll` 在 `internal/app/facade.go`，JSON 版在 `internal/app/core.go`），**不要在注释或交付说明里写「引擎没有 X API」**。
 
 ## 4. 生命周期事件
 
-```csharp
-// 连接成功（无参事件 → 零参 lambda）
-Game.Event.On("Net.OnConnected", () => Game.Logger.Info("Net", "已连接到服务器"));
+| 事件 | 参数 | 语义 |
+|---|---|---|
+| `Net.OnConnected` | 无参 | 连接成功 |
+| `Net.OnDisconnected` | 无参 | 连接断开（自动重连中） |
+| `Net.OnResumed` | `EResumeSessionReply` | 会话恢复成功（带参事件必须显式 `On<T>`） |
+| `Net.OnKicked` | 无参 | 重连次数耗尽，需重新登录 |
+| `Net.OnUnauthorized` | `EErrorReply` | code=401：未登录被登录门禁拒绝或逻辑服返回 401 —— **连接还在、只是请求被拒**（区别于 OnKicked 的连接断了） |
 
-// 连接断开（自动重连中；无参事件）
-Game.Event.On("Net.OnDisconnected", () => Game.Logger.Warn("Net", "连接断开，正在重连..."));
-
-// 会话恢复成功（带参事件 → 显式 On<T>）
-Game.Event.On<EResumeSessionReply>("Net.OnResumed", data => Game.Logger.Info("Net", "会话已恢复"));
-
-// 被踢出（重连次数耗尽；无参事件）
-Game.Event.On("Net.OnKicked", () =>
-{
-    Game.Logger.Warn("Net", "被踢出，需要重新登录");
-    // 清理本地状态，返回登录界面
-});
-
-// 未认证（code=401）：未登录就发业务消息被网关登录门禁拒绝，或逻辑服返回 401。
-// 与 OnKicked 的区别：OnKicked 是连接断了；这个是连接还在、但请求被拒。
-Game.Event.On<EErrorReply>("Net.OnUnauthorized", e =>
-{
-    Game.Logger.Warn("Net", $"未认证（code={e.code}）: {e.err}");
-    // 清理本地会话，返回登录界面
-});
-```
+无参事件用零参 lambda（`Game.Event.On("Net.OnConnected", () => ...)`）。模板见 `patterns/client/network.md` 模板 4。
 
 ## 5. 模块依赖方向
 
@@ -167,24 +107,12 @@ using CloverEngine;   // 命名空间只有 CloverEngine（没有 CloverEngine.<
 
 ## 6. 资源加载
 
-### 资源创建规范（占位资源）
+### 占位资源
 
-**必须创建的文件夹结构**：
-```
-Assets/
-├── Resources/
-│   ├── Placeholder/          # 占位图片（必须创建）
-│   │   ├── placeholder_64x64.png   # 默认 64x64 像素
-│   │   ├── placeholder_128x128.png # 可选 128x128 像素
-│   │   └── placeholder_256x256.png # 可选 256x256 像素
-│   ├── Sound/SFX/                # 占位音效（可选）
-│   └── Models/               # 占位模型（可选）
-├── Scripts/
-│   └── Resources/            # 资源管理脚本
-└── Configs/
-```
+只有临时缺素材时才建占位：`Assets/Resources/Placeholder/placeholder_64x64.png`（默认 64×64 纯色；需要更大就 `_128` / `_256`），音效 / 模型同理放 `Resources/Sound/SFX/`、`Resources/Models/`。
 
-**规则**：① 默认生成 64x64 纯色 PNG；用户指定尺寸则按要求；② 文件夹结构必须建全，**图片文件必须实际存在**（不能只有代码引用）；③ 标注尺寸是给用户替换时对齐用的（uGUI 会自动拉伸占位图，但 Sliced/Tiled 的 UI、游戏内 Sprite、图标头像等固定比例资源必须对尺寸）。
+- **图片文件必须实际存在**（不能只有代码引用）；① 尺寸是给用户替换时对齐用的 —— uGUI 会拉伸占位图，但 Sliced/Tiled UI、Sprite、图标头像这类固定比例资源必须对尺寸。
+- ⛔ 占位不是交付物：交付前必须换成真素材（`SKILL.md` §6 第 4 条）。
 
 ### 资源欠缺清单（client 根目录，强制交付物）
 
@@ -300,27 +228,18 @@ fsm.Force("idle");
 
 ## 12. 错误处理
 
+`CloverCallException` 必须**按码分支**（`ex.Code` 见 `ErrCode`），⛔ **不要匹配文案** —— 文案会变，码不会：
+
 ```csharp
-try
+switch (ex.Code)
 {
-    var reply = await Game.Net.Call<T>(EMsg.Xxx, request);
-}
-catch (System.TimeoutException)
-{
-    // 超时处理（默认 10s，GameConfig.CallTimeoutSeconds 可配）
-}
-catch (CloverCallException ex)
-{
-    // 服务端业务错误：ex.ServerError 是人类可读描述，ex.Code 是机器可读错误码（见 ErrCode）。
-    // 按码分支，不要匹配文案——文案会变，码不会。
-    switch (ex.Code)
-    {
-        case ErrCode.Unauthenticated: BackToLogin();                                   break;
-        case ErrCode.Forbidden:       ShowNoPermission(ex.ServerError);                break;
-        default:                      Game.Logger.Error("Net", $"业务错误: {ex.ServerError}"); break;
-    }
+    case ErrCode.Unauthenticated: BackToLogin();                                    break;
+    case ErrCode.Forbidden:       ShowNoPermission(ex.ServerError);                 break;
+    default:                      Game.Logger.Error("Net", $"业务错误: {ex.ServerError}"); break;
 }
 ```
+
+超时（`System.TimeoutException`）单独 catch，别和业务错误混在一起。
 
 ## 13. 输入（必须走 `Game.Input`，禁止直接用 `UnityEngine.Input`）
 
@@ -344,15 +263,13 @@ bool click = Game.Input.GetMouseButtonDown(0);
 
 ### 为什么禁止直连
 
-`UnityEngine.Input`（旧输入）只有在 **Player Settings → Active Input Handling** 含「Input Manager (Old)」时才可用。若该设置为「Input System Package (New)」：`Input.*` 每次调用抛 `InvalidOperationException`；异常在 `Update()` 里抛出会**中断整帧后续逻辑**（所以键盘也一起失效）；uGUI 的 `StandaloneInputModule` 内部同样读旧输入 ⇒ **按钮全部点不动**。
-`Game.Input` 正是为消除这类事故而存在：运行时自动探测后端（新 / 旧 / 无），不可用时只打一条可操作的日志，**绝不把异常抛进帧循环**。
+`UnityEngine.Input`（旧输入）只在 Player Settings → Active Input Handling 含「Input Manager (Old)」时可用。若是「Input System Package (New)」：`Input.*` 每次调用抛 `InvalidOperationException`，异常在 `Update()` 里抛出会**中断整帧后续逻辑**（键盘也一起失效）；uGUI 的 `StandaloneInputModule` 同样读旧输入 ⇒ **按钮全部点不动**。`Game.Input` 就是为消除这类事故：运行时探测后端，不可用时只打一条可操作日志，**绝不把异常抛进帧循环**。
 
 ### 后端选择顺序（默认只用新输入系统）
 
-`CloverInput.Init()` 按下列顺序选，业务无需关心：① **InputSystem（默认首选）** —— 需同时满足 `activeInputHandler` 含 `New`（`1` 或 `2`）、装了 `com.unity.inputsystem`、`Keyboard.current != null`、`InputSystem.Key` 枚举可解析；任一条不满足即自动回退（专门避免「日志说可用、按键却全无反应」）；② **Legacy —— 兜底**；③ **None —— 都不可用时不抛异常**，只报一条可操作的修复日志。
+`CloverInput.Init()` 按序选，业务无需关心：① **InputSystem（默认）** —— 需 `activeInputHandler` 含 `New`（`1`/`2`）+ 装了 `com.unity.inputsystem` + `Keyboard.current != null` + `Key` 枚举可解析，任一不满足即回退；② **Legacy 兜底**；③ **None** —— 不抛异常，只报一条可操作的修复日志。
 
-UI 的输入模块**同步跟随**所选后端：新后端 → `InputSystemUIInputModule`（类型在 `Unity.InputSystem` 程序集；包内 versionDefine 在装了 `com.unity.ugui` 时定义 `UNITY_INPUT_SYSTEM_ENABLE_UI`）；旧后端 → `StandaloneInputModule`。**两者绝不并存。**
-若日志显示 `输入后端=InputSystem` 但按键仍无反应，属输入模块 / EventSystem 配置问题 —— 按日志提示改 `Active Input Handling` 并**完全重启 Unity 编辑器**。
+UI 输入模块**同步跟随**：新后端 → `InputSystemUIInputModule`，旧后端 → `StandaloneInputModule`，**两者绝不并存**。若日志显示 `输入后端=InputSystem` 但按键无反应，属 EventSystem 配置问题 —— 按提示改 `Active Input Handling` 并**完全重启 Unity 编辑器**。
 
 ### 排查清单（键鼠无响应时按序查）
 

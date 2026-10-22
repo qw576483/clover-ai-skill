@@ -60,12 +60,6 @@ public class BuySuccessInfo { public int ItemId; public string ItemName; public 
 
 ## 模板 4：网络生命周期事件
 
-```csharp
-// 无参发布的事件 → 处理器必须零参；带参事件 → On<T> 显式给类型
-Game.Event.On("Net.OnConnected",    () => { Game.Logger.Info("Event", "已连接到服务器"); OnConnected(); });
-Game.Event.On("Net.OnDisconnected", () => { Game.Logger.Warn("Event", "连接断开，正在重连..."); OnDisconnected(); });
-Game.Event.On<EResumeSessionReply>("Net.OnResumed", data => { Game.Logger.Info("Event", "会话已恢复"); OnResumed(); });
-Game.Event.On("Net.OnKicked",       () => { Game.Logger.Warn("Event", "被踢出，需要重新登录"); OnKicked(); });
-```
+`Net.OnConnected` / `OnDisconnected` / `OnResumed` / `OnKicked` 四个事件（含参数类型与断线回退处理）见 `patterns/client/network.md` 模板 4 —— 本文件不重复。
 
 > 事件名常量集中放 `Core/Events.cs`（禁止业务里写裸字符串），见 `reference/architecture.md`。引擎侧事件名（`Net.*`）用 `CloverEvents.Net.*` 常量。

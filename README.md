@@ -20,8 +20,8 @@ QQ 群：**clover-engine交流1群** `1101150552`
 | `reference/` | 约定与速查：`rules-full.md`（规则层案例与判据集）、`conventions.md`、`modules.md`、`client-conventions.md`、`engine-mental-model.md`、`workflow-and-standards.md`、`deterministic-gates.md`、`verify-template.md`、`server-env.md`、`unity-cli.md`、`visual-loop.md` 等 |
 | `patterns/` | 可复制的范式：服务端（handler / datadef / timer / player-lookup / auth-server …）与客户端（ui / network / resource / fsm / event / timer / app-flow / entity-view …） |
 | `scaffold/` | 新项目脚手架与多 agent 任务书模板（`new-project.md`、`agent-impl.md`、`project-skill.md`） |
-| `experience/` | 踩坑沉淀（时间黑洞、性能排查、3D MMO 实战等） |
-| `scripts/` | **10 个开发辅助脚本**：`table-pipeline.ps1`（配表闭环）、`compile-check.ps1`（离线编译）、`play-driver.ps1`（进 Play 跑探针）、`console-filter.py`（读 Unity 日志）、`pack-original-assets.ps1`（原版素材可复现打包）、`readme-shots.ps1`（发布 README 实机图）、`frame-order-check.py`（精灵帧序离线判）、`silent-failures.py`（扫描空 `catch` / 吞异常 / `_ =`）、`env-check.ps1`（环境自检：杀软 / 显卡软渲染 / 崩溃风暴）、`skill-health.ps1` 与 `skill-lint.ps1`（本仓库自检） |
+| `experience/` | 踩坑沉淀（时间黑洞 / 静默失败、掉帧排查、逐帧抖动取证、自证配方） |
+| `scripts/` | **11 个开发辅助脚本**：`table-pipeline.ps1`（配表闭环）、`compile-check.ps1`（离线编译）、`play-driver.ps1`（进 Play 跑探针）、`console-filter.py`（读 Unity 日志）、`pack-original-assets.ps1`（原版素材可复现打包）、`readme-shots.ps1`（发布 README 实机图）、`frame-order-check.py`（精灵帧序离线判）、`silent-failures.py`（扫描空 `catch` / 吞异常 / `_ =`）、`env-check.ps1`（环境自检：杀软 / 显卡软渲染 / 崩溃风暴）、`skill-health.ps1` 与 `skill-lint.ps1`（本仓库自检） |
 
 ## 怎么用
 

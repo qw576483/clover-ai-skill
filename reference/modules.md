@@ -26,8 +26,8 @@
 | 业务日志落盘后端 | `pkg/foundation/logstore`（契约真身；引擎内置 `mysql` 为默认） | `app.RegisterLogBackend(name, factory)` + 配置 `log_backend` / `log_backend_config` —— **换后端只改配置，不改引擎代码** |
 | 跨机对象迁移（MMO 切场景） | `pkg/domain/mmo`（`WithClusterRoute` / `WithRemoteTransferSubscriber`） | 配 `node_id` + etcd 后，在 `NewSceneManager` 注入 `g.SceneRoute()` / `g.NodeID()` / `g.SceneSubscriber()`；**不配即单机**（`TransferRemote` 返回 `ErrNoRoute`） |
 | 通用工具（ID / 缓存 / 几何 / 排行榜） | `pkg/shared/*` | `id` / `cache` / `geom` / `memrank` |
-| 指标埋点（Counter/Gauge/Histogram） | `pkg/foundation/metrics` | `metrics.CounterOf/GaugeOf/HistogramOf`、`metrics.ForModule(metrics.ModuleXxx).Count/Timer`；**命名与 label 基数规则见同包 `naming.go`**（禁止 player_id / conn_id 等高基数 label）。运行时与进程指标（`go_*` / `process_*`）由 admin `/metrics` 抓取时**自动采集**，业务无需埋点；自己算进程 CPU 用 `metrics.ProcessCPUSeconds()` |
-| 周期巡检 / 告警（看门狗） | `pkg/runtime/watchdog` | `watchdog.Default().RegisterFunc(name, check)`（check 返回 `watchdog.OK` 或 `watchdog.Warn/Critical(...)`；去抖动 / 单独周期用完整 `watchdog.Rule{Interval,Cooldown,MinConsecutive}`）。引擎在 `runApp` 里按进程统一拉起（所有 server_type），内置规则 `process_cpu_saturated`，运维快照 `GET /watchdog`。**接真实告警通道**：`watchdog.Install(...)`，且**必须先 Install 再注册规则**；引擎默认不落库，投递满即丢并计 `clover_watchdog_alerts_dropped_total` |
+| 指标埋点（Counter/Gauge/Histogram） | `pkg/foundation/metrics` | `metrics.CounterOf/GaugeOf/HistogramOf`、`metrics.ForModule(metrics.ModuleXxx).Count/Timer`；命名与 label 基数规则见同包 `naming.go`（禁高基数 label 如 player_id / conn_id）。`go_*` / `process_*` 由 admin `/metrics` 自动采集，业务无需埋点；进程 CPU 用 `metrics.ProcessCPUSeconds()` |
+| 周期巡检 / 告警（看门狗） | `pkg/runtime/watchdog` | `watchdog.Default().RegisterFunc(name, check)`（返回 `watchdog.OK` / `Warn` / `Critical(...)`；去抖动用 `watchdog.Rule{Interval,Cooldown,MinConsecutive}`）。引擎在 `runApp` 统一拉起，内置 `process_cpu_saturated`，快照 `GET /watchdog`。接真实告警通道用 `watchdog.Install(...)`（**必须先 Install 再注册规则**）；默认不落库，投递满即丢并计 `clover_watchdog_alerts_dropped_total` |
 
 ## 包位置对照（容易找错的几处）
 
@@ -37,8 +37,8 @@
 | 限流 | `pkg/runtime/ratelimit`（TokenBucket / FixedWindow / SlidingWindow / GCRA） |
 | 异步 / 协程池 | `pkg/runtime/async`（Pool / Backpressure / Priority） |
 | 进程 CPU 采集 / 看门狗装配 | 采集在 `pkg/foundation/metrics/proc*.go`（按平台分文件，不支持则**不导出**该指标）；看门狗装配在 `internal/app/watchdog.go`，进程级拉起在 `internal/app/app.go` 的 `runApp` |
-| master | 独立子系统：`internal/domain/master/{client,server,state,failover,metrics}` + `pkg/domain/master`；`server_type=master` 经 **`internal/app/master_server.go` 的 `runMaster`** 启动，RPC 走 TCP。**业务侧经 `pkg/domain/master` 用**：`MasterRank` 排行榜（`NewMasterRank(g)`）、`PlayerLookup` 玩家定位查询（`NewPlayerLookup(g).Locate`，跨服好友 / 邀请 / 观战寻址，见 `patterns/player-lookup.md`） |
-| auth（账号服） | 独立域：`internal/domain/auth/{state,server,client}` + 域配置 `config.go`；`server_type=auth` 经 `internal/app/auth_server.go` 的 `runAuth` 启动。**登录校验走 HTTP** `/auth/verify`；`auth.rpc_listen` 那条消息通道只跑业务消息 |
+| master | 独立子系统：`internal/domain/master/{client,server,state,failover,metrics}` + `pkg/domain/master`；`server_type=master` 经 `internal/app/master_server.go` 的 `runMaster` 启动，RPC 走 TCP。业务侧经 `pkg/domain/master`：`MasterRank`（`NewMasterRank(g)`）、`PlayerLookup`（`NewPlayerLookup(g).Locate`，见 `patterns/player-lookup.md`） |
+| auth（账号服） | 独立域：`internal/domain/auth/{state,server,client}` + 域配置；`server_type=auth` 经 `internal/app/auth_server.go` 的 `runAuth` 启动。登录校验走 HTTP `/auth/verify`；`auth.rpc_listen` 只跑业务消息 |
 | push | `internal/transport/net/push`：`PushChannel` / `PlayerChannel` / `SceneChannel` / `AllChannel` + `Push` / `Alert`（**无** Group 连接组能力） |
 | 数据 / MMO 领域包 | `pkg/domain/data` / `pkg/domain/mmo`（不是 `pkg/data` / `pkg/mmo`） |
 | 回包 / 推送 / 存储等副作用方法 | 在 `Game` 上；`Ctx` 仅 `MarkReplied(body)` 纯写入 |

@@ -54,7 +54,7 @@ client/Assets/Scripts/Core/ClientConfig.cs   # 项目侧：配置段类型 + 引
 - **没配证书 = 服务端明文 ⇒ 客户端必须 `false`**（`scaffold/new-project.md` 的模板就是这个形态，照抄能跑通）；
 - 证书**成对配了** ⇒ 客户端 `true`。
 
-⛔ 别再按"`tcp_tls_disabled` 的零值是 `false` ⇒ 客户端取反写 `true`"这条公式 —— 它把"是否配证书"漏掉了，写反的症状是「**连上就断** → 重连耗尽被踢 → 之后所有 `Call` 超时」。证书只走系统信任链，引擎没有跳过校验的开关。
+⛔ 判据只有一条：**服务端有没有成对配 `gateway.tls_cert`/`tls_key`**。写反的症状是「**连上就断** → 重连耗尽被踢 → 之后所有 `Call` 超时」。证书只走系统信任链，引擎没有跳过校验的开关。
 
 ## 2. `ClientConfig.cs`：项目侧只剩「配置段 + 薄门面」
 
@@ -303,7 +303,7 @@ CloverNet.Init(Cfg.Server.addr,
     string.IsNullOrEmpty(Cfg.Server.udp_addr) ? null : Cfg.Server.udp_addr);
 ```
 
-## 铁律
+## 硬规则
 
 1. 业务代码里**不许**出现地址 / 端口 / 账号 / 密码 / 超时 / 重连次数等字面量 —— 一律 `Cfg.xxx`。
 2. 同一项配置**只允许一处默认值** —— 唯一出处是**配置段类型里的字段初始化器**（`createDefault: () => new RootSection()` 拿到的就是它），业务里不要再写第二遍，⛔ 也不要在引擎件之外再写一份默认值。

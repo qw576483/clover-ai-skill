@@ -70,5 +70,4 @@ g.Reply(c, resp)
 - `Game.OnMsg(msgID uint32, h event.Handler, priority ...int)` 可绑定多个 handler（按优先级降序）；非 game 宿主 `MasterGame/LogGame/AuthGame.OnMsg(msgID uint32, h event.Handler)` **没有 priority 参数**（`internal/app/facade.go:640/704/759`；game 侧带 priority 的那个在同文件 `:453`）。
 - 四个角色的 `OnMsg` 传 `msgID <= proto.InternalMsgMax` 都会 **panic**（引擎保留段）。
 - 需要宿主引用时，用包级 `G.g`（或 logic 结构体的 `l.g`），**不要在 handler 里现取**。
-- 跨服事件在 **Game** 上，不在 Ctx 上：`l.g.SendEventToPlayer(c, playerID, "PlayerCreated", payload)`（★ `g` 上，要传 `c`）。
-- 定时器、跨服事件模板见 `patterns/timer.md` / `patterns/crossnode.md`；Handler 写法见 `patterns/handler.md`。
+- 定时器 / 跨服事件模板见 `patterns/timer.md` / `patterns/crossnode.md`；Handler 写法见 `patterns/handler.md`。

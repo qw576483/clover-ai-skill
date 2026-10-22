@@ -33,10 +33,10 @@
 | 域 | 模块 | 说明 |
 |----|------|------|
 | **基础域** | Event, Timer, Fsm, Dispatcher, Logger | 引擎基石，`Game.Launch` 时构造 |
-| **数据域** | Table, Localization | 经 `CloverData.InitDataTable/InitLocalization` 挂载（⛔ **`Setting` 不在这里** —— 它由 `Game.Launch` 直接构造并挂上门面） |
+| **数据域** | Table, Localization | 经 `CloverData.InitDataTable/InitLocalization` 挂载（打表产物另走 `CloverTable`，见 `engine-mental-model.md` §4；⛔ **`Setting` 不在这里** —— 它由 `Game.Launch` 直接构造并挂上门面） |
 | **网络域** | Net, Sync, Schema, Alert, CloverScene, FrameRoom, **Http** | 经 `CloverNet.Init` 一次挂载（**含 Http**；`CloverNet.InitHttp` 保留供「只用 HTTP 不连网关」的特例）。Schema 桥接 Sync；FrameRoom 需业务 `Configure()` 注入消息号 |
-| **资源域** | Res | 经 **`CloverRes.Init(root)`** 挂载 —— ⚠️ **不会**随 `CloverPresentation` 自动挂。业务必须显式调用，否则 `Game.Res` 恒为 null：模型 / 贴图**静默加载失败**（只剩占位几何体），并在加载点抛 `NullReferenceException` 打断业务主流程（见 `patterns/game-demo.md` §4.2） |
-| **表现域** | Map, Scene, UI, Atlas, Anim, Sound, Camera, Quality, Entity, Pool, Input | 契约在 `Runtime/Core/PresentationContracts.cs`，实现由 Presentation 提供；除 Input 外均由 `CloverPresentation.Init` 随 `Game.Launch` **自动挂载** |
+| **资源域** | Res | 经 **`CloverRes.Init(root)`** 挂载 —— ⚠️ **不会**随 `CloverPresentation` 自动挂（不调的后果见上表 `Res` 行） |
+| **表现域** | Map, Scene, UI, Atlas, Anim, Sound, Camera, Quality, Entity, Pool, Input | 契约在 `Runtime/Core/PresentationContracts.cs`；挂载方式见文首（除 Input 外随 `Game.Launch` 自动挂） |
 
 ## 模块 API 速查
 
@@ -239,7 +239,7 @@ Game.Quality.OnLevelChanged(lv => Debug.Log($"device level -> {lv}"));
 ```
 
 > UI 点击依赖 `EventSystem`，而它归输入模块管理：请在 `Game.Launch` 后调用 `CloverInput.Init()`。
-> ⛔ 那句"一次性告警"**不在** `CloverPresentation.Init` 里 —— 它由 `Game.UI.Open` 在 `EventSystem.current == null` 时打出（`Runtime/Presentation/UI.cs:107-114`）。**别等到开面板才发现**：Init 缺失应在启动阶段自查一遍。
+> ⚠️ 缺失时**不会在 Init 阶段报错** —— 告警来自 `Game.UI.Open` 发现 `EventSystem.current == null` 的那一刻（`Runtime/Presentation/UI.cs:107-114`）。⇒ **别等到开面板才发现**：启动阶段自己先自查一遍。
 
 ### 事件总线 / 定时器 / 状态机
 
@@ -347,9 +347,7 @@ string cur = Game.Fsm.Current;   // 不是 CurrentState
 | **PixelArtImportPostprocessor** | 按配置资产给纹理配好像素导入设置，并把切图请求交给已注册的切图器 | `Editor/PixelArtImportPostprocessor.cs` | `PixelArtImportPostprocessor.RegisterSlicer(IPixelArtSlicer)` |
 | **MapBake**（`MapBaker` / `MapBakeOptions`） | 静态地图烘焙：场景 → 可行走网格 `.bytes`（含障碍 / 出生点 / 命名标记 / **可选高度场**） | `Editor/MapBake/MapBaker.cs`、`Editor/MapBake/MapBakeOptions.cs` | `MapBaker.Export(options, out summary)` / `ExportInteractive(options, onDone)` / `ExportFromMenu()` / `MapBakeOptions.Load() / Save() / Clone() / Validate()` / `ShouldBakeCollider(layer, minY, maxY)` / `BakeHeightField` + `HeightFieldSource` / `WalkableTransform`（高度场段追加在标记点段之后，旧读端按 flag 跳过） |
 
-> **已单独登记、本表不重复的件**（需要细节去对应文档）：
-> `Rng` / `AStar` / `IsoLayout` / `FileSlotStore` / `LogThrottle` / `GridUtil` / `FrameBank` / `SpriteSet` / `Screenshot` / `OrderedAsyncResult<T>` / `FramePacingPolicy` / `UnitFacingMap` / `TextFit` / `DragGestureRouter` / `SortingLayers` / `ScreenPointUtil` / `ITileWorld`·`TileWorld` / `SpriteFrameAnimator` / `RuntimePanelProvider` / `SnapshotInterpolator` → `clover-doc/client/reference/api-cheatsheet.md`「数据与通用件」一节及各模块节；
-> `ViewBob` / `LookAccumulator` / `TextHooks` / `Sound` → `clover-doc/client/development/presentation-modules.md` 与 `clover-doc/client/reference/api-cheatsheet.md` 的「第一人称 rig」「UI 构件」两节。
+> 本表只给「件名 + 引擎文件 + 关键 API」，**语义与取值不在这里展开** —— 类名 / 方法名的唯一真源是引擎源码（`clover-client-unity-engine/Runtime/**`）；用法与缺口见 `reference/engine-mental-model.md` §4。
 
 ## asmdef 依赖
 

@@ -53,7 +53,7 @@ public class LoginPanel : UIPanel
         _loginButton.onClick.AddListener(OnLoginClick);
     }
 
-    private async void OnLoginClick()
+    private void OnLoginClick()
     {
         var account = _accountInput.text;
         var password = _passwordInput.text;
@@ -63,35 +63,8 @@ public class LoginPanel : UIPanel
             return;
         }
 
-        try
-        {
-            // 账号密码只发给账号服（HTTP）换 token；ELoginRequest 只有 token 字段。
-            var token = await CloverAuth.LoginAsync(account, password);
-
-            var reply = await Game.Net.Call<ELoginReply>(EMsg.Login, new ELoginRequest
-            {
-                token = token,          // ★ 字段名与服务端 json tag 对齐
-            });
-            if (!reply.success)
-            {
-                Game.Logger.Warn("UI", $"登录失败: {reply.err}");
-                return;
-            }
-
-            // ★ 登记会话（断线恢复前提），再切场景
-            Game.Net.SetupSession(account, null);   // 凭证由全量同步下发（登录回包 session_key 是通道加密密钥，不是凭证）
-            Game.UI.Close<LoginPanel>();
-            Game.Scene.Load("MainCity");
-        }
-        catch (CloverCallException ex)
-        {
-            // 服务端业务错误（EMsg.Error 回包），错误描述在 ex.ServerError
-            Game.Logger.Warn("UI", $"登录失败: {ex.ServerError}");
-        }
-        catch (System.TimeoutException)
-        {
-            Game.Logger.Error("UI", "登录超时");
-        }
+        // 登录链路（账号服换 token → EMsg.Login → SetupSession → 切场景）与失败分支
+        // 见 patterns/client/network.md 模板 5；面板这里只做输入校验与按钮绑定。
     }
 }
 ```

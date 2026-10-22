@@ -19,7 +19,7 @@
 | 3 | **恰好一个** `-200`：它只读输入、只写"意图"（把命令交给模拟），⛔ 不推进权威状态。项目里出现第 2 个 `-200` ⇒ 两者先后**未定义** ⇒ 必须自己串行（一个持另一个的引用），⛔ 不许靠两个同类 attribute 的先后 |
 | 4 | 模拟层**一律不写 attribute**（= 默认 `0`）；⛔ 模拟**不许**负值 —— 负值会让它早于输入采集，本帧拿到的是上一帧的意图 |
 | 5 | 表现层在 `LateUpdate` 里读模拟结果；⛔ 在 `Update` 里画 = 画面慢一帧（模拟可能还没跑） |
-| 6 | 每条非预期分支都要打日志（`Game.Logger.Info/Warn/Error(tag, msg)`）；⚠️ 时序类故障**只在顺序对的时候**才表现为"正常"，所以顺序本身要有断言，别指望日志发现它 |
+| 6 | ⚠️ 时序类故障**只在顺序对的时候**才表现为"正常" ⇒ 顺序本身要有断言，别指望日志发现它 |
 
 ---
 
@@ -52,25 +52,7 @@
 4. `client/ProjectSettings/` 下任何文件出现非空 `m_ExecutionOrder` ⇒ **FAIL**（顺序被藏进资产面板，代码里 grep 不到）；
    反之"该 key 全仓 0 命中" ⇒ PASS。
 
-```powershell
-# 值域 + 数量检查（把 $Client 换成你的 client 目录）
-$Client = Join-Path $ProjectRoot 'client'
-$rows = @()
-foreach ($f in Get-ChildItem (Join-Path $Client 'Assets\Scripts') -Recurse -File -Filter *.cs) {
-  $n = 0
-  foreach ($ln in [IO.File]::ReadAllLines($f.FullName)) {
-    $n++
-    $m = [regex]::Match($ln, '^\s*\[DefaultExecutionOrder\(\s*(-?\d+)\s*\)\]')
-    if ($m.Success) { $rows += [pscustomobject]@{ Value = [int]$m.Groups[1].Value; File = $f.FullName; Line = $n } }
-  }
-}
-$bad = @($rows | Where-Object { $_.Value -ne -200 -and $_.Value -ne -100 })
-if ($bad.Count -gt 0) { Write-Output ('FAIL execution-order: ' + ($bad | ForEach-Object { "$($_.File):$($_.Line) value=$($_.Value)" }) -join ' | ') }
-$n200 = @($rows | Where-Object { $_.Value -eq -200 }).Count
-if ($n200 -ne 1) { Write-Output ("FAIL execution-order: -200 count = $n200 (must be exactly 1: 0 = input moves to the sim phase silently)") }
-```
-
-> ⚠️ 上例只认**字面量**（`[DefaultExecutionOrder(-200)]`）。若代码里写成 `[DefaultExecutionOrder(ExecutionOrder)]`（常量是编译期常量时 attribute 也接受它），脚本要回读**同一个文件里的 `ExecutionOrder` 常量**再判 —— §4 的完整脚本就是这么做的。**自查一下你的解析器能覆盖两种写法**，否则它会静默漏掉一整类（这正是"判据自己也会骗人"）。
+> 脚本见 §4（唯一一份）：它同时解析**字面量**与**同文件 `const int` 常量名** —— 只认字面量的简化版会静默漏掉一整类写法（这正是"判据自己也会骗人"）。
 
 ### 3.2 「缺一个阶段值」会被谁抓到
 

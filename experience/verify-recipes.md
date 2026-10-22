@@ -3,6 +3,7 @@
 > 原则：**不许说"应该好了"** —— 交付前跑一次关键路径、看一眼截图（`SKILL.md` §4）。
 > 本文件是**遇到具体问题时翻的配方集**：要读运行时状态 / 要验碰撞 / 要截带 HUD 的图 / 要读日志 / 要跑回归时，抄这里的命令；⛔ 不要求每次交付都跑一遍。
 > 工具用法出处：`reference/unity-cli.md` §8.1。前提：Unity 6 + 工程已在编辑器里打开。
+> 下面模板里的 `MYNS` = **你工程的命名空间**，类名 / 字段名按项目实际替换。
 
 ---
 
@@ -23,9 +24,9 @@ unity command editor_stop                       # ⑤ 收工
 **模板 A：对象状态**（组件是否挂上 / 模型是否加载 / 动画是否在跑）
 
 ```csharp
-var m = UnityEngine.Object.FindFirstObjectByType<CloverMmo1.Module.Player.PlayerMotor>();
-var c = UnityEngine.Object.FindFirstObjectByType<CloverMmo1.Module.CameraRig.ThirdPersonCamera>();
-var hud = UnityEngine.Object.FindFirstObjectByType<CloverMmo1.UI.HudPanel>();
+var m = UnityEngine.Object.FindFirstObjectByType<MYNS.Module.Player.PlayerMotor>();
+var c = UnityEngine.Object.FindFirstObjectByType<MYNS.Module.CameraRig.ThirdPersonCamera>();
+var hud = UnityEngine.Object.FindFirstObjectByType<MYNS.UI.HudPanel>();
 var model = (m != null) ? m.transform.Find("Model") : null;
 var an = (model != null) ? model.GetComponent<Animator>() : null;
 string clip = "none"; float t = -1f;
@@ -41,8 +42,8 @@ return "ok";
 
 ```csharp
 // 地图：数据与空间事实在**引擎**（Game.Map，读服务端同一份字节）；
-// 解算（半径采样 / 分轴滑墙 / 扫掠细分）在**业务模块**（这里是 MapModule，薄门面无状态）。
-var map = new CloverMmo1.Module.Map.MapModule();
+// 解算（半径采样 / 分轴滑墙 / 扫掠细分）在**业务模块**，薄门面无状态。
+var map = new MYNS.Module.Map.MapModule();
 bool ok = false; map.Load(b => ok = b);      // 已加载/资源缓存命中时会同步回调
 
 float x = 6.5f, z = 10.5f; int blocked = 0;
@@ -59,8 +60,8 @@ return "ok";
 **模板 C：服务端校正链路**（故意发一条非法移动，看是否收到校正并回放）
 
 ```csharp
-CloverEngine.Game.Net.Send(CloverMmo1.Def.MsgDef.Move,
-    new CloverMmo1.Def.MoveRequest { x = 10.5f, y = 0f, z = 10.5f, seq = 8888 });
+CloverEngine.Game.Net.Send(MYNS.Def.MsgDef.Move,
+    new MYNS.Def.MoveRequest { x = 10.5f, y = 0f, z = 10.5f, seq = 8888 });
 UnityEngine.Debug.Log("[VerifyNet] 已发送非法移动（走进建筑）seq=8888");
 return "ok";
 // 等 2~3 秒后再跑模板 A：应看到 CorrectionCount>0，客户端日志有「应用服务端校正 ack=8888 …」
@@ -69,8 +70,8 @@ return "ok";
 **模板 D：相机遮挡**（把角色挪到障碍旁、相机朝墙侧，读距离）
 
 ```csharp
-var m = UnityEngine.Object.FindFirstObjectByType<CloverMmo1.Module.Player.PlayerMotor>();
-var c = UnityEngine.Object.FindFirstObjectByType<CloverMmo1.Module.CameraRig.ThirdPersonCamera>();
+var m = UnityEngine.Object.FindFirstObjectByType<MYNS.Module.Player.PlayerMotor>();
+var c = UnityEngine.Object.FindFirstObjectByType<MYNS.Module.CameraRig.ThirdPersonCamera>();
 m.SendEnabled = false;                                   // 测试期间别真发移动
 m.Teleport(new UnityEngine.Vector3(7.5f, 0f, 10.5f));    // 障碍旁边
 c.Yaw = 270f;                                            // 让相机朝向"墙那一侧"
@@ -111,8 +112,8 @@ $t=[IO.File]::ReadAllText('console.txt',[Text.Encoding]::UTF8)
 
 > ⚠️ **编码陷阱（两个方向各踩过一次 ⇒ 只搜一种必错）**：**同一工程里不同管道的编码可以不同** —— ① **探针 / L3 TSV**（产品自己写的运行日志）是**原样 UTF-8**；② **`unity command console` 落盘的 JSON** 是**双重编码**（中文要 gbk→utf8 还原后才搜得到）。
 > ⇒ **判据 = 两种口径都搜**：原样读 + gbk→utf8 还原后再搜。⛔ 不许只搜一种就下"事件没发生"的结论，⛔ 更不许把"没搜到"当成"没有缺陷"去改代码。**两个口径都 0 才算"确实没有"**。
-> 好用的对照：先搜纯 ASCII 关键字（`[Match]` / tag 名）—— 若两种口径一致命中，就证明"文件在、只是中文 mojibake"，接下来才轮到编码问题。
-> ⚠️ **"还原"的写法本身也会骗你**：正确式 = **`utf8 解码 → 按 GBK 编回字节 → 再 utf8 解码`**；而"直接按 GBK 解码"（`raw.decode('gbk')`）那种写法 **0 命中**。⇒ 还原后**必须**先用纯 ASCII 对照关键字验证还原是否成功，否则你只是换了个更糟的坏解码器、还以为"事件没发生"。
+> 好用的对照：先搜纯 ASCII 关键字（`[Match]` / tag 名）—— 若两种口径一致命中，就证明"文件在、只是中文 mojibake"。
+> ⚠️ **"还原"的写法本身也会骗你**：正确式 = **`utf8 解码 → 按 GBK 编回字节 → 再 utf8 解码`**；而"直接按 GBK 解码"那种写法 **0 命中**。⇒ 还原后**必须**先用纯 ASCII 对照关键字验证还原成功。
 
 ## 5. 回归测试（**改了相关路径 / 不确定时才跑**；⛔ 默认不跑）
 
@@ -120,7 +121,7 @@ $t=[IO.File]::ReadAllText('console.txt',[Text.Encoding]::UTF8)
 unity command run_tests --mode PlayMode --filter <命名空间>.<用例类> --timeout 300 --async_tests --format json
 unity command test_status --format json      # 看 summary.passed / failed
 ```
-> 引擎改动后也要跑：`go build ./... && go vet ./... && go test ./internal/... -run <复现用例> -v -timeout 90s`
+> 引擎改动后也要跑：`go build ./... && go vet ./... && go test ./internal/... -run <复现用例> -v -timeout 90s`（长任务，别在前台等 —— 见 `time-sinks.md` T15）。
 
 ## 6. 证据清单（**按需取用**，⛔ 不是"每次都要凑齐"）
 
@@ -136,17 +137,18 @@ unity command test_status --format json      # 看 summary.passed / failed
 
 ## 7. 实操坑：跑自检脚本 / 跑长任务 / 启服务
 
+> 下面这条只适用于**工程里已经有** `tools/verify.ps1` 的情况；⛔ 不要为此新建闸门（`SKILL.md` §4 第 2 条）。
+
 ```powershell
 Set-Location <工程根>
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify.ps1 *> .ai-tmp/test/verify-out.txt
 ```
 
 1. **⛔ `*>` 重定向出来的文件是 UTF-16LE**（带 BOM）。直接 `grep FAIL` 会**一条都匹配不到**（字符之间插了 `\x00`），极易误判成"自检全绿"。⇒ 先转码再读：`iconv -f UTF-16LE -t UTF-8 .ai-tmp/test/verify-out.txt | grep -n '^FAIL\|^HUMAN-ONLY'`。（配套：本宿主的 PowerShell 工具 stdout 常不回显 ⇒ 一律**落盘 + 回读**。）
-2. **（历史）`impl-by-executor` 会把"你自己新增的实现 / 测试文件"判成孤儿**：该判据要求时间窗（默认 72 h）内改动的每个 `.cs` / `.go` 都能对上一行派活留痕。⛔ **这条闸门已删、不检了**（它数的是"有没有一行台账"，人一眼就能看出谁改的）。留下的规矩只有一条：主 agent 直改（`SKILL.md`「派活清单」第 6 条那条窄例外）时，在 `.ai-tmp/test/ledger.tsv` 补一行 `kind=direct-fix`。
-3. **⛔ 长时间 `go test` / `go vet` / 自检脚本：别直接跑，会被宿主的 shell 超时打断（`Signal: SIGTERM`）** —— 而且**输出连同缓冲区一起丢**（`... 2>&1 | tail` 这种管道尤其会把已完成的结果也吞掉，看起来像"卡住"，其实是**假挂起**）。正确做法二选一：① 用 `run_in_background` 跑，完成后再读；② **落盘 + 回读**：`go test ./game/... -count=1 > gotest.txt 2>&1`，然后单独 `cat gotest.txt`（即使 shell 报了 SIGTERM，**文件通常已经写完**，先去看文件）。
+2. **⛔ 长时间 `go test` / `go vet` / 自检脚本：别直接跑，会被宿主的 shell 超时打断（`Signal: SIGTERM`）** —— 而且**输出连同缓冲区一起丢**（`... 2>&1 | tail` 这种管道尤其会把已完成的结果也吞掉，看起来像"卡住"，其实是**假挂起**）。正确做法二选一：① 用 `run_in_background` 跑，完成后再读；② **落盘 + 回读**：`go test ./game/... -count=1 > gotest.txt 2>&1`，然后单独 `cat gotest.txt`（即使 shell 报了 SIGTERM，**文件通常已经写完**，先去看文件）。
    ⚠️ 被 `SIGTERM` 打断的 `go` 进程可能**不释放构建缓存锁** ⇒ 后续 `go` 命令全部**真的**阻塞。判据：连续两条 `go` 命令都无输出且不动 ⇒ 先查残留 `go.exe`（`tasklist //FI "IMAGENAME eq go.exe"`），⛔ 不要因为第二条也"没输出"就断定代码有问题。
-4. **⛔ 往 `策划/验收表.md` 的表格单元格里写数学竖线会把列数撑破**：写 `|增益| ≥ 1` 会让该行从 5 列变 7 列，后续脚本按列解析就会错位。⇒ 写成 `abs(增益) ≥ 1`（或全角 `｜`）。自查：`grep "^| D150 " 策划/验收表.md | awk -F'|' '{print NF}'` 应为 **7**（5 列 + 首尾空）。
-5. **⛔ 用户说"开不了服务器 / 我改的没生效" ⇒ 先查有没有上一轮遗留的服务进程在当孤儿**。后台任务被回收时，它起来的服务**不一定会跟着死**，会继续**占端口**、而且跑的是**旧二进制**。
+3. **⛔ 往 md 表格单元格里写数学竖线 `|` 会把列数撑破**：写 `|增益| ≥ 1` 会让该行多出两列，后续脚本按列解析就错位。⇒ 写成 `abs(增益) ≥ 1`（或全角 `｜`）。自查：数一下该行 `-split '\|'` 的段数是否符合列数。
+4. **⛔ 用户说"开不了服务器 / 我改的没生效" ⇒ 先查有没有上一轮遗留的服务进程在当孤儿**。后台任务被回收时，它起来的服务**不一定会跟着死**，会继续**占端口**、而且跑的是**旧二进制**。
 
    ```powershell
    Get-Process | Where-Object { $_.ProcessName -like 'clover*' } | Select-Object Id,ProcessName,StartTime

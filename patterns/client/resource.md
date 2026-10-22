@@ -194,11 +194,9 @@ public class HotUpdateFlow : MonoBehaviour
 
 | # | 资源名 | 类型 | 尺寸/规格要求 | 当前占位 | 需提供 | 替换方法（目标路径） | 影响范围（文件/接口） | 状态 |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 出拳卡面 | 图 | 64x64 像素 | placeholder_64x64.png（纯色块） | 3 张 PNG | 替换 `Assets/Resources/Placeholder/placeholder_64x64.png` | `UIRpsPanel.cs` 加载路径 | ⬜ 待替换 |
-| 2 | 胜负音效 | 音 | 无 | 空实现（打 `[SOUND]` 日志） | win.wav / lose.wav | 放入 `Assets/Resources/Sound/SFX/` 后 `Game.Sound.PlaySFX("win")` | `SfxService.cs` | ⬜ 待替换 |
-| 3 | 牌型动画 | 动画 | 无 | 打日志 + Text | 2 个 AnimatorClip | 挂 Animator 并替换 clip | `CardView.cs` | ⬜ 待替换 |
-| 4 | 角色模型 | 3D | 1x1x1 单位 | Unity 内置 Cube | FBX/OBJ | 替换 `Assets/Resources/Models/` 下文件 | `PlayerView.cs` | ⬜ 待替换 |
-| 5 | 联服验证 | 环境 | - | 未验证（本地无服务器环境） | 装好 windows-env 后跑一遍 | 见 `reference/server-env.md` | 全流程 | ⬜ 待验证 |
+| 1 | 图标 | 图 | 64x64 像素 | 纯色块（`Assets/Resources/Placeholder/placeholder_64x64.png`） | N 张 PNG | 替换占位图所在路径 | 引用它的面板脚本 | ⬜ 待替换 |
+| 2 | 音效 | 音 | 无 | 空实现（打日志） | `<名称>.wav` | 放入 `Assets/Resources/Sound/SFX/` 后 `Game.Sound.PlaySFX("<名称>")` | 播放它的脚本 | ⬜ 待替换 |
+| 3 | 角色模型 | 3D | 1x1x1 单位 | Unity 内置 Cube | FBX/OBJ | 替换 `Assets/Resources/Models/` 下文件 | 加载它的 View | ⬜ 待替换 |
 
 ## 说明
 1. **尺寸要求**：uGUI 会拉伸占位图，但真实美术请按上表尺寸给，避免比例失调/清晰度不一致；Sliced/Tiled UI、游戏内 Sprite、图标头像等对尺寸敏感。

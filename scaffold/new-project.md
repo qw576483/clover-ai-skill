@@ -33,7 +33,7 @@ clover-{name}/
 |---|---|---|
 | **⓪ `tools/env-check.ps1` 环境体检** | **建项目时**（且每次判"卡/掉帧"前都跑） | 从 `scripts/env-check.ps1` 复制。**exit 1**（物理卡 `Code 22/10/43`，或 Unity 落到 `Microsoft Basic Render Driver` 软光栅）⇒ **停，先修机器**；⛔ 该机器上一切"卡 / 帧率"结论**无效** |
 | ① `tools/verify.ps1`（**可选**；要查时的 3 招） | **可选**：想要个机械兜底时再建，⛔ 别拖住开工 | 从 `reference/verify-template.md` 复制，按项目改路径 |
-| ② 强制层（**可选**） | 真要挂就挂**打包 / 发布入口**或 CI | ⛔ **别挂 `pre-commit`** —— 挡在提交这条高频路径上就开始吃做东西的时间（实测某项目每次提交跑整套 78 秒检查、还 fail-closed）→ `reference/deterministic-gates.md` §5 |
+| ② 强制层（**可选**） | 真要挂就挂**打包 / 发布入口**或 CI | ⛔ **别挂 `pre-commit`** —— 挡在提交这条高频路径上就开始吃做东西的时间 → `reference/deterministic-gates.md` §5 |
 | ③ `策划/基线图/` + 场景清单（**可选**） | 只有真要**逐像素**跟原版比时才建 | 采集参考物那一侧：固定分辨率 / 冻结动画 / 固定相机位姿（`reference/visual-loop.md`） |
 | ④ diff 闭环器（**可选**） | 同上 | 通用引擎；换引擎只换"采集器" |
 
@@ -63,11 +63,7 @@ clover-{name}/
 | 内容 | `patterns/**`、`reference/**`、`scaffold/**` | 本项目的消息号表、handler 表、面板表、配表、约束、范例 |
 | 优先级 | **规则层不可被覆盖**；其余通用写法可被项目取代 | 只在「全局 skill 没写 / 明说可自选」的地方优先（技术选型、命名、目录细分、消息号分段） |
 
-**规则**：
-- ⛔ **项目级 skill 只能"加严"，不许"放宽"全局规则层** —— 凡全局标了 `§0~§7` / `⛔` / 硬规则 / 硬闸门 的，项目约定一律不得冲突；冲突时：**照全局做 → 把冲突的项目文档改掉 → 真觉得规则不合理就回报用户改 skill**。⛔ **不许**用「以本项目为准」把硬规则放过。
-- **只记本项目特有的东西**；通用规则⛔ **不许**抄进来（抄了必然两边漂移）。
-- 每次新增**对外可见**的设施（消息号 / handler / 面板 / 管理器 / 通用函数 / 配表），**回来补一行** —— 这份文件的价值全在"保持更新"，**过期比没有更糟**。
-- 后续任何 AI（或人）**动本项目代码前，先读 `tools/ai-skill/SKILL.md`**。
+**规则**（全文见 `scaffold/project-skill.md` §1 的硬规则，本文件不重复）：只能"加严"不许"放宽"全局规则层 / 只记本项目特有的东西 / 新增设施回来补一行 / 动本项目代码前先读 `tools/ai-skill/SKILL.md`。
 
 > 复杂项目还要另建 `docs/步骤文档.md` 与 `docs/agents/agent-NN-*.md`，见 `patterns/multi-agent.md`。
 
@@ -444,8 +440,6 @@ unity projects list --format json        # 复核 isFavorite=true
 > `unity pipeline list --json` 的 `instances` 恒为 `[]`、`unity status` 永远是空表，
 > **用户必须再重启一次** Unity 才连得上。
 >
-> 因为这条没写进模板，用户被迫重启了 **3 次**。
->
 > **做法**（二选一，**都必须在让用户去添加项目 / 打开编辑器之前做完**）：
 >
 > | 方式 | 命令 / 写法 |
@@ -459,10 +453,7 @@ unity projects list --format json        # 复核 isFavorite=true
 编辑 `client/Packages/manifest.json`。**只加引擎包一行是不够的** —— 模板自带的包清单里
 **没有 Unity 内置模块**，而引擎用到它们；缺了会在编译引擎时炸：
 
-> ⚠️ **本节与 `patterns/client/new-project.md` §3 的口径不一致**（那一份只加引擎包一行）。
-> 哪个对取决于 **Unity 对你所用的工程模板是否隐式引用内置模块**，⛔ 离线判不了，必须在真机验一次：
-> **先只加引擎包 → 编译；报 CS1069 就按本节把下表 `com.unity.modules.*` 补齐。**
-> 在此之前别把任何一份当定论。
+> **判据**：照下表抄（含内置模块）是稳的；若先只加引擎包，编译报 `CS1069` 就说明模板没有隐式引用内置模块 —— 把下表 `com.unity.modules.*` 补齐。⛔ 离线判不了，以真机编译为准。
 
 ```
 error CS1069: The type name 'RuntimeAnimatorController' could not be found in the namespace
@@ -514,7 +505,7 @@ error CS1069: The type name 'RuntimeAnimatorController' could not be found in th
 ### 2.3 业务程序集 `client/Assets/Scripts/{Name}.asmdef`
 
 > 位置是 `Assets/Scripts/`（覆盖 `Scripts/` 下的**全部**业务代码）。
-> ⛔ **目录骨架以 `reference/architecture.md` §4 为准**：`Def / Core / Module / UI / App` ——
+> ⛔ **目录骨架以 `reference/architecture.md` §1 为准**：`Def / Core / Module / UI / App` ——
 > 交付前自检命令认的是 `Scripts/Module/` 这一层，用别的分层名**会检不到**；
 > 本节只约定 asmdef 的**位置**（`Assets/Scripts/`），**不重新定义分层名**。
 > 与 `SKILL.md` 的目录骨架、`patterns/client/config.md` 的固定路径（`Assets/Scripts/Core/ClientConfig.cs`）一致。
@@ -546,99 +537,24 @@ error CS1069: The type name 'RuntimeAnimatorController' could not be found in th
 
 ### 2.3.5 业务消息号与协议定义（必须先建，再写任何网络代码）
 
-**目录结构**（在 `client/Assets/Scripts/Def/` 下）：
+在 `client/Assets/Scripts/Def/` 下建两个文件：
 
 ```
 Def/
-├── MsgDef.cs      # 业务消息号常量（唯一定义处，禁止散落在 GameManager/UI 脚本里）
-└── ProtoDef.cs    # 协议结构体（Request / Reply / Notify DTO）
+├── MsgDef.cs      # 业务消息号常量（唯一定义处）
+└── ProtoDef.cs    # 协议结构体（Request / Reply / Notify DTO，全部 [Serializable]）
 ```
 
-**`client/Assets/Scripts/Def/MsgDef.cs`**
+两份模板、回包不占消息号、禁止散落消息号、与服务端 `server/game/def/` 逐条对齐的规则见 **`patterns/client/network.md` 模板 0** —— 本文件不重复。
 
-```c#
-namespace {Name}.Def   // ← 换成实际项目名（如 CQ.Def），不要复用 CloverEngine 命名空间
-{
-    /// <summary>
-    /// 业务消息号，与 server/game/def/{msg,reply,push}.go 一一对应，改动必须同步。
-    /// 引擎消息号见 CloverEngine.EMsg（[1,10000]），业务必须 >= 10001。
-    /// </summary>
-    public static class MsgDef
-    {
-        // ---- C2S（1000101 起；引擎硬约束只有「> 10000」）----
-        public const uint Xxx = 1000101;   // 示例请求
+### 2.4 客户端配置 `config.json` + `Core/ClientConfig.cs`
 
-        // ---- 回包：**不定义消息号常量**（回包帧 msgID 恒为 0，用 Call<XxxReply> 配对）----
+JSON 模板（`server` / `account` / `game` 三段）与逐字段说明见 `patterns/client/config.md` §1~§2，照抄即可。三条不能漏：
 
-        // ---- 推送（3002001 起）----
-        public const uint XxxNotify = 3002001;
-    }
-}
-```
-
-**`client/Assets/Scripts/Def/ProtoDef.cs`**
-
-```c#
-using System;          // [Serializable]
-
-namespace {Name}.Def
-{
-    // ⛔ 必须 [Serializable]：引擎走 JsonUtility 序列化，它**只认带该标签的类**
-    //    （引擎自带的 28 个协议 DTO 全部标了）。漏了就不参与序列化 —— 字段静默丢失。
-    [Serializable] public class XxxRequest  { public string name; }
-    [Serializable] public class XxxReply    { public bool ok; public string err; }
-    [Serializable] public class XxxNotify   { public int value; }
-}
-```
-
-**使用**：
-
-```c#
-using {Name}.Def;   // 引擎消息号仍用 CloverEngine.EMsg，业务用 MsgDef，两者不混
-
-Game.Net.Send(MsgDef.Xxx, new XxxRequest { name = "test" });
-var reply = await Game.Net.Call<XxxReply>(MsgDef.Xxx, new XxxRequest { name = "test" });
-Game.OnMsg(MsgDef.XxxNotify, ctx => { var n = ctx.Bind<XxxNotify>(); /* ... */ });
-```
-
-**铁律**：
-- 消息号**只能**定义在 `Def/MsgDef.cs`；**禁止**在 `GameManager.cs` / UI / 业务脚本里写 `const uint` 消息号或裸字面量（如 `Game.Net.Send(10001, ...)` 一律算错）。
-- 协议结构体**只能**定义在 `Def/ProtoDef.cs`。
-- 客户端 `MsgDef` 与服务端 `server/game/def/` **逐条对齐**，改一端必须同步另一端。
-
-### 2.4 客户端配置 `client/Assets/Configs/config.json`
-
-```json
-{
-  "server": {
-    "addr": "127.0.0.1:8002",
-    "udp_addr": "127.0.0.1:8003",
-    "tls": false,
-    "auth_addr": "http://127.0.0.1:8051",
-    "call_timeout": 10,
-    "max_reconnect_count": 5
-  }
-}
-```
-
-> `tls` 必须与服务端**实际**是否启用 TLS 一致，判断依据是 **§1.3 的 `server.yaml` 有没有配 `gateway.tls_cert`/`tls_key`**：
-> **模板默认不配证书 ⇒ TCP 是明文 ⇒ 客户端这里写 `false`**（与 §1.3 模板配套，照抄即可跑通）。
-> 只有你确实给服务端配了证书（`tls_cert` + `tls_key` 成对）时才写 `true`。
-> ⛔ 写反的表现是「**连上就断** → 重连耗尽被踢 → 之后所有 `Call` 超时」。
-> 证书只走系统信任链，引擎没有跳过校验的开关。
-
-> **端口必须与 `gateway` 段严格对齐**：`addr` = `gateway.listen_tcp`（**8002**），
-> `udp_addr` = `gateway.listen_udp`（**8003**）。
->`auth_addr` = 账号服 HTTP 地址（`server.yaml` 的 `auth.listen`，**8051**）。**必填**：
-> 引擎只有一种登录模式（账号服校验），客户端必须先 HTTP 换 token 再 `EMsgLogin{token}`，
-> 留空则登录 / 注册必失败。详见 `patterns/auth-server.md`。
->⚠️ **绝对不要填 8001**。8001 是 `gateway.listen_ws`（WebSocket），是给浏览器 / WebGL 客户端的。
-> Unity 原生客户端走的是**裸 TCP**（引擎 `Connection.cs` 用 `TcpClient` + `NetworkStream`），
-> 连到 8001 会出现这种极难定位的现象：
-> **TCP 能连上（HTTP 监听器接受了连接）→ 立刻被断开 → 自动重连 → 重连耗尽报「连接被踢出」
-> → 之后所有 `Call`（登录/建房/同步）全部超时。**
-> 客户端日志特征：`[Clover][Network] reliable link connected (…)` 紧接着 `reliable link lost (…)` / `reconnecting in …s`
-> （链路日志由 `Game.Logger` 以 `Network` tag 输出，可在 `logs/` 文件日志里检索）。
+- `server.addr` = `gateway.listen_tcp`（**8002**）；`udp_addr` = `gateway.listen_udp`（**8003**）。
+  ⛔ 不要填 8001（那是 `gateway.listen_ws`，浏览器 / WebGL 用）—— 症状是「TCP 连上 → 立刻断开 → 重连耗尽被踢 → 之后所有 `Call` 超时」。
+- `server.auth_addr` = 账号服 HTTP 地址（`auth.listen`，**8051**），**必填** —— 引擎只有「账号服换 token 再 `EMsgLogin{token}`」这一种登录模式，留空则登录 / 注册必失败（`patterns/auth-server.md`）。
+- `server.tls` 与服务端**是否成对配了** `gateway.tls_cert`/`tls_key` 一致（模板不配证书 ⇒ 明文 ⇒ `false`）；写反同样是「连上就断」。
 
 **必须连同项目侧配置入口一起生成**：`client/Assets/Scripts/Core/ClientConfig.cs` —— 内容是
 「**配置段类型（字段 + 默认值） + `CloverEngine.ConfigSectionLoader<T>` 的来源 / 解析注入 + 薄门面 `Cfg`**」

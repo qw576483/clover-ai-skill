@@ -1,5 +1,6 @@
-# Unity 6 + Unity CLI 规范（AI 自动化操作的强制前置条件）
+# Unity 6 + Unity CLI 操作手册（AI 自动化操作的强制前置条件）
 
+> **分工**：本文只放**操作步骤 / 命令 / 流程**（怎么装、怎么建工程、怎么驱动活编辑器、怎么跑测试）。**踩坑、报错原文、排查路径** → `reference/pipeline-and-unity-cli.md`（P-0 ~ P-5 全在那）。
 > **适用范围**：这是**对 AI 的要求，不是对项目的要求**。项目用哪个 Unity 版本由项目决定；但**只要 AI 要以自动化方式操作 / 落地客户端代码**（编译验证、跑测试、构建、改场景 / 资源、读 Console、截图），**必须**通过 **Unity 6（6000.x）+ Unity CLI** 来做。
 > 典型触发：AI 生成 / 修改了 `Assets/**/*.cs` 或场景资源后，需要验证能否编译、单测是否绿、能否出包。
 
@@ -28,11 +29,13 @@
    > 路径（可直接复制）：`<项目根绝对路径>/client`
    > 第 2~4 步也可用命令行代劳：`unity projects add "<项目根>/client"` + `unity projects pin "<项目根>/client"`。
 
-2. **用户打开后** → 按 **§8.1** 驱动它：`unity status`（确认 `state=ready`）→ `eval_file` / `editor_play` / `capture_game_view` / `recompile_status`。
+2. **用户打开后** → 按 **§8** 驱动它：`unity status`（确认 `state=ready`）→ `eval_file` / `editor_play` / `capture_game_view` / `recompile_status`。
 3. **用户没开 / 说不想开** → **停下，不继续做**（⛔ 不许"我自己批处理一下也行"）。
 
-**为什么不许自己跑**：① 首次导入几百上千张素材 + 全量脚本编译会把**一次往返拖到十几分钟**；② 授权 / 杀软任一环节出问题就是**静默卡死**（见 §9）；③ **批处理下 `-executeMethod` 执行完立刻退出，进不了播放模式** —— "跑一遍看画面"**根本做不了**。
+**为什么不许自己跑**：① 首次导入几百上千张素材 + 全量脚本编译会把**一次往返拖到十几分钟**；② 授权 / 杀软任一环节出问题就是**静默卡死**（见 `reference/pipeline-and-unity-cli.md` §一 / §九）；③ **批处理下 `-executeMethod` 执行完立刻退出，进不了播放模式** —— "跑一遍看画面"**根本做不了**。
 ⛔ **禁止**因为"用户没开编辑器"就跳过实测直接交付（那是半成品的主要来源）；⛔ **禁止**编辑器开着时硬跑 `unity run`（会报「项目已在运行中的编辑器中打开」）。**没有例外** —— 即使用户说「你就自己跑，别烦我」也不做，把原因讲清楚。**用户不打开编辑器 = 停在这里。**
+
+> ★ **在让用户"添加项目 / 打开编辑器"之前**，必须先确认 `client/Packages/manifest.json` 里有 `com.unity.pipeline`（否则编辑器起来也没有 Pipeline 服务，用户得再重启一次）。做法与判据见 `reference/pipeline-and-unity-cli.md` §二（P-0）。
 
 | 项 | 要求 |
 |---|---|
@@ -41,7 +44,7 @@
 | 输出格式 | 给 AI 解析时一律加 `--format json` / `tsv`，⛔ 不要解析人类可读表格 |
 | 平台 | Windows 用 PowerShell；macOS/Linux 用同一套 `unity` 子命令 |
 
-**⛔ 禁止**：直接拼 `Unity.exe` 绝对路径执行批处理（Hub 路径随机器变化，不可移植）；用 Hub GUI 手工点然后让 AI 盲猜结果；在 Editor 打开且未保存时直接改磁盘上的 `Assets/` / `ProjectSettings/`（先保存或关闭 Editor）；把工程 / `-logFile` / 内容目录放在**点开头的目录**下（`.codebuddy/`、`.cache/` …）—— Unity 报 `xxx is not a valid directory name`，**并且会把机器级 UDS 共享状态弄坏，连累之后所有正常路径下的工程**（见 §9）；在导入 / 编译进行中**强杀 Editor 进程** —— 会写坏 `<工程>/Library/DataStore`，之后每次启动都崩在 `UDSInterface::UDSInterface`（见 §9）。
+**⛔ 禁止**：直接拼 `Unity.exe` 绝对路径执行批处理（Hub 路径随机器变化，不可移植）；用 Hub GUI 手工点然后让 AI 盲猜结果；在 Editor 打开且未保存时直接改磁盘上的 `Assets/` / `ProjectSettings/`（先保存或关闭 Editor）；把工程 / `-logFile` / 内容目录放在**点开头的目录**下（`.codebuddy/`、`.cache/` …）—— Unity 报 `xxx is not a valid directory name`，**并且会把机器级 UDS 共享状态弄坏，连累之后所有正常路径下的工程**（见 `reference/pipeline-and-unity-cli.md` §九）；在导入 / 编译进行中**强杀 Editor 进程** —— 会写坏 `<工程>/Library/DataStore`，之后每次启动都崩在 `UDSInterface::UDSInterface`（见同节）。
 
 **例外**：只有当 CLI 确实没有对应能力时（Terrain、Addressables、ParticleSystem 模块、Shader Graph），才可退回 `unity command ...` 的 `eval` 逃生口跑 C#，或在 CLI 能力外再考虑 Editor 脚本 + `-executeMethod`，并在回复里说明为什么 CLI 做不到。
 
@@ -149,7 +152,7 @@ $x.SelectNodes('//test-run') | Select-Object -First 1 -ExpandProperty OuterXml
 
 | 现象 | 真因 | 正确做法 |
 |---|---|---|
-| WS 用例恒红：客户端 `State=Disconnected` | Unity/Mono 的 `HttpListener` **不支持 WebSocket 升级**（`IsWebSocketRequest` 恒 false），假服务端会对合法升级请求回 400 | 别用 `HttpListener`：改用裸 `TcpListener` 自做 RFC 6455 握手（范例 [`Tests/PlayMode/MiniWsServer.cs`](https://github.com/qw576483/clover-client-unity-engine/blob/main/Tests/PlayMode/MiniWsServer.cs)） |
+| WS 用例恒红：客户端 `State=Disconnected` | Unity/Mono 的 `HttpListener` **不支持 WebSocket 升级**（`IsWebSocketRequest` 恒 false），假服务端会对合法升级请求回 400 | 别用 `HttpListener`：改用裸 `TcpListener` 自做 RFC 6455 握手（范例见引擎仓库 `Tests/PlayMode/MiniWsServer.cs`） |
 | 推送 / 回包用例超时，但链路明明连上了 | 收包队列只在 `NetworkManager.Tick()` 里被排空，测试里只 `yield return null` 帧会**一直躺在队列里** | 等待循环中**每帧泵一次** `nm.Tick()` |
 | 等待类用例报"超时"，但日志显示数据早收到了 | 等待助手把**有副作用的谓词求值了两次**（`while(!cond()) …; Assert.IsTrue(cond())` —— 循环里那次成功后 `TryTakePacket` **已出队**，断言里再求值就是 false） | 助手内**只求值一次**：`var ok = cond(); while(!ok && 未超时) { yield return null; ok = cond(); } Assert.IsTrue(ok, …)` |
 
@@ -157,7 +160,7 @@ $x.SelectNodes('//test-run') | Select-Object -First 1 -ExpandProperty OuterXml
 
 ## 5. 标准操作流程
 
-① **自检 CLI**（`unity --version`）→ 没有就按 §2 装；② **确认编辑器**（`unity editors list --format json` → 没有 6000.x 就 `unity install`）；③ **确认工程**（在项目根执行，或显式 `--project <path>`）；④ **执行任务**（构建 / 测试 / 编译 / 场景与资源编辑 / 截图）；⑤ **读结果**（`--format json` 解析；失败时 `unity console tail --format json` 取日志再定位）。
+① **自检 CLI**（`unity --version`）→ 没有就按 §2 装；② **确认编辑器**（`unity editors list --format json` → 没有 6000.x 就 `unity install`）；③ **确认工程**（`Set-Location <项目根>/client`，或按命令要求显式带工程路径 —— `--project-path` / 位置参数）；④ **执行任务**（构建 / 测试 / 编译 / 场景与资源编辑 / 截图）；⑤ **读结果**（`--format json` 解析；失败时 `unity console tail --format json` 取日志再定位）。
 
 ## 6. 新建 Clover 客户端工程（强制用 CLI，禁止 mkdir）
 
@@ -189,16 +192,9 @@ unity projects list --format json        # ③ 复核（isFavorite=true 且 path
 ④ **交付说明里必须写清两行**：「Hub 里显示为：**client**（标题=目录名）」+「路径：`<绝对路径>/client`」，并附一条可直接复制的 `unity open "<绝对路径>/client"`。
 > 只把工程"建在磁盘上"不算交付 —— **用户看不见 = 没交付**。
 
-## 7. 与 Clover 客户端工程的配合
+## 7. 场景创建 + 脚本挂载：AI 自己做，不许丢给用户
 
-- 客户端工程目录：`clover-{项目名}/client/`（或 `clover-client-unity-engine/`）。
-- CLI 只做**工程级操作**（编译、测试、构建、资源 / 场景编辑、日志、截图）；**业务代码**仍按 `patterns/client/*` 与 `reference/client-conventions.md` 编写，⛔ 不要靠 CLI 生成业务脚本。
-- 场景 / 资源改动完成后，提醒用户在 Editor 里确认（CLI 无 Undo 集成）。
-- 构建产物不要提交；`Library/`、`Logs/`、`Temp/`、`obj/` 必须已在 `.gitignore` 中。
-
-## 8. 场景创建 + 脚本挂载：AI 自己做，不许丢给用户
-
-**交付铁律**：Unity 客户端的交付标准是「**打开工程 → 打开场景 → 直接 Play 就能跑**」。下面这些**全是 AI 的活**，⛔ 不许在交付说明里写"请用户在场景中创建空物体并挂载 Xxx 脚本"：创建 / 保存场景（如 `Assets/Scenes/Main.unity`）；场景加进 **Build Settings** 的 Scenes In Build（否则打包后跑不起来）；创建挂载点 GameObject（`Bootstrap` / `GameRoot`）；把业务脚本 `AddComponent` 挂上去；必要引用能自动 `Find`/`GetComponent` 就不要留手工拖拽依赖（确实需要序列化引用时也要空判断 + 运行时兜底创建）；保存场景 + 刷新资产数据库。
+**交付标准**：Unity 客户端的交付标准是「**打开工程 → 打开场景 → 直接 Play 就能跑**」。下面这些**全是 AI 的活**，⛔ 不许在交付说明里写"请用户在场景中创建空物体并挂载 Xxx 脚本"：创建 / 保存场景（如 `Assets/Scenes/Main.unity`）；场景加进 **Build Settings** 的 Scenes In Build（否则打包后跑不起来）；创建挂载点 GameObject（`Bootstrap` / `GameRoot`）；把业务脚本 `AddComponent` 挂上去；必要引用能自动 `Find`/`GetComponent` 就不要留手工拖拽依赖（确实需要序列化引用时也要空判断 + 运行时兜底创建）；保存场景 + 刷新资产数据库。
 
 **做法**：优先用 `unity` 的场景 / 资源子命令，记不准先 `unity skill show`；CLI 没有对应能力时走 §1 的 **eval 逃生口**跑 C#：
 
@@ -215,9 +211,18 @@ UnityEditor.AssetDatabase.Refresh();
 
 **验收**：场景文件存在 + 脚本已挂在场景里的 GameObject 上 + `unity console tail` 无编译错误 + 用户在 Editor 里点 Play 即可运行（不需要任何手工挂脚本操作）。
 
-### 8.1 驱动**正在运行**的编辑器：交付前自证的首选路径（★ 最高效）
+**与工程的分工**：
+- 客户端工程目录：`clover-{项目名}/client/`（或 `clover-client-unity-engine/`）。
+- CLI 只做**工程级操作**（编译、测试、构建、资源 / 场景编辑、日志、截图）；**业务代码**仍按 `patterns/client/*` 与 `reference/client-conventions.md` 编写，⛔ 不要靠 CLI 生成业务脚本。
+- 场景 / 资源改动完成后，提醒用户在 Editor 里确认（CLI 无 Undo 集成）。
+- 构建产物不要提交；`Library/`、`Logs/`、`Temp/`、`obj/` 必须已在 `.gitignore` 中。
+- 编译是否干净、运行是否自证的判据 → §8.1（⛔ 不许口说"已经好了"）。
+
+## 8. 驱动**正在运行**的编辑器（交付前自证的首选路径）
 
 **用户很可能已经把工程开在编辑器里** —— 此时⛔ **不要**再用 `unity run`（会报「项目已在运行中的编辑器中打开」），⛔ 也不要去手改 `.unity`/`.prefab` 文本：**直接驱动那个活编辑器**。
+
+> ⛔ **每一条 `unity` 命令都要在 Unity 工程目录里跑**（`Set-Location <项目根>/client`，或每条都带 `--project-path`）；`unity status` 空表的第一嫌疑是 cwd 不对，不是包装时机 —— 见 `reference/pipeline-and-unity-cli.md` §三（P-1）。
 
 ```bash
 unity status --format json          # 看 instances[].state 是否 "ready"（及 pid/port）
@@ -231,26 +236,26 @@ unity command                       # 列出该编辑器开放的命令（能力
 | **跑一段 C# 装配 / 自证** | `unity command eval --code '<C#>'`；**代码里有空格 / 引号时必须用文件**：`unity command eval_file --file <绝对路径>.cs`（PowerShell 会把带空格的参数拆散） |
 | 进 / 出 Play 实测 | `unity command editor_play` / `editor_stop`（`editor_status` 看状态） |
 | 读运行日志 | `unity command console --tail 300`（**落盘后再解析**：输出是 `命令<TAB>成功<TAB>{JSON}<TAB>参数`，用 `[IO.File]::ReadAllText` + 正则取 `"message":"…"` 最稳） |
-| 清日志（先清再测） | `unity command clear_console` |
+| 清日志（先清再测） | `unity command clear_console`（⚠️ 只清编辑器控制台窗口，日志文件是追加写的 —— 判据见 `reference/pipeline-and-unity-cli.md` §四 ⑤） |
 | **截图取证** | `unity command capture_game_view --source screen --save_path Screenshots/x.png`（`source=screen` 才能截到 **Screen Space-Overlay 的 HUD**；**仅 Play 模式**；`save_path` 相对**作者根 `Assets/`** 且**必须在工程目录内**，否则 400） |
 | 场景内物体 / 找资产 | `find_gameobjects` / `find_assets` / `create_gameobject` / `add_component` / `attach_script` |
 | Animator 资源操作 | `add_animator_parameter\|state\|transition\|layer`、`get_animator_controller`、`get_animation_clip` |
 
 **`eval` 里的 C# 注意**：没有 `using`（写全限定名）；返回值放在末尾 `return "ok";`；长耗时操作给 `--timeout`（秒）。
 
-**交付前的"自证四连"**（⛔ 不许口说"已经好了"）：
+### 8.1 交付前自证四连（⛔ 不许口说"已经好了"）
 
 ```bash
 unity command recompile_status --format json         # ① 编译干净 failed=false
 unity command clear_console; unity command editor_play; sleep 40
 unity command console --tail 400                     # ② 读关键日志（自己的 Tag 前缀），且无异常
-unity command eval_file --file clover-{项目名}/client/verify-runtime.cs   # ③ 运行时自证关键对象状态
+unity command eval_file --file <项目根>/.ai-tmp/test/verify-runtime.cs   # ③ 运行时自证关键对象状态
 unity command capture_game_view --source screen --width 1600 --height 900 --save_path Screenshots/play.png  # ④ 截图（含 HUD）
 unity command editor_stop                            # ⑤ 退 Play，别把编辑器留在 Play 模式
 ```
 
 > **截图要自己看**：`表现类` 的项**截一张看一眼**（多屏才考虑拼联络图，`reference/visual-loop.md` 第八节）；`数值类` **不必截图**。数字全对但画面不对的静默失效（血条永不变化、角色纯白无贴图、血条细到看不见）只有看图才发现。
-> `verify-runtime.cs` 放**工程根（`Assets/` 之外**，Unity 就不会把它当业务脚本编译**），内容是一段 top-level 语句：`FindFirstObjectByType<T>()` 找到自己的组件，打印"是否挂上 / 目标是否绑定 / 模型是否加载 / Animator 当前 clip 与 normalizedTime"。
+> `verify-runtime.cs` 放**项目根的 `.ai-tmp/test/`**（⛔ 不放 `Assets/` 内，否则 Unity 会把它当业务脚本编译），内容是一段 top-level 语句：`FindFirstObjectByType<T>()` 找到自己的组件，打印"是否挂上 / 目标是否绑定 / 模型是否加载 / Animator 当前 clip 与 normalizedTime"。
 
 ### 8.2 在**活编辑器里**跑 PlayMode 用例（不用抢工程）
 
@@ -275,64 +280,25 @@ unity command test_status                                                  # sta
 > ⛔ **别在 `eval_file` 里 `Thread.Sleep` 驱动游戏**：`eval_file` 跑在编辑器主线程上，睡眠会把"发送帧"一起卡住（你以为连打了 4 下，实际只出去 1 下）。要连打就连开多次 `eval_file`，由外壳（PowerShell/bash）控制间隔。
 > **`eval_file` 有 5 秒主线程上限**（超时报 `Main thread operation timed out after 5000ms`）：凡需要"等资源导入 / 编译 / 大批量 `AssetDatabase.ImportAsset` / 大文件加载"的脚本，一律**拆小或分多次调用**；批次已提交后，用**只读**脚本查结果。
 
-## 9. 故障排查：创建 / 打开工程「静默卡死」
+## 9. 卡住了去哪查（索引；正文都在 `reference/pipeline-and-unity-cli.md`）
 
-**症状**：`unity projects create` / `unity run` / `unity test` 长时间不返回、CLI 一个字都不输出；`ProjectVersion.txt` 始终不生成。**这类问题几乎都不是 Unity 慢，而是 Editor 起不来在死等。**
+### 9.1 编辑器连不上 / 命令超时 / `unity status` 空表
 
-> **★ 先回到"预防"，别上来就排查**：① 工程还没创建 → **先问用户 360 关了吗**（没关就别建）；② 工程已创建 → **请用户自己在 Hub 里打开**，⛔ 不要自己跑 `unity run` / `-batchmode`。本节列的是"已经卡住了怎么救"。
+- `No Unity Editor instances found` 而编辑器确实开着 ⇒ 先查 **cwd**（同文档 §三，P-1），再看装包时机（§二，P-0），最后怀疑杀软 / licensing（§一）。
+- 所有 `mainThreadRequired` 命令一起超时、CPU 差值 = 0 ⇒ 按**卡在原生模态框**处理（同文档 §七，P-5）；`--detach` / `--timeout`（秒）语义见同节末尾四条。
 
-**9.1 先分清「慢」和「阻塞」**：
+### 9.2 建 / 开工程「静默卡死」
 
-```powershell
-Get-Process -Name Unity -ErrorAction SilentlyContinue |
-  Select-Object Id, @{n='CPU秒';e={[math]::Round($_.CPU,0)}}, @{n='内存MB';e={[math]::Round($_.WorkingSet64/1MB,0)}}
-# CPU 时间在涨 = 慢（正在导入/编译）；几乎不动 = 阻塞（在等 I/O 或某个服务）
-```
+`unity projects create` / `unity run` / `unity test` 长时间不返回、`ProjectVersion.txt` 不生成 ⇒ 先分清"慢"与"阻塞"（进程 CPU 是否在涨），再按同文档 **§一**（杀软拦 licensing 客户端 / UDS DataStore）与 **§九**（点开头目录、强杀 Editor 坏 `Library/DataStore`）逐条对证。⛔ 不要自己 `unity run` / `-batchmode` 顶替开编辑器。
 
-**9.2 四个已确认的成因**
+### 9.3 驱动实测的「假故障」（代码没错、你以为有错）
 
-**(1) 杀软拦截 Unity 的内存映射数据库（最常见）**：360 / 火绒这类套件的「主动防御 / HIPS」会拦 Unity DataStore 的 mmap 与文件锁。证据在 `<工程>/Logs/`：`UDS-Service.log` 报 `Failed to open database: 5 : Input/output error`、`Editor-UDS.log` 报 `Service connected: false`、Editor 日志报 `Fatal Error! Failed to initialise UDS client in the Editor`。
-**决定性特征**：日志里出现 `Launching Unity Data Store`，但进程表里**从来没有** `Unity.DataStore.exe`（服务起不来）⇒ Editor 无限等它，CPU 接近 0。可先确认机器上是否装了这类套件（`Get-Process | Where-Object { $_.ProcessName -match '360|ZhuDongFangYu|HuoRong|QQPCRTP|HipsTray' }`）。
-**处理（代价从低到高）**：① 请用户把这几处加入白名单（编辑器安装目录、工程所在目录、`%LOCALAPPDATA%\Unity`、`%LOCALAPPDATA%\Temp\Unity`）；② 或临时关闭杀软主动防御后重试；③ 或请用户用 Hub / Editor **手工打开一次**工程（GUI 启动路径对 UDS 没这么敏感），导入完成后 AI 再回到 CLI。
+改了 `.cs` 没重新编译 / `recompile` 报 `Network error` / `eval_file` 结果怪 / 截图为空 / 找不到 `[UI]` ⇒ 同文档 §四（P-2 九条）。
 
-**(2) Unity Licensing 客户端卡死**（会同时卡死"编辑器启动"与"batch 出包"）：症状是日志刷 `Connection to channel LicenseClient-DXXX refused` / `Failed to acquire global mutex Unity-LicenseClient-DXXX` / `Timed-out after 60.00s, waiting for channel`，batch 构建**一直卡在 early init**（进程 100~600MB、CPU 几乎不动、日志 60s 一循环）。注意 `unity license status` 可能仍显示「已激活」—— **许可证有效 ≠ 客户端进程健康**。
-**处理（顺序照做）**：① 关掉**所有** Unity 编辑器与 **Unity Hub**（Hub 会反复拉起 licensing 客户端，互相抢全局互斥）；② 强杀残留 licensing 客户端 —— `Stop-Process` 常报 **Access denied**（该进程提权），改用 WMI：
-```powershell
-Get-CimInstance Win32_Process -Filter "Name='Unity.Licensing.Client.exe'" |
-  ForEach-Object { Invoke-CimMethod -InputObject $_ -MethodName Terminate }   # ReturnValue=0 即成功
-```
-③ 再跑 batch：日志里应出现 `Licensing is initialized (took NN.Ns)` 且**不再**刷 mutex 报错。
+### 9.4 Play 模式相关
 
-**(3) 工程 / 日志放在点开头的目录**：报 `Error: .codebuddy is not a valid directory name.`。**危害不只是"这次失败"** —— 它会让 UDS 的机器级共享状态进入坏状态，**之后放在正常路径下的工程也会一起失败**（踩过一次后，把工程挪到正常路径并不能立刻恢复）。
+第二次进 Play 一片蓝（快速进入模式 + 静态残留）、按键注入"完全没反应" ⇒ 同文档 §五（P-3）、§六（P-4）。
 
-**(4) 中途强杀 Editor**：导入被强杀（超时 / 取消 / `Stop-Process`）会写坏 `<工程>/Library/DataStore`，此后每次启动都崩在 `UDSInterface::UDSInterface` / `InitializeAssetDatabaseV2`。**修法**：把 `Library` 整体**挪走**（改名即可）让它重建（`Move-Item "<工程>/Library" "<工程>/Library-dead-$(Get-Date -Format HHmmss)"`）。**预防**：不要给 Editor 设很短的超时（首次导入含包解析几分钟属正常），需要等待就用**后台进程 + 轮询**。
+### 9.5 脚本 / 生成器自身的坑
 
-> 排查时**别看 `Editor.log` 判断"卡在哪"**：这几种情况在日志尾部长得都很像 —— 认准关键字：UDS 看 `UDSInterface::UDSInterface`、licensing 看 `Failed to acquire global mutex`、导入看 `[Bee]`/`Import` 步骤在动。
-
-**9.3 正确的调用姿势（避免「看起来卡死」）**
-
-```powershell
-# ❌ 长命令后面不要接 Select-Object -Last N：它会把输出全部缓冲到进程结束，期间一个字都不显示
-# ✅ 后台启动，自己轮询：
-$p = Start-Process -FilePath 'unity' `
-     -ArgumentList @('run','<工程>','--editor-version','6000.0.x','--timeout','1500','--non-interactive','--no-banner',
-                     '--','-nographics','-logFile','<工程>/Logs/editor.log') `
-     -RedirectStandardOutput '<工程>/Logs/cli.log' -RedirectStandardError '<工程>/Logs/cli.err' `
-     -WindowStyle Hidden -PassThru
-"PID=$($p.Id)"
-```
-
-随后每隔 1~2 分钟用**短命令**检查四项：进程是否存活 / CPU 是否在涨 / `<工程>/Library` 体积是否在变大 / 日志尾部。**判断导入真的在推进**：`Library` 体积持续增长（空 3D 模板首次导入通常几分钟）；体积长时间不变**且** CPU 不动 = 阻塞，回到 9.2。
-另注：`unity run` 的 `-quit` / `-batchmode` 是 CLI 自己管理的保留参数，放在 `--` 之后会报 `conflicts with a reserved Unity flag`，去掉即可。
-
-## 10. Unity **编辑器 API** 的坑（写生成器 / 导入器 / 批处理时会撞上）
-
-| # | 坑 | 症状 | 修法 |
-|---|---|---|---|
-| 1 | `TextureImporter.spriteAlignment` **不在** `TextureImporter` 上 | 直接赋值编译不过 | 走**往返**：`var s = new TextureImporterSettings(); importer.ReadTextureSettings(s); s.spriteAlignment = (int)SpriteAlignment.Custom; s.spritePivot = new Vector2(0.5f, 0f); importer.SetTextureSettings(s);` |
-| 2 | `AssetDatabase` **未同步**时 `SaveAsPrefabAsset` 会写出**空壳** | 预制体文件在、`m_Name` 也对，但 `m_Script: {fileID: 0}` ⇒ 运行时 `Component X not found on prefab` ⇒ **面板永远打不开**（成因：同一次批处理里脚本刚编译完，`MonoScript` 还没被导入） | 存之前用 `MonoScript.FromMonoBehaviour` **自检**，解析不到就**报错跳过**（⛔ 不要安静地生成一个废预制体）。⚠️ `Refresh(ForceSynchronousImport)` 能修但会**重新导入整个工程** ⇒ 直接跑到超时；用轻量 `Refresh()` + 自检 |
-| 3 | `ScreenCapture` 属于 `com.unity.modules.screencapture` | manifest 没引这个模块就用不了 | 改用 `Texture2D.ReadPixels` + `EncodeToPNG`（在 Core / ImageConversion 里，通常已引） |
-| 4 | 场景里**没有 `AudioListener`** | ① 每秒刷一条 `There are no audio listeners in the scene`；② **所有音效静默** —— 而那条刷屏会把"音效没做"这个**真问题淹掉**（第②条才致命） | 在 `Bootstrap` 里**运行时保证有一个**（比依赖"生成场景时记得挂"可靠） |
-| 5 | 批处理模式下 `-executeMethod` **执行完立刻退出** | **进不了播放模式** ⇒ 想驱动 Play 模式只能走 **PlayMode 测试**（`unity test`）或驱动**已打开**的编辑器（§8.1 / §8.2） | — |
-
-> 写生成器 / 导入器脚本时，**每个非预期分支都要打日志**：这类失败（空壳预制体、模块缺失、静默音效）的共同点是**编译期全对、运行期静默**。见 `reference/pipeline-and-unity-cli.md` §五。
+PowerShell 的"玄学"结果（变量被覆盖、编码乱、文件判不存在）⇒ 同文档 §八；生成器写出空壳预制体、模块缺失、音效静默 ⇒ 同文档 §十。

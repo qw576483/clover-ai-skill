@@ -14,7 +14,7 @@
 | Net / Sync / Schema / Alert / CloverScene / FrameRoom / Http | **业务** `CloverNet.Init(addr, udpAddr)` | 不调就完全没网络（静默） |
 | Res | **业务** `CloverRes.Init(root)` | ⚠️ **不挂 ⇒ `Game.Res` 为 null**：模型 / 贴图静默加载失败（只剩占位体），并在加载点抛 `NullReferenceException` 打断主流程 |
 | Input | **业务** `CloverInput.Init()` | 同时创建 EventSystem + 匹配后端的 InputModule（UI 点击依赖它） |
-| Table / Localization | **业务** `CloverData.InitDataTable(dir)` / `InitLocalization(...)` | 不调就没配表 |
+| Table / Localization | **业务** `InitLocalization(...)`；配表按 §4 的 `CloverTable` 加载（旧 `InitDataTable` 读不了打表产物） | 不调就没配表 |
 | Map / Entity / Pool / UI / Scene / Atlas / Anim / Sound / Camera / Quality | `CloverPresentation.Init()`（**随 Launch 自动**，`AutoMount=true`） | 表现域全自动（Map 为纯数据模块） |
 | LanBrowser | **随 Launch 自动**（`CloverLan` 的启动钩子；仅原生平台） | 局域网寻服：`Game.LanBrowser.Scan()` 找同网段主机 → 选一台 → 再 `CloverNet.Init(host.Address, host.UdpAddress)`（**必须早于** `CloverNet.Init`） |
 
@@ -55,7 +55,7 @@ Update()       ← Game.Tick 由引擎的 EngineRunner 驱动（Camera/Anim 等�
 
 > ⛔ **硬闸门：动手写任何"通用设施"之前，先在这张表里找一遍。** UI 构建、对象池、存档/设置、图集、本地化、配表、动画、相机、场景、音效、**快照插值 / 帧动画 / 拖放浮层 / 朝向 / 颜色变换 / 战斗原语** —— **只要属于这些类，就必须先确认引擎有没有现成的；有就用引擎的。**
 > **这份表若不全 = 业务必然重造轮子**：看到表里没有的通用需求，**先去引擎 `Runtime/**` 搜一遍再动手**。
-> **第③招（最灵、最省时间）：横向比** —— `git grep -c "<引擎类型名>" -- "clover-project-*/client/Assets/Scripts"`，**别的项目在用 ⇒ 你不许自建**。引擎件是**陆续从各项目下沉进去的**（下沉动作常常与你并行）⇒「我开工时它还没有」只在同一天成立，**交付前必须再扫一遍并回接**。
+> **最省时间的一招：横向比** —— `git grep -c "<引擎类型名>" -- "clover-project-*/client/Assets/Scripts"`，**别的项目在用 ⇒ 你不许自建**。引擎件是**陆续从各项目下沉进去的**（下沉动作常常与你并行）⇒「我开工时它还没有」只在同一天成立，**交付前必须再扫一遍并回接**。
 > **自建通用件的唯一合法姿势**：文件头写一行「为什么不用引擎件 `X` + 缺什么」（要能指到 `文件:行` 或本表条目）—— 写不出来 ⇒ 就是该用引擎件。
 
 | 模块 | 真实能力 | 缺口 / 注意 |
@@ -80,7 +80,7 @@ Update()       ← Game.Tick 由引擎的 EngineRunner 驱动（Camera/Anim 等�
 | ★ **`Setting`** | `Get<T>(key, default)` / `Set<T>(key, value)` / `Save / Load / Delete / DeleteAll` | **存档 / 设置 / 最高分别裸用 `PlayerPrefs`**，走引擎这一层 |
 | ★ **`CloverEngine.FileSlotStore`** | 「键 → 文本」的**槽位**存储（**一槽一文件**）：`Exists` / `Write(key, content, out error)` / `Read(key)` / `Delete(key)` / `List()`（**字典序**）/ `LastCorruptPath` / `Dir`；构造 `(dir, extension = ".json")` | **"一只角色一个文件 / 一局回放一个文件 / 一章关卡草稿一个文件"就用它**，⛔ 别再自己写「`.tmp` + `File.Replace` + 坏文件留档 + 目录枚举」。与 `Setting` **互补**：那个是单文件 KV，这个是每次 `Write` 独立落盘、`List()` 可枚举。⚠️ `List()` 是**字典序、不是插入序** ⇒ 要"创建先后"（选角屏卡片顺序这类）**自己维护索引键**。`.json` 槽会校验内容可解析：坏档 ⇒ `Read` 返回 `null` + 留档 `.corrupt`（**副本**，现场不丢）+ 限频告警一次；`Write` 遇到坏档先留档再写 |
 | ★ **`SpriteAtlas`** | 图集加载 / 取图 | 大量小图别再散装成几百个 PNG（像素游戏用图集要留意 PPU / `FilterMode`） |
-| ★ **配表 / 本地化** | `CloverData.InitDataTable(...)` / `DataTable` / `Localization` | 同质化配置与 UI 文案不要硬编码、也不要自己写解析器 |
+| ★ **配表 / 本地化** | 配表加载用 `CloverTable`（见上一行；⚠️ 旧入口 `CloverData.InitDataTable` 读不了打表产物）；本地化 `CloverData.InitLocalization(...)` / `Localization` | 同质化配置与 UI 文案不要硬编码、也不要自己写解析器 |
 | ★ **`Game.Sound`** | `PlayBGM / StopBGM / PlaySFX / PlaySFXAt / PlayVoice / StopAll / SetVolume / GetVolume / SetMute`（`SoundGroup.BGM/SFX/Voice`）＋ `PlaySFXAt(clip,pos,SfxAtOptions{MinDistance,MaxDistance,Rolloff,Volume,Pitch})` ＋ 播放闸门 `MaxPlaysPerFrame` / `MaxConcurrentPerClip`（默认 `0` = 不限） | BGM 双音源交替 + 淡入淡出；路径约定 `Sound/{BGM,SFX,Voice}/{name}`（走 `Game.Res`）。**音量 / 静音只在内存、不持久化** —— 要存设置自己写 `Game.Setting`。★ **3D 衰减档位**：`PlaySFXAt` 的 `SfxAtOptions` 直接设 `min/max/rolloff/volume/pitch`（默认 1/500 对数）——⛔ 不要再自建 3D 音源池。★ **播放闸门**：① 缺失**整进程只报一次**（四处 `clip == null` 全走 `LogThrottle.WarnOnce`）；② `MaxPlaysPerFrame`（单帧最多**真正起播**几次）/ `MaxConcurrentPerClip`（同一路径**同时播放**的音源数上限）—— 默认 `0` = **不限**，超限**丢弃该次播放**（⛔ 不排队、⛔ 不打断在播音源）+ 限频告警；只作用于 `PlaySFX`/`PlaySFXAt`/`PlayVoice`（BGM 不受影响）。阈值的**取值**仍是业务的。⛔ 别在业务侧再写探测缓存 / 帧计数 / 并发表；要"问一句这条音效在不在"用 `Game.Res.Exists` |
 | ★ **地图 / 场景** | `Game.Map`（`IMapData`：`LoadFromResource` / `Load` / `WalkableAt` / `HasHeightField` / `SurfaceCountAt` / `TryGetSurfaceHeights` / `TryGetTopSurfaceHeight`；格式层 `CloverMapFormat` / `CloverMapData` / `CloverMapWriter` 属引擎 internal）；`Game.Scene.Load` | 有现成地图格式；**高度场**给出同格多层可站面（台上/台下、箱顶/地面），位图只回答"能不能走"。2D 平台跳跃要不要用需先评估格式适配度，别硬套 |
 | ★ **`CloverEngine.SnapshotInterpolator`** | 「低频权威快照 → 高帧率插值表现」的**渲染时钟 + 插值窗口**件（无 MonoBehaviour，由业务 `Tick` 驱动）：`Tick` / `RenderClockMs` / `SelectWindow` + 参数 `HistSlots` / `RenderLagIntervals` / `LagSteerMaxRate` / `CatchUpMaxRate` | 服务端 10~20 Hz 推快照、客户端 60 FPS 的**任何**联网玩法都用它。⛔ 别在业务里自写「历史缓冲 + 落后量 + 速率修正」那一套：时钟**只按真实时间前进、收到快照绝不重置**；速率必须是**有界比例**修正（瞬跳时钟会让单位前跳一大截，完全不校正会让插值静默失效） |
@@ -89,7 +89,7 @@ Update()       ← Game.Tick 由引擎的 EngineRunner 驱动（Camera/Anim 等�
 | `CloverEngine.UnitFacingMap` / `ColorTransform` / `ProjectileRuntime` / `HitShape` / `Separation2D` / `PathFollower` | 朝向极角 ↔ 视角号 + 镜像（`StepForHeading` / `Standard16StepToView`）；逐实例颜色变换（乘 + 加）；弹道飞行；命中形状；2D 分离（推挤）；沿路径跟随 | 逐视角精灵 · 队伍染色 · 战斗表现原语 —— ⛔ 别自写弹道插值 / 推挤分离 / 朝向映射 |
 | `CloverEngine.TileWorld` / `TileRenderer` / `TileNodePool` / `ChunkedTilePlanner` | 2D 瓦片世界 / 渲染 / 节点池 / 分块规划 | 2D 地图与瓦片层（与 `Game.Map` 的偏 3D 路线并存，别混用） |
 
-## 5. 主角操作的三条铁律（做 3D/2.5D 玩法必看）
+## 5. 主角操作的三条要点（做 3D/2.5D 玩法必看）
 
 1. **输入走 `Game.Input`**（见上表）；`State.MoveDirection` 直接可用；
 2. **本地预测 + 服务端校正**：本地立即移动（手感），20Hz 上行；服务端权威位置只做校正（<0.3m 忽略 / 0.3~1.5m 缓收 / >1.5m 硬贴 + 告警）。**绝不能用权威位置逐帧覆盖自己** —— 那是"按了 WASD 不动 / 漂移"的经典根因；

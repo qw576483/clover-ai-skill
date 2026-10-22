@@ -17,7 +17,6 @@
 | 6 | **游戏内流程要做**：暂停菜单（继续 / 设置 / 回主菜单 / 退出）；结算界面；**回主菜单后能再进一次**（第二次进入无残留状态） |
 | 7 | **回菜单必须清场**：面板 / 实体 / 对象池 / 事件订阅 / 定时器 / 网络订阅全部收干净（见 §5），否则第二次进游戏是脏的 |
 | 8 | **UI 场景与游戏场景分离**：主菜单 / 创角在**纯 UI 场景**里，进图时才加载游戏场景；**禁止**把主菜单塞进游戏场景 |
-| 9 | 每条非预期分支都要打日志（`Game.Logger.Info/Warn/Error(tag, msg)`） |
 
 > 参考游戏有**更细的站点**（选阵营 / 买枪 / 关卡选择 / 难度 / 存档槽 / 成就）时，**按原版加站点**，不要只做上面几个就交差 —— 站点清单以 `patterns/game-demo.md` §0.0c 的**原版系统清单**为准。
 
@@ -135,11 +134,9 @@ namespace {Name}.Module.Flow
 
         private void RegisterStates()
         {
-            // 站点：引擎在 Launch 时已预注册 Launching/CheckingUpdate/Logging/MainCity/Battle/Disconnected，
-            // 运行时不自动驱动，业务可同名覆盖或另起状态名。这里用业务自己的站点名，避免与引擎语义打架。
-            // ⛔ Game.Fsm **全局唯一**（见 patterns/client/fsm.md 文首）：这些流程状态与其它模块
-            //    共用同一张状态表和一个 Current。业务**只在这一处注册流程状态**，
-            //    ⛔ 不许再让角色 / UI / 动画模块往同一个 Game.Fsm 里塞状态（会互相跑掉 OnExit/OnEnter）。
+            // 引擎在 Launch 时已预注册 Launching/CheckingUpdate/Logging/MainCity/Battle/Disconnected（不自动驱动，
+            // 可同名覆盖）；这里用业务站点名，避免与引擎语义打架。
+            // ⛔ Game.Fsm 全局唯一 ⇒ 流程状态只在这一处注册（见 patterns/client/fsm.md 文首）。
             Game.Fsm.RegisterState("Boot",     onEnter: () => ShowBoot(),     onExit: () => Game.UI.Close<BootPanel>());
             Game.Fsm.RegisterState("MainMenu", onEnter: () => ShowMainMenu(), onExit: () => Game.UI.Close<MainMenuPanel>());
             Game.Fsm.RegisterState("Login",    onEnter: () => Game.UI.Open<LoginPanel>());
@@ -216,8 +213,7 @@ namespace {Name}.Module.Flow
             Game.Pool.ClearAll();
             Game.Timer.StopScope("stage");
             Game.Sync.Clear();
-            // 事件注销要传**同一个方法引用**（没有句柄）：Flow 长驻，订阅一律用具名私有方法，
-            // 不要用匿名 lambda，否则 Off 不掉（见 §7）。例：Game.Event.Off(Events.PauseOpened, OnPauseOpened);
+            // 事件注销要传同一个方法引用（无句柄）：Flow 长驻 ⇒ 订阅用具名私有方法，不用匿名 lambda。
             Game.Sound.StopAll();
         }
 
@@ -482,7 +478,7 @@ namespace {Name}.UI
 □ 游戏内：暂停菜单能开、能继续、能回主菜单（有二次确认）
 □ 连续「回主菜单 → 再进图」两次，第二次画面与计数与第一次一致（§5 清场清单过了一遍）
 □ `表现类` 的界面**自己都看过截图**（启动 / 主菜单 / 创角 / 读条 / 游戏内 / 暂停 / 结算）；
-  `数值类` 只留日志行（`SKILL.md` §4 第 4 条）
+  `数值类` 只留日志行（`SKILL.md` §4 第 5 条）
 □ ★ **与参考游戏的同角度截图逐项对照，全部"一致"**（`reference/design-review.md` §3.6）——
    **有任何一项不一致 = 不可交付**；**没有参考游戏名就先问用户要**
 □ 全工程 grep：无裸事件名（`Game.Event.On("` 命中 0）、UI 无 `using {Name}.Module`（命中 0）

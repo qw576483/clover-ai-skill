@@ -60,6 +60,7 @@ public class PlayerView : MonoBehaviour
 ```
 
 > **初始显示（等首个属性同步回调到达后刷新）**：引擎**没有**同步读属性的入口，`EntityInfo` 上也没有 `Attrs` 字段 —— 值只能从 `OnEntityProperty` 回调缓存里取。
+> 血条 / 数字同理：`Hp`、`MaxHp` 在回调里缓存后重算 `slider.value`；要显示数字再加一个 `TextMeshProUGUI`。
 
 ## 模板 2：WorldSync 实体同步（位置插值）
 
@@ -130,8 +131,7 @@ public class EntityManager : MonoBehaviour
 {
     public void SpawnPlayer(ulong entityId, Vector3 position)
     {
-        // ⚠️ 世界同步给的实体号是 ulong，而 IEntityManager 当前仍是 long
-        //    ⇒ 跨这两者必须显式转换（见文末「实体号类型」）
+        // ulong → long 显式转换（见文末「实体号类型」）
         Game.Entity.Create((long)entityId, PLAYER_TYPE_ID);
 
         // 绑定 View（视图不放在 EntityInfo 上：走 IEntityManager.BindView / GetView）
@@ -202,37 +202,3 @@ Game.Sync.OnEntityEnter((ulong id, Dictionary<string, object> attrs) =>
 
 **别把世界同步回调的参数声明成 `long`**：那会让 `id == _entityId` 这类比较直接编译不过（`ulong` 与 `long` 之间无隐式转换），或者更糟 —— 用 `(long)id` 转换后在 `id` 高位为 1 时得到负数，表现为"实体找不到 / 视图不显示"而**不报错**。
 
-## 模板 5：实体属性绑定（血条）
-
-```csharp
-public class HealthBarView : MonoBehaviour
-{
-    [SerializeField] private Slider _hpBar;
-    [SerializeField] private TextMeshProUGUI _hpText;
-
-    private ulong _entityId;
-    private float _hp;
-    private float _maxHp;
-
-    public void Bind(ulong entityId)
-    {
-        _entityId = entityId;
-
-        // 属性新值由回调给出（EntityInfo 上没有 Attrs 字段）
-        Game.Sync.OnEntityProperty((id, attrName, value) =>
-        {
-            if (id != _entityId) return;
-            if (attrName == "Hp") _hp = System.Convert.ToSingle(value);
-            else if (attrName == "MaxHp") _maxHp = System.Convert.ToSingle(value);
-            else return;
-            UpdateHpDisplay();
-        });
-    }
-
-    private void UpdateHpDisplay()
-    {
-        _hpBar.value = _maxHp > 0f ? _hp / _maxHp : 0f;
-        _hpText.text = $"{_hp:F0}/{_maxHp:F0}";
-    }
-}
-```
